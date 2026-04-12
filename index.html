@@ -2,282 +2,302 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Analyse budgétaire</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-:root{--bg:#f0f2f7;--s:#fff;--bd:#dde2ec;--tx:#1b1f2e;--mu:#6b7280;--pr:#2563eb;--pl:#eff6ff;--ok:#16a34a;--wn:#d97706;--er:#dc2626;--r:8px}
+:root {
+  --bg:#f0f2f7; --surface:#fff; --border:#dde2ec; --text:#1b1f2e;
+  --muted:#6b7280; --primary:#2563eb; --primary-lt:#eff6ff;
+  --ok:#16a34a; --warn:#d97706; --bad:#dc2626; --r:8px;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:14px}
-/* IMPORT */
-#imp{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;background:linear-gradient(135deg,#e8eeff,#f0f2f7)}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+
+/* ── IMPORT ── */
+#import-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;background:linear-gradient(135deg,#e8eeff 0%,#f0f2f7 60%)}
 .imp-h1{font-size:1.75rem;font-weight:700;text-align:center;margin-bottom:6px}
-.imp-sub{color:var(--mu);text-align:center;margin-bottom:34px}
-.ig{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%;max-width:660px;margin-bottom:26px}
-.ic{background:var(--s);border:2px dashed var(--bd);border-radius:var(--r);padding:22px 16px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
-.ic:hover{border-color:var(--pr);background:var(--pl)}
-.ic.ok{border-color:var(--ok);border-style:solid;background:#f0fdf4}
-.ic input{display:none}
-.ic .ico{font-size:1.9rem;display:block;margin-bottom:8px}
-.ic .lb{font-weight:600;font-size:.88rem;margin-bottom:4px}
-.ic .sb{font-size:.76rem;color:var(--mu)}
-.ic .st{font-size:.76rem;margin-top:8px;font-weight:500;color:var(--mu)}
-.ic.ok .st{color:var(--ok)}
-.ic .ck{position:absolute;top:9px;right:11px}
-#btn-go{padding:13px 38px;background:var(--pr);color:#fff;border:none;border-radius:var(--r);font-size:.95rem;font-weight:600;cursor:pointer;transition:opacity .2s}
-#btn-go:disabled{opacity:.35;cursor:not-allowed}
-#btn-go:not(:disabled):hover{opacity:.85}
-#imp-err{color:var(--er);margin-top:12px;font-size:.82rem}
-/* DASHBOARD */
-#dash{display:none;padding:20px 24px;max-width:1260px;margin:0 auto}
-.dh{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
-.dh h1{font-size:1.2rem;font-weight:700}
-.dh-r{display:flex;gap:8px}
-.btn{padding:6px 13px;background:var(--s);border:1px solid var(--bd);border-radius:6px;cursor:pointer;font-size:.8rem;color:var(--mu);transition:all .15s}
-.btn:hover{border-color:var(--pr);color:var(--pr)}
-.btn-p{background:var(--pr);color:#fff;border-color:var(--pr)}
-.btn-p:hover{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
-.btn-g{background:#1a7f64;color:#fff;border-color:#1a7f64}
-.btn-g:hover{background:#136150;color:#fff}
-/* TABS */
-.tabs{display:flex;gap:4px;border-bottom:2px solid var(--bd);margin-bottom:18px}
-.tab{padding:8px 18px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:500;color:var(--mu);transition:all .15s}
-.tab.on{color:var(--pr);border-bottom-color:var(--pr)}
-/* FILTERS */
-.flt{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.imp-sub{color:var(--muted);text-align:center;margin-bottom:36px}
+.import-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%;max-width:660px;margin-bottom:28px}
+.icard{background:var(--surface);border:2px dashed var(--border);border-radius:var(--r);padding:22px 16px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.icard:hover{border-color:var(--primary);background:var(--primary-lt)}
+.icard.loaded{border-color:var(--ok);border-style:solid;background:#f0fdf4}
+.icard input{display:none}
+.icard .ico{font-size:1.9rem;display:block;margin-bottom:8px}
+.icard .lbl{font-weight:600;font-size:.88rem;margin-bottom:4px}
+.icard .sub{font-size:.76rem;color:var(--muted)}
+.icard .st{font-size:.76rem;margin-top:8px;font-weight:500;color:var(--muted)}
+.icard.loaded .st{color:var(--ok)}
+.icard .ck{position:absolute;top:9px;right:11px;font-size:1rem}
+#btn-launch{padding:13px 38px;background:var(--primary);color:#fff;border:none;border-radius:var(--r);font-size:.95rem;font-weight:600;cursor:pointer;transition:opacity .2s}
+#btn-launch:disabled{opacity:.35;cursor:not-allowed}
+#btn-launch:not(:disabled):hover{opacity:.85}
+#imp-err{color:var(--bad);margin-top:12px;font-size:.82rem}
+
+/* ── DASHBOARD ── */
+#dashboard{display:none;padding:20px 24px;max-width:1240px;margin:0 auto}
+.dash-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.dash-hdr h1{font-size:1.2rem;font-weight:700}
+.dash-hdr-right{display:flex;gap:8px}
+.btn-sm{padding:6px 13px;background:#fff;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:.8rem;color:var(--muted)}
+.btn-sm:hover{border-color:var(--primary);color:var(--primary)}
+.btn-save{background:var(--primary);color:#fff;border-color:var(--primary)}
+.btn-save:hover{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
+
+/* tabs */
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:18px}
+.tab{padding:8px 18px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:500;color:var(--muted);transition:all .15s}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+
+/* filters */
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
 .fg{display:flex;flex-direction:column;gap:4px}
-.fg label{font-size:.7rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.04em}
-.fg select{padding:6px 10px;border:1px solid var(--bd);border-radius:6px;background:#fff;font-size:.83rem;min-width:148px}
-/* KPI */
-.ks{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
-.kpi{background:var(--s);border:1px solid var(--bd);border-radius:var(--r);padding:12px 16px;flex:1 1 150px}
-.kl{font-size:.7rem;color:var(--mu);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
-.kv{font-size:1.15rem;font-weight:700}
-.c-ok{color:var(--ok)}.c-wn{color:var(--wn)}.c-er{color:var(--er)}
-/* PANELS */
-.pnl{background:var(--s);border:1px solid var(--bd);border-radius:var(--r);padding:18px;margin-bottom:16px}
-.pnl-t{font-size:.82rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.04em;margin-bottom:14px}
-#chBar{max-height:340px}
-#chLine{max-height:310px}
-/* DRILL */
-#drv{display:none;margin-top:4px}
-.drh{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.dk{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-/* TABLES */
-.tw{background:var(--s);border:1px solid var(--bd);border-radius:var(--r);overflow:auto;max-height:430px}
+.fg label{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.fg select{padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:.83rem;min-width:148px}
+
+/* kpi */
+.kpi-strip{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;flex:1 1 150px}
+.kpi-lbl{font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+.kpi-val{font-size:1.15rem;font-weight:700}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+
+/* chart panels */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:16px}
+.panel-title{font-size:.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:14px}
+#myChart{max-height:340px}
+#myLine{max-height:300px}
+
+/* drill */
+#drill-view{display:none;margin-top:4px}
+.drill-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+#btn-back{padding:5px 12px;background:#fff;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:.8rem}
+#btn-back:hover{border-color:var(--primary);color:var(--primary)}
+#drill-title{font-size:.95rem;font-weight:600}
+#drill-kpis{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:auto;max-height:420px}
 table{width:100%;border-collapse:collapse;font-size:.8rem}
-thead th{background:#f7f8fb;padding:8px 10px;text-align:left;font-weight:700;border-bottom:2px solid var(--bd);white-space:nowrap;cursor:pointer;position:sticky;top:0}
-thead th:hover{color:var(--pr)}
-tbody td{padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis}
-tbody tr:hover{background:var(--pl)}
-tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px solid var(--bd)}
-.rb{display:inline-block;padding:2px 8px;border-radius:12px;font-weight:600;font-size:.75rem}
-.r-ok{background:#dcfce7;color:var(--ok)}.r-wn{background:#fef9c3;color:var(--wn)}.r-er{background:#fee2e2;color:var(--er)}
-/* LOADING */
-#ld{display:none;position:fixed;inset:0;background:rgba(255,255,255,.88);align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:10px}
-#ld.on{display:flex}
-.sp{width:34px;height:34px;border:4px solid var(--bd);border-top-color:var(--pr);border-radius:50%;animation:sp .7s linear infinite}
+thead th{background:#f7f8fb;padding:8px 10px;text-align:left;font-weight:700;border-bottom:2px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;position:sticky;top:0}
+thead th:hover{color:var(--primary)}
+tbody td{padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}
+tbody tr:hover{background:var(--primary-lt)}
+tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px solid var(--border)}
+#drill-count{font-size:.78rem;color:var(--muted);margin-bottom:6px}
+
+/* cross */
+#cross-view{display:none}
+.rate-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-weight:600;font-size:.75rem}
+.rate-ok{background:#dcfce7;color:var(--ok)}.rate-warn{background:#fef9c3;color:var(--warn)}.rate-bad{background:#fee2e2;color:var(--bad)}
+
+/* loading */
+#loading{display:none;position:fixed;inset:0;background:rgba(255,255,255,.87);align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:10px}
+#loading.on{display:flex}
+.spin{width:34px;height:34px;border:4px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:sp .7s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
-/* MODAL GRIST */
-#grist-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
-#grist-modal.on{display:flex}
-.gm-box{background:#fff;border-radius:var(--r);padding:28px;width:100%;max-width:500px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
-.gm-box h2{font-size:1rem;font-weight:700;margin-bottom:6px}
-.gm-box p{font-size:.82rem;color:var(--mu);margin-bottom:18px}
-.gm-field{display:flex;flex-direction:column;gap:4px;margin-bottom:14px}
-.gm-field label{font-size:.75rem;font-weight:700;color:var(--mu);text-transform:uppercase}
-.gm-field input{padding:8px 10px;border:1px solid var(--bd);border-radius:6px;font-size:.85rem}
-.gm-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
-.gm-err{color:var(--er);font-size:.8rem;margin-top:8px}
-.gm-ok{color:var(--ok);font-size:.8rem;margin-top:8px}
 </style>
 </head>
 <body>
 
-<div id="ld"><div class="sp"></div><div id="ld-msg" style="font-weight:600;color:var(--mu)">Chargement…</div></div>
+<div id="loading"><div class="spin"></div><div id="load-msg" style="font-weight:600;color:var(--muted)">Chargement…</div></div>
 
-<!-- ─── IMPORT ─── -->
-<div id="imp">
+<!-- ── IMPORT ── -->
+<div id="import-screen">
   <div class="imp-h1">📊 Analyse budgétaire</div>
   <div class="imp-sub">Importez vos 4 fichiers Excel pour démarrer l'analyse</div>
-  <div class="ig">
-    <div class="ic" id="ic-b25" onclick="document.getElementById('fi-b25').click()">
-      <input type="file" id="fi-b25" accept=".xlsx,.xls" onchange="loadFile('b25',this)">
-      <span class="ck" id="ck-b25"></span><span class="ico">📋</span>
-      <div class="lb">Budget 2025</div><div class="sb">budget_complet_2025.xlsx</div>
+  <div class="import-grid">
+    <div class="icard" id="card-b25" onclick="document.getElementById('f-b25').click()">
+      <input type="file" id="f-b25" accept=".xlsx,.xls" onchange="handleFile('b25',this)">
+      <span class="ck" id="ck-b25"></span>
+      <span class="ico">📋</span>
+      <div class="lbl">Budget 2025</div>
+      <div class="sub">budget_complet_2025.xlsx</div>
       <div class="st" id="st-b25">Cliquer pour importer</div>
     </div>
-    <div class="ic" id="ic-b26" onclick="document.getElementById('fi-b26').click()">
-      <input type="file" id="fi-b26" accept=".xlsx,.xls" onchange="loadFile('b26',this)">
-      <span class="ck" id="ck-b26"></span><span class="ico">📋</span>
-      <div class="lb">Budget 2026</div><div class="sb">budget_complet_2026.xlsx</div>
+    <div class="icard" id="card-b26" onclick="document.getElementById('f-b26').click()">
+      <input type="file" id="f-b26" accept=".xlsx,.xls" onchange="handleFile('b26',this)">
+      <span class="ck" id="ck-b26"></span>
+      <span class="ico">📋</span>
+      <div class="lbl">Budget 2026</div>
+      <div class="sub">budget_complet_2026.xlsx</div>
       <div class="st" id="st-b26">Cliquer pour importer</div>
     </div>
-    <div class="ic" id="ic-c25" onclick="document.getElementById('fi-c25').click()">
-      <input type="file" id="fi-c25" accept=".xlsx,.xls" onchange="loadFile('c25',this)">
-      <span class="ck" id="ck-c25"></span><span class="ico">📊</span>
-      <div class="lb">Conso AE 2025</div><div class="sb">conso_AE_2025.xlsx</div>
+    <div class="icard" id="card-c25" onclick="document.getElementById('f-c25').click()">
+      <input type="file" id="f-c25" accept=".xlsx,.xls" onchange="handleFile('c25',this)">
+      <span class="ck" id="ck-c25"></span>
+      <span class="ico">📊</span>
+      <div class="lbl">Conso AE 2025</div>
+      <div class="sub">conso_AE_2025.xlsx</div>
       <div class="st" id="st-c25">Cliquer pour importer</div>
     </div>
-    <div class="ic" id="ic-c26" onclick="document.getElementById('fi-c26').click()">
-      <input type="file" id="fi-c26" accept=".xlsx,.xls" onchange="loadFile('c26',this)">
-      <span class="ck" id="ck-c26"></span><span class="ico">📊</span>
-      <div class="lb">Conso AE 2026</div><div class="sb">conso_AE_2026.xlsx</div>
+    <div class="icard" id="card-c26" onclick="document.getElementById('f-c26').click()">
+      <input type="file" id="f-c26" accept=".xlsx,.xls" onchange="handleFile('c26',this)">
+      <span class="ck" id="ck-c26"></span>
+      <span class="ico">📊</span>
+      <div class="lbl">Conso AE 2026</div>
+      <div class="sub">conso_AE_2026.xlsx</div>
       <div class="st" id="st-c26">Cliquer pour importer</div>
     </div>
   </div>
-  <button id="btn-go" disabled onclick="launch()">Lancer l'analyse →</button>
+  <button id="btn-launch" disabled onclick="launch()">Lancer l'analyse →</button>
   <div id="imp-err"></div>
 </div>
 
-<!-- ─── DASHBOARD ─── -->
-<div id="dash">
-  <div class="dh">
+<!-- ── DASHBOARD ── -->
+<div id="dashboard">
+  <div class="dash-hdr">
     <h1 id="dash-title">Analyse budgétaire</h1>
-    <div class="dh-r">
-      <button class="btn btn-p" onclick="saveAll()">💾 Sauvegarder</button>
-      <button class="btn" onclick="resetImp()">↩ Changer les fichiers</button>
+    <div class="dash-hdr-right">
+      <button class="btn-sm btn-save" onclick="saveDashboard()">💾 Sauvegarder</button>
+      <button class="btn-sm" onclick="resetImport()">↩ Changer les fichiers</button>
     </div>
   </div>
 
   <div class="tabs">
-    <div class="tab on" id="tab-h" onclick="switchTab('h')">Histogramme</div>
-    <div class="tab" id="tab-e" onclick="switchTab('e')">Évolution</div>
+    <div class="tab active" id="tab-h" onclick="switchTab('h')">Histogramme</div>
+    <div class="tab" id="tab-c" onclick="switchTab('c')">Évolution</div>
     <div class="tab" id="tab-x" onclick="switchTab('x')">Tableau croisé</div>
   </div>
 
   <!-- HISTOGRAMME -->
-  <div id="vw-h">
-    <div class="flt">
-      <div class="fg"><label>Année</label><select id="h-ann" onchange="renderHisto()"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
-      <div class="fg"><label>Programme</label><select id="h-prg" onchange="renderHisto()"><option value="">Tous</option></select></div>
-      <div class="fg"><label>Fonds</label><select id="h-fnd" onchange="renderHisto()"><option value="">Tous</option></select></div>
+  <div id="histo-view">
+    <div class="filters">
+      <div class="fg"><label>Année</label>
+        <select id="f-ann" onchange="renderHisto()"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Programme</label>
+        <select id="f-prg" onchange="renderHisto()"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label>
+        <select id="f-fnd" onchange="renderHisto()"><option value="">Tous</option></select></div>
       <div class="fg"><label>Regrouper par</label>
-        <select id="h-grp" onchange="renderHisto()">
+        <select id="f-grp" onchange="renderHisto()">
           <option value="prog">Programme</option>
           <option value="fonds">Fonds</option>
           <option value="annee">Année</option>
-        </select>
-      </div>
+        </select></div>
     </div>
-    <div class="ks" id="kpi-strip"></div>
-    <div class="pnl" id="cv"><canvas id="chBar"></canvas></div>
-    <div id="drv">
-      <div class="drh">
-        <button class="btn" id="btn-back" onclick="closeDrill()">← Retour</button>
-        <span id="dr-title" style="font-weight:600;font-size:.95rem"></span>
+    <div class="kpi-strip" id="kpi-strip"></div>
+    <div class="panel" id="chart-view"><canvas id="myChart"></canvas></div>
+    <div id="drill-view">
+      <div class="drill-hdr">
+        <button id="btn-back" onclick="closeDrill()">← Retour</button>
+        <span id="drill-title"></span>
       </div>
-      <div class="dk" id="dr-kpis"></div>
-      <div id="dr-cnt" style="font-size:.78rem;color:var(--mu);margin-bottom:6px"></div>
-      <div class="tw"><table><thead id="dr-th"></thead><tbody id="dr-tb"></tbody><tfoot id="dr-tf"></tfoot></table></div>
+      <div id="drill-kpis" class="kpi-strip"></div>
+      <div id="drill-count"></div>
+      <div class="tbl-wrap">
+        <table><thead id="drill-thead"></thead><tbody id="drill-body"></tbody><tfoot id="drill-foot"></tfoot></table>
+      </div>
     </div>
   </div>
 
   <!-- ÉVOLUTION -->
-  <div id="vw-e" style="display:none">
-    <div class="flt">
-      <div class="fg"><label>Année</label><select id="e-ann" onchange="renderEvol()"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
-      <div class="fg"><label>Programme</label><select id="e-prg" onchange="renderEvol()"><option value="">Tous</option></select></div>
-      <div class="fg"><label>Fonds</label><select id="e-fnd" onchange="renderEvol()"><option value="">Tous</option></select></div>
+  <div id="evol-view" style="display:none">
+    <div class="filters">
+      <div class="fg"><label>Année</label>
+        <select id="ef-ann" onchange="renderEvol()"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Programme</label>
+        <select id="ef-prg" onchange="renderEvol()"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label>
+        <select id="ef-fnd" onchange="renderEvol()"><option value="">Tous</option></select></div>
     </div>
-    <div class="pnl"><div class="pnl-t">Évolution mensuelle des dépenses et prévisions</div><canvas id="chLine"></canvas></div>
+    <div class="panel"><div class="panel-title">Évolution mensuelle des dépenses et prévisions</div><canvas id="myLine"></canvas></div>
   </div>
 
   <!-- TABLEAU CROISÉ -->
-  <div id="vw-x" style="display:none">
-    <div class="flt">
-      <div class="fg"><label>Année</label><select id="x-ann" onchange="renderCross()"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
-      <div class="fg"><label>Programme</label><select id="x-prg" onchange="renderCross()"><option value="">Tous</option></select></div>
-      <div class="fg"><label>Fonds</label><select id="x-fnd" onchange="renderCross()"><option value="">Tous</option></select></div>
+  <div id="cross-view">
+    <div class="filters">
+      <div class="fg"><label>Année</label>
+        <select id="xf-ann" onchange="renderCross()"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Programme</label>
+        <select id="xf-prg" onchange="renderCross()"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label>
+        <select id="xf-fnd" onchange="renderCross()"><option value="">Tous</option></select></div>
     </div>
-    <div class="tw"><table><thead id="x-th"></thead><tbody id="x-tb"></tbody></table></div>
-  </div>
-</div>
-
-<!-- ─── MODAL GRIST ─── -->
-<div id="grist-modal">
-  <div class="gm-box">
-    <h2>📤 Envoyer vers Grist</h2>
-    <p>Le fichier HTML a été téléchargé. Renseignez ci-dessous vos paramètres Grist pour y envoyer également les données budget.</p>
-    <div class="gm-field">
-      <label>URL de votre instance Grist</label>
-      <input type="text" id="g-url" placeholder="https://docs.getgrist.com" value="https://docs.getgrist.com">
-    </div>
-    <div class="gm-field">
-      <label>ID du document</label>
-      <input type="text" id="g-doc" placeholder="ex: 6Pt7SnwJMDYJ…">
-    </div>
-    <div class="gm-field">
-      <label>Nom de la table</label>
-      <input type="text" id="g-tbl" placeholder="ex: Budget_496" value="Budget_496">
-    </div>
-    <div class="gm-field">
-      <label>Clé API</label>
-      <input type="password" id="g-key" placeholder="Votre clé API Grist">
-    </div>
-    <div id="g-msg"></div>
-    <div class="gm-actions">
-      <button class="btn" onclick="closeGristModal()">Annuler</button>
-      <button class="btn btn-g" onclick="sendToGrist()">Envoyer →</button>
+    <div class="tbl-wrap">
+      <table><thead id="cross-thead"></thead><tbody id="cross-body"></tbody></table>
     </div>
   </div>
 </div>
 
 <script>
-// ════════════════════════════════
+// ════════════════════════════════════════
 // STATE
-// ════════════════════════════════
-let BUD=[], CONSO=[], CF='';
-let _bar=null, _line=null;
-let _dRows=[], _dSC=null, _dSD=1;
-let _grp='prog', _grpd={};
-let _ld={b25:false,b26:false,c25:false,c26:false};
-let _fi={b25:null,b26:null,c25:null,c26:null};
+// ════════════════════════════════════════
+let BUDGET=[], CONSO=[], CF_LABEL='';
+let _chart=null, _line=null;
+let _drillRows=[], _dSortCol=null, _dSortDir=1;
+let _grp='prog', _grouped={};
+let _loaded={b25:false,b26:false,c25:false,c26:false};
+let _files={b25:null,b26:null,c25:null,c26:null};
 
-// ════════════════════════════════
+// ════════════════════════════════════════
 // IMPORT
-// ════════════════════════════════
-function loadFile(k,inp){
-  const f=inp.files[0]; if(!f)return;
-  _fi[k]=f; _ld[k]=true;
-  document.getElementById('ic-'+k).classList.add('ok');
-  document.getElementById('ck-'+k).textContent='✅';
-  document.getElementById('st-'+k).textContent=f.name;
+// ════════════════════════════════════════
+function handleFile(key,inp){
+  const f=inp.files[0]; if(!f) return;
+  _files[key]=f; _loaded[key]=true;
+  document.getElementById('card-'+key).classList.add('loaded');
+  document.getElementById('ck-'+key).textContent='✅';
+  document.getElementById('st-'+key).textContent=f.name;
   document.getElementById('imp-err').textContent='';
-  document.getElementById('btn-go').disabled=!Object.values(_ld).every(Boolean);
+  document.getElementById('btn-launch').disabled=!Object.values(_loaded).every(Boolean);
 }
+
 async function launch(){
-  showLd('Lecture des fichiers…');
-  try{
-    const [wb25,wb26,wc25,wc26]=await Promise.all([readWB(_fi.b25),readWB(_fi.b26),readWB(_fi.c25),readWB(_fi.c26)]);
-    setLd('Traitement budget…'); BUD=[]; CF='';
-    procBud(wb25,2025); procBud(wb26,2026);
-    setLd('Traitement conso…'); CONSO=[];
-    procConso(wc25,2025); procConso(wc26,2026);
-    setLd('Construction du tableau de bord…');
-    fillFilters(); await sleep(80); hideLd();
-    document.getElementById('imp').style.display='none';
-    document.getElementById('dash').style.display='block';
-    document.getElementById('dash-title').textContent='Analyse budgétaire — Centre financier '+CF;
+  // Si données pré-chargées (fichier sauvegardé), sauter l'import Excel
+  if(window.__PRELOADED__){
+    BUDGET=window.__PRELOADED__.budget||[];
+    CONSO=window.__PRELOADED__.conso||[];
+    CF_LABEL=window.__PRELOADED__.cf||'';
+    populateFilters();
+    document.getElementById('import-screen').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+    document.getElementById('dash-title').textContent='Analyse budgétaire — Centre financier '+CF_LABEL;
+    hideLoading();
     renderHisto();
-  }catch(e){hideLd();document.getElementById('imp-err').textContent='❌ '+e.message;console.error(e)}
+    return;
+  }
+  showLoad('Lecture des fichiers…');
+  try{
+    const [wb25,wb26,wc25,wc26]=await Promise.all([
+      readWB(_files.b25),readWB(_files.b26),readWB(_files.c25),readWB(_files.c26)
+    ]);
+    setLoad('Traitement du budget…');
+    BUDGET=[]; CF_LABEL='';
+    processBudget(wb25,2025); processBudget(wb26,2026);
+    setLoad('Traitement de la conso…');
+    CONSO=[];
+    processConso(wc25,2025); processConso(wc26,2026);
+    setLoad('Construction du tableau de bord…');
+    populateFilters();
+    await sleep(80);
+    hideLoad();
+    document.getElementById('import-screen').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+    document.getElementById('dash-title').textContent='Analyse budgétaire — Centre financier '+CF_LABEL;
+    renderHisto();
+  }catch(e){
+    hideLoad();
+    document.getElementById('imp-err').textContent='❌ Erreur : '+e.message;
+    console.error(e);
+  }
 }
-function readWB(f){
+
+function readWB(file){
   return new Promise((res,rej)=>{
     const r=new FileReader();
-    r.onload=e=>{try{res(XLSX.read(e.target.result,{type:'array',cellDates:true}))}catch(e){rej(e)}};
-    r.onerror=()=>rej(new Error('Lecture: '+f.name));
-    r.readAsArrayBuffer(f);
+    r.onload=e=>{try{res(XLSX.read(e.target.result,{type:'array',cellDates:true}))}catch(err){rej(err)}};
+    r.onerror=()=>rej(new Error('Lecture impossible : '+file.name));
+    r.readAsArrayBuffer(file);
   });
 }
 
-// ════════════════════════════════
+// ════════════════════════════════════════
 // TRAITEMENT BUDGET
 // Dédoublonnage sur (annee,prog,fonds) — l'Excel contient 2 lignes identiques
-// par triplet (ligne sans domaine fonctionnel + ligne avec A1ALIMH)
-// ════════════════════════════════
-function procBud(wb,annee){
+// par combinaison (ligne sans domaine fonctionnel + ligne avec A1ALIMH)
+// ════════════════════════════════════════
+function processBudget(wb,annee){
   const ws=wb.Sheets[wb.SheetNames[0]];
   const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
   const seen=new Set();
@@ -289,387 +309,411 @@ function procBud(wb,annee){
     const key=`${annee}|${prog}|${fonds}`;
     if(seen.has(key)) continue;
     seen.add(key);
-    if(cf&&!CF) CF=cf;
-    BUD.push({annee,cf,prog,fonds,
-      bud:N(r['Budget AE N']),conso:N(r['Conso AE N']),nconso:N(r['Non Conso AE N']),
-      cda:N(r['CDa engagées N']),rar:N(r['Reste à réceptionner N']),
-      om:N(r['OM engagés N']),nf:N(r['NF en attente N']),
-      paye:N(r['Payé (CP) N']),rap:N(r['Reste à Payer (CP) N']),
+    if(cf && !CF_LABEL) CF_LABEL=cf;
+    BUDGET.push({
+      annee, cf, prog, fonds,
+      bud:   toNum(r['Budget AE N']),
+      conso: toNum(r['Conso AE N']),
+      nconso:toNum(r['Non Conso AE N']),
+      cda:   toNum(r['CDa engagées N']),
+      rar:   toNum(r['Reste à réceptionner N']),
+      om:    toNum(r['OM engagés N']),
+      nf:    toNum(r['NF en attente N']),
+      paye:  toNum(r['Payé (CP) N']),
+      rap:   toNum(r['Reste à Payer (CP) N']),
     });
   }
 }
 
-// ════════════════════════════════
+// ════════════════════════════════════════
 // TRAITEMENT CONSO
-// Colonne D (index 3) = N° de pièce de référence (N° commande)
-// ════════════════════════════════
-function procConso(wb,annee){
+// Colonne D (index 3) = N° de pièce de référence = N° commande
+// ════════════════════════════════════════
+function processConso(wb,annee){
   const ws=wb.Sheets[wb.SheetNames[0]];
-  // raw:false + dateNF:'YYYY-MM-DD' -> dates sérialisées en ISO -> parsing fiable
+  const rows=XLSX.utils.sheet_to_json(ws,{defval:'',raw:false});
+  // Récupérer les en-têtes dans l'ordre pour accès par index
   const hdr=XLSX.utils.sheet_to_json(ws,{header:1,defval:''})[0];
-  const colD=String(hdr[3]||'');
-  const rows=XLSX.utils.sheet_to_json(ws,{defval:'',raw:false,dateNF:'YYYY-MM-DD'});
-  const EXCL=['Paiements','Comptabilis. coûts secondaires'];
-  let _dbgCount=0;
+  const TV_EXCL=['Paiements','Comptabilis. coûts secondaires'];
   for(const r of rows){
     const tv=(r['Texte type val.']||'').toString().trim();
-    if(!tv||EXCL.includes(tv)) continue;
-    const fonds=(r['Fonds']||'').toString().trim(); if(!fonds) continue;
-    if(_dbgCount++<3){ console.log('[CONSO] row sample:', JSON.stringify({tv, fonds, dt:r['Date comptable'], tm:r['Type de montant.1']})); }
+    if(!tv||TV_EXCL.includes(tv)) continue;
+    const fonds=(r['Fonds']||'').toString().trim();
+    if(!fonds) continue;
     const prog=(r['Programme de financement']||'').toString().trim()||'Non Applicable';
-    // Date : SheetJS peut produire MM/DD/YY, MM/DD/YYYY ou YYYY-MM-DD selon le contexte
-    const rawDt=(r['Date comptable']||'').toString().trim();
-    let dtMois='', dt=rawDt;
-    if(/^\d{4}-\d{2}/.test(rawDt)){
-      // Format ISO YYYY-MM-DD
-      dtMois=rawDt.substring(0,7);
-      const dp=rawDt.split('-'); dt=dp.length===3?`${dp[2]}/${dp[1]}/${dp[0]}`:rawDt;
-    } else if(/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(rawDt)){
-      // Format US MM/DD/YY ou MM/DD/YYYY
-      const p=rawDt.split('/');
-      const mo=p[0].padStart(2,'0'), day=p[1].padStart(2,'0');
-      let yr=p[2]; if(yr.length===2) yr=(parseInt(yr)<50?'20':'19')+yr;
-      dtMois=`${yr}-${mo}`;
-      dt=`${day}/${mo}/${yr}`;
-    }
-    const m=N(getC(r,["Montant à vérifier avec le budget d'enga",
-                       "Montant \u00e0 v\u00e9rifier avec le budget d\u2019enga",
-                       "Montant \u00e0 v\u00e9rifier avec le budget d'enga"]));
-    CONSO.push({annee,tv,
+    // Date
+    let dt=r['Date comptable']||'';
+    if(dt instanceof Date) dt=dt.toLocaleDateString('fr-FR');
+    else dt=dt.toString().trim();
+    // Montant — nom de colonne avec caractères spéciaux
+    const m=toNum(getCol(r,["Montant à vérifier avec le budget d'enga",
+                              "Montant \u00e0 v\u00e9rifier avec le budget d'enga",
+                              "Montant \u00e0 v\u00e9rifier avec le budget d\u2019enga"]));
+    // Désignation colonne D (index 3)
+    const colD=hdr[3]||'';
+    const numCmd=(r[colD]||'').toString().trim();
+    CONSO.push({
+      annee, tv,
       f:(r['Nom 1']||'').toString().trim(),
-      cmd:(r[colD]||'').toString().trim(),
-      d:getC(r,["Désign. poste Cde d'achat","D\u00e9sign. poste Cde d'achat","D\u00e9sign. poste Cde d\u2019achat"]),
-      dt, dtMois, m, p:prog, fo:fonds,
+      cmd: numCmd,
+      d:  getCol(r,["Désign. poste Cde d'achat","D\u00e9sign. poste Cde d'achat","D\u00e9sign. poste Cde d\u2019achat"]),
+      dt, m, p:prog, fo:fonds,
       tm:(r['Type de montant.1']||'').toString().trim(),
     });
   }
 }
 
-function getC(row,keys){
+function getCol(row,keys){
   for(const k of keys){
-    if(row[k]!=null&&row[k]!=='') return row[k].toString().trim();
+    if(row[k]!==undefined&&row[k]!==null&&row[k]!=='') return row[k].toString().trim();
     const kn=k.normalize('NFC');
-    for(const rk of Object.keys(row)) if(rk.normalize('NFC')===kn){const v=row[rk];return v!=null?v.toString().trim():''}
+    for(const rk of Object.keys(row)){
+      if(rk.normalize('NFC')===kn){const v=row[rk];return v!=null?v.toString().trim():''}
+    }
   }
   return '';
 }
 
-// ════════════════════════════════
-// UTILS
-// ════════════════════════════════
-function N(v){const n=parseFloat(v);return isNaN(n)?0:n}
-function fmt(n){return n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})}
-function pct(n){return n.toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1})+' %'}
-function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
-function showLd(m){document.getElementById('ld-msg').textContent=m;document.getElementById('ld').classList.add('on')}
-function setLd(m){document.getElementById('ld-msg').textContent=m}
-function hideLd(){document.getElementById('ld').classList.remove('on')}
-function resetImp(){document.getElementById('dash').style.display='none';document.getElementById('imp').style.display='flex'}
-
-function fillFilters(){
-  const progs=[...new Set(BUD.map(b=>b.prog))].sort();
-  const fonds=[...new Set(BUD.map(b=>b.fonds))].sort();
-  ['h-prg','e-prg','x-prg'].forEach(id=>{
+// ════════════════════════════════════════
+// FILTERS POPULATE
+// ════════════════════════════════════════
+function populateFilters(){
+  const progs=[...new Set(BUDGET.map(b=>b.prog))].sort();
+  const fonds=[...new Set(BUDGET.map(b=>b.fonds))].sort();
+  ['f-prg','ef-prg','xf-prg'].forEach(id=>{
     const s=document.getElementById(id);
     s.innerHTML='<option value="">Tous</option>';
     progs.forEach(p=>s.innerHTML+=`<option value="${esc(p)}">${esc(p)}</option>`);
   });
-  ['h-fnd','e-fnd','x-fnd'].forEach(id=>{
+  ['f-fnd','ef-fnd','xf-fnd'].forEach(id=>{
     const s=document.getElementById(id);
     s.innerHTML='<option value="">Tous</option>';
     fonds.forEach(f=>s.innerHTML+=`<option value="${esc(f)}">${esc(f)}</option>`);
   });
 }
 
+// ════════════════════════════════════════
+// UI HELPERS
+// ════════════════════════════════════════
+function showLoad(m){document.getElementById('load-msg').textContent=m;document.getElementById('loading').classList.add('on')}
+function setLoad(m){document.getElementById('load-msg').textContent=m}
+function hideLoad(){document.getElementById('loading').classList.remove('on')}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+function toNum(v){const n=parseFloat(v);return isNaN(n)?0:n}
+function fmt(n){return n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function fmtPct(n){return n.toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1})+' %'}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function resetImport(){document.getElementById('dashboard').style.display='none';document.getElementById('import-screen').style.display='flex'}
+
 function switchTab(t){
-  ['h','e','x'].forEach(k=>{
-    document.getElementById('tab-'+k).classList.toggle('on',k===t);
-    document.getElementById('vw-'+k).style.display=k===t?'block':'none';
+  ['h','c','x'].forEach(k=>{
+    document.getElementById('tab-'+k).classList.toggle('active',k===t);
   });
-  if(t==='e') renderEvol();
+  document.getElementById('histo-view').style.display=t==='h'?'block':'none';
+  document.getElementById('evol-view').style.display=t==='c'?'block':'none';
+  document.getElementById('cross-view').style.display=t==='x'?'block':'none';
+  if(t==='c') renderEvol();
   if(t==='x') renderCross();
 }
 
-// ════════════════════════════════
-// SAUVEGARDE HTML
-// ════════════════════════════════
-function saveAll(){
-  // 1. Sauvegarde HTML locale
-  const html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+// ════════════════════════════════════════
+// SAVE
+// ════════════════════════════════════════
+function saveDashboard(){
+  // Embarquer les données JSON dans le HTML pour que le fichier soit autonome
+  const payload=JSON.stringify({budget:BUDGET,conso:CONSO,cf:CF_LABEL});
+  // Injecter un script d'auto-chargement avant </body>
+  const autoload=`<script id="__autoload__">
+(function(){
+  const p=${payload};
+  window.__PRELOADED__=p;
+})();
+<\/script>`;
+  let html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+  // Supprimer l'éventuel ancien autoload
+  html=html.replace(/<script id="__autoload__">[\s\S]*?<\/script>/,'');
+  html=html.replace('</body>',autoload+'</body>');
+  const blob=new Blob([html],{type:'text/html'});
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));
+  a.href=URL.createObjectURL(blob);
   const d=new Date();
-  const ts=d.getFullYear()+(d.getMonth()+1).toString().padStart(2,'0')+d.getDate().toString().padStart(2,'0');
-  a.download=`analyse_CF${CF}_${ts}.html`;
-  a.click(); URL.revokeObjectURL(a.href);
-  // 2. Ouvrir la modal Grist pour envoi optionnel
-  openGristModal();
-}
-function saveHTML(){saveAll()}
-
-// ════════════════════════════════
-// GRIST
-// ════════════════════════════════
-function openGristModal(){document.getElementById('grist-modal').classList.add('on');document.getElementById('g-msg').innerHTML=''}
-function closeGristModal(){document.getElementById('grist-modal').classList.remove('on')}
-
-async function sendToGrist(){
-  const url=(document.getElementById('g-url').value||'').trim().replace(/\/$/,'');
-  const docId=(document.getElementById('g-doc').value||'').trim();
-  const tbl=(document.getElementById('g-tbl').value||'').trim();
-  const key=(document.getElementById('g-key').value||'').trim();
-  const msgEl=document.getElementById('g-msg');
-  if(!url||!docId||!tbl||!key){msgEl.innerHTML='<span class="gm-err">Tous les champs sont requis.</span>';return}
-
-  msgEl.innerHTML='<span style="color:var(--mu)">Envoi en cours…</span>';
-
-  // Construire les records budget
-  const records=BUD.map(b=>({fields:{
-    Centre_financier:b.cf,
-    Annee:b.annee,
-    Programme:b.prog,
-    Fonds:b.fonds,
-    Budget_AE:Math.round(b.bud*100)/100,
-    Conso_AE:Math.round(b.conso*100)/100,
-    Non_Conso:Math.round(b.nconso*100)/100,
-    CDa_engagees:Math.round(b.cda*100)/100,
-    Reste_a_receptionner:Math.round(b.rar*100)/100,
-    Paye_CP:Math.round(b.paye*100)/100,
-    Reste_a_payer:Math.round(b.rap*100)/100,
-    Taux_conso:b.bud>0?Math.round(b.conso/b.bud*1000)/10:0,
-  }}));
-
-  const endpoint=`${url}/api/docs/${docId}/tables/${tbl}/records`;
-  try{
-    const resp=await fetch(endpoint,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-      body:JSON.stringify({records}),
-    });
-    if(resp.ok){
-      const data=await resp.json();
-      const nb=(data.records||[]).length||records.length;
-      msgEl.innerHTML=`<span class="gm-ok">✅ ${nb} enregistrement(s) envoyé(s) avec succès.</span>`;
-    }else{
-      const err=await resp.text();
-      msgEl.innerHTML=`<span class="gm-err">❌ Erreur ${resp.status} : ${esc(err.substring(0,200))}</span>`;
-    }
-  }catch(e){
-    msgEl.innerHTML=`<span class="gm-err">❌ Connexion impossible (vérifiez l'URL et les CORS) : ${esc(e.message)}</span>`;
-  }
+  const stamp=d.getFullYear()+(d.getMonth()+1).toString().padStart(2,'0')+d.getDate().toString().padStart(2,'0');
+  a.download='analyse_budgetaire_CF'+CF_LABEL+'_'+stamp+'.html';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
-// ════════════════════════════════
+// ════════════════════════════════════════
 // HISTOGRAMME
-// ════════════════════════════════
-function gf(){return{ann:document.getElementById('h-ann').value,prg:document.getElementById('h-prg').value,fnd:document.getElementById('h-fnd').value,grp:document.getElementById('h-grp').value}}
-function fb(f){return BUD.filter(b=>(!f.ann||b.annee===parseInt(f.ann))&&(!f.prg||b.prog===f.prg)&&(!f.fnd||b.fonds===f.fnd))}
+// ════════════════════════════════════════
+function getF(){
+  return{
+    ann:document.getElementById('f-ann').value,
+    prg:document.getElementById('f-prg').value,
+    fnd:document.getElementById('f-fnd').value,
+    grp:document.getElementById('f-grp').value,
+  };
+}
+
+function filterBud(f){
+  return BUDGET.filter(b=>
+    (!f.ann||b.annee===parseInt(f.ann))&&
+    (!f.prg||b.prog===f.prg)&&
+    (!f.fnd||b.fonds===f.fnd)
+  );
+}
 
 function renderHisto(){
   closeDrill();
-  const f=gf(); _grp=f.grp;
-  const rows=fb(f);
-  const tB=rows.reduce((s,r)=>s+r.bud,0),tC=rows.reduce((s,r)=>s+r.conso,0),
-        tN=rows.reduce((s,r)=>s+r.nconso,0),tP=rows.reduce((s,r)=>s+r.paye,0);
-  const p=tB>0?tC/tB*100:0, cl=p>=90?'c-ok':p>=50?'c-wn':'c-er';
+  const f=getF(); _grp=f.grp;
+  const rows=filterBud(f);
+  const totB=rows.reduce((s,r)=>s+r.bud,0);
+  const totC=rows.reduce((s,r)=>s+r.conso,0);
+  const totN=rows.reduce((s,r)=>s+r.nconso,0);
+  const totP=rows.reduce((s,r)=>s+r.paye,0);
+  const pct=totB>0?totC/totB*100:0;
+  const cls=pct>=90?'ok':pct>=50?'warn':'bad';
   document.getElementById('kpi-strip').innerHTML=`
-    <div class="kpi"><div class="kl">Budget total AE</div><div class="kv">${fmt(tB)} €</div></div>
-    <div class="kpi"><div class="kl">Conso AE totale</div><div class="kv ${cl}">${fmt(tC)} €</div></div>
-    <div class="kpi"><div class="kl">Non consommé</div><div class="kv c-wn">${fmt(tN)} €</div></div>
-    <div class="kpi"><div class="kl">Payé (CP)</div><div class="kv">${fmt(tP)} €</div></div>
-    <div class="kpi"><div class="kl">Taux de conso</div><div class="kv ${cl}">${pct(p)}</div></div>`;
-  _grpd={};
+    <div class="kpi"><div class="kpi-lbl">Budget total AE</div><div class="kpi-val">${fmt(totB)} €</div></div>
+    <div class="kpi"><div class="kpi-lbl">Conso AE totale</div><div class="kpi-val ${cls}">${fmt(totC)} €</div></div>
+    <div class="kpi"><div class="kpi-lbl">Non consommé</div><div class="kpi-val warn">${fmt(totN)} €</div></div>
+    <div class="kpi"><div class="kpi-lbl">Payé (CP)</div><div class="kpi-val">${fmt(totP)} €</div></div>
+    <div class="kpi"><div class="kpi-lbl">Taux de conso</div><div class="kpi-val ${cls}">${fmtPct(pct)}</div></div>`;
+
+  _grouped={};
   for(const b of rows){
-    const k=f.grp==='prog'?b.prog:f.grp==='fonds'?b.fonds:String(b.annee);
-    if(!_grpd[k]) _grpd[k]={bud:0,conso:0,nconso:0};
-    _grpd[k].bud+=b.bud; _grpd[k].conso+=b.conso; _grpd[k].nconso+=b.nconso;
+    const key=f.grp==='prog'?b.prog:f.grp==='fonds'?b.fonds:String(b.annee);
+    if(!_grouped[key]) _grouped[key]={bud:0,conso:0,nconso:0};
+    _grouped[key].bud+=b.bud; _grouped[key].conso+=b.conso; _grouped[key].nconso+=b.nconso;
   }
-  const lbs=Object.keys(_grpd).sort();
-  if(_bar) _bar.destroy();
-  _bar=new Chart(document.getElementById('chBar').getContext('2d'),{
+  const labels=Object.keys(_grouped).sort();
+  if(_chart) _chart.destroy();
+  const ctx=document.getElementById('myChart').getContext('2d');
+  _chart=new Chart(ctx,{
     type:'bar',
-    data:{labels:lbs,datasets:[
-      {label:'Budget AE N',data:lbs.map(k=>_grpd[k].bud),backgroundColor:'#93c5fd'},
-      {label:'Conso AE N',data:lbs.map(k=>_grpd[k].conso),backgroundColor:'#2563eb'},
-      {label:'Non Conso AE N',data:lbs.map(k=>_grpd[k].nconso),backgroundColor:'#fbbf24'},
+    data:{labels,datasets:[
+      {label:'Budget AE N',data:labels.map(k=>_grouped[k].bud),backgroundColor:'#93c5fd'},
+      {label:'Conso AE N',data:labels.map(k=>_grouped[k].conso),backgroundColor:'#2563eb'},
+      {label:'Non Conso AE N',data:labels.map(k=>_grouped[k].nconso),backgroundColor:'#fbbf24'},
     ]},
-    options:{responsive:true,
+    options:{
+      responsive:true,
       plugins:{legend:{position:'top'},tooltip:{callbacks:{label:c=>`${c.dataset.label} : ${fmt(c.raw)} €`}}},
       scales:{y:{ticks:{callback:v=>fmt(v)+' €'}}},
-      onClick:(e,els)=>{if(els.length) openDrill(lbs[els[0].index])},
+      onClick:(e,els)=>{if(!els.length)return;openDrill(labels[els[0].index])},
       onHover:(e,els)=>{e.native.target.style.cursor=els.length?'pointer':'default'}
     }
   });
 }
 
-// ════════════════════════════════
-// DRILL
-// ════════════════════════════════
+// ════════════════════════════════════════
+// DRILL-DOWN
+// ════════════════════════════════════════
 function openDrill(label){
-  const f=gf();
-  document.getElementById('cv').style.display='none';
-  document.getElementById('drv').style.display='block';
+  const f=getF();
+  document.getElementById('chart-view').style.display='none';
+  document.getElementById('drill-view').style.display='block';
   const gl=_grp==='prog'?'Programme':_grp==='fonds'?'Fonds':'Année';
-  document.getElementById('dr-title').textContent=gl+' : '+label;
-  const g=_grpd[label], p=g.bud>0?g.conso/g.bud*100:0, cl=p>=90?'c-ok':p>=50?'c-wn':'c-er';
-  document.getElementById('dr-kpis').innerHTML=`
-    <div class="kpi"><div class="kl">Budget AE</div><div class="kv">${fmt(g.bud)} €</div></div>
-    <div class="kpi"><div class="kl">Conso AE</div><div class="kv ${cl}">${fmt(g.conso)} €</div></div>
-    <div class="kpi"><div class="kl">Non consommé</div><div class="kv c-wn">${fmt(g.nconso)} €</div></div>
-    <div class="kpi"><div class="kl">Taux conso</div><div class="kv ${cl}">${pct(p)}</div></div>`;
+  document.getElementById('drill-title').textContent=gl+' : '+label;
+  const g=_grouped[label];
+  const pct=g.bud>0?g.conso/g.bud*100:0;
+  const cls=pct>=90?'ok':pct>=50?'warn':'bad';
+  document.getElementById('drill-kpis').innerHTML=`
+    <div class="kpi"><div class="kpi-lbl">Budget AE</div><div class="kpi-val">${fmt(g.bud)} €</div></div>
+    <div class="kpi"><div class="kpi-lbl">Conso AE</div><div class="kpi-val ${cls}">${fmt(g.conso)} €</div></div>
+    <div class="kpi"><div class="kpi-lbl">Non consommé</div><div class="kpi-val warn">${fmt(g.nconso)} €</div></div>
+    <div class="kpi"><div class="kpi-lbl">Taux conso</div><div class="kpi-val ${cls}">${fmtPct(pct)}</div></div>`;
   const fann=_grp==='annee'?parseInt(label):(f.ann?parseInt(f.ann):null);
-  const fp=_grp==='prog'?label:(f.prg||null);
-  const ff=_grp==='fonds'?label:(f.fnd||null);
-  _dRows=CONSO.filter(r=>(fann==null||r.annee===fann)&&(fp==null||r.p===fp)&&(ff==null||r.fo===ff));
-  _dSC=null; _dSD=1;
-  renderDrillTable(_dRows,null,1);
+  const fp=_grp==='prog'?label:(f.prg&&f.prg!==''?f.prg:null);
+  const ff=_grp==='fonds'?label:(f.fnd&&f.fnd!==''?f.fnd:null);
+  const cRows=CONSO.filter(r=>
+    (fann===null||r.annee===fann)&&
+    (fp===null||r.p===fp)&&
+    (ff===null||r.fo===ff)
+  );
+  _drillRows=cRows; _dSortCol=null; _dSortDir=1;
+  renderDrillTable(cRows,null,1);
 }
+
 function closeDrill(){
-  document.getElementById('cv').style.display='block';
-  document.getElementById('drv').style.display='none';
+  document.getElementById('chart-view').style.display='block';
+  document.getElementById('drill-view').style.display='none';
 }
+
 function renderDrillTable(rows,sc,sd){
   const cols=[
-    {k:'annee',l:'Année'},{k:'dt',l:'Date'},{k:'tv',l:'Type'},
-    {k:'cmd',l:'N° Commande'},{k:'f',l:'Fournisseur'},{k:'d',l:'Désignation'},
-    {k:'p',l:'Programme'},{k:'fo',l:'Fonds'},{k:'tm',l:'Type montant'},
-    {k:'m',l:'Montant (€)',n:true},
+    {k:'annee',l:'Année',n:false},{k:'dt',l:'Date',n:false},
+    {k:'tv',l:'Type',n:false},{k:'cmd',l:'N° Commande',n:false},
+    {k:'f',l:'Fournisseur',n:false},{k:'d',l:'Désignation',n:false},
+    {k:'p',l:'Programme',n:false},{k:'fo',l:'Fonds',n:false},
+    {k:'tm',l:'Type montant',n:false},{k:'m',l:'Montant (€)',n:true},
   ];
-  let s=[...rows];
-  if(sc) s.sort((a,b)=>{const av=a[sc],bv=b[sc];return(typeof av==='number'?(av-bv):String(av).localeCompare(String(bv)))*sd});
-  const tot=s.reduce((t,r)=>t+r.m,0);
-  document.getElementById('dr-cnt').textContent=s.length+' ligne(s)';
-  document.getElementById('dr-th').innerHTML='<tr>'+cols.map(c=>`<th onclick="sortD('${c.k}')">${c.l}${sc===c.k?(sd===1?' ▲':' ▼'):''}</th>`).join('')+'</tr>';
-  document.getElementById('dr-tb').innerHTML=s.map(r=>`<tr>${cols.map(c=>`<td style="${c.n?'text-align:right':''}">${c.n?fmt(r[c.k]):esc(r[c.k]||'-')}</td>`).join('')}</tr>`).join('');
-  document.getElementById('dr-tf').innerHTML='<tr>'+cols.map((c,i)=>i===cols.length-1?`<td style="text-align:right">${fmt(tot)} €</td>`:i===0?'<td>TOTAL</td>':'<td></td>').join('')+'</tr>';
-}
-function sortD(col){
-  if(_dSC===col)_dSD*=-1;else{_dSC=col;_dSD=1;}
-  renderDrillTable(_dRows,_dSC,_dSD);
+  let sorted=[...rows];
+  if(sc) sorted.sort((a,b)=>{
+    const av=a[sc],bv=b[sc];
+    return(typeof av==='number'?(av-bv):(String(av).localeCompare(String(bv))))*sd;
+  });
+  const total=sorted.reduce((s,r)=>s+r.m,0);
+  document.getElementById('drill-count').textContent=sorted.length+' ligne(s)';
+  document.getElementById('drill-thead').innerHTML='<tr>'+cols.map(c=>`<th onclick="sortDrill('${c.k}')">${c.l}${sc===c.k?(sd===1?' ▲':' ▼'):''}</th>`).join('')+'</tr>';
+  document.getElementById('drill-body').innerHTML=sorted.map(r=>`<tr>${cols.map(c=>`<td style="${c.n?'text-align:right':''}">${c.n?fmt(r[c.k]):(esc(r[c.k]||'-'))}</td>`).join('')}</tr>`).join('');
+  document.getElementById('drill-foot').innerHTML='<tr>'+cols.map((c,i)=>
+    i===cols.length-1?`<td style="text-align:right">${fmt(total)} €</td>`:i===0?'<td>TOTAL</td>':'<td></td>'
+  ).join('')+'</tr>';
 }
 
-// ════════════════════════════════
-// ÉVOLUTION — 3 courbes
-// - Engagements cumulés : montants type "Original", agrégés par mois
-// - Budget AE N         : ligne horizontale de référence
-// - Prévision finale    : dernier cumul + CDa engagées + Reste à réceptionner
-// ════════════════════════════════
+function sortDrill(col){
+  if(_dSortCol===col) _dSortDir*=-1; else{_dSortCol=col;_dSortDir=1;}
+  renderDrillTable(_drillRows,_dSortCol,_dSortDir);
+}
+
+// ════════════════════════════════════════
+// ÉVOLUTION EN COURBES
+// Courbe 1 : dépenses cumulées (montants >0 par mois)
+// Courbe 2 : budget total (ligne horizontale)
+// Courbe 3 : prévision = conso actuelle + CDa engagées + reste à réceptionner
+// ════════════════════════════════════════
 function renderEvol(){
-  const ann=document.getElementById('e-ann').value;
-  const prg=document.getElementById('e-prg').value;
-  const fnd=document.getElementById('e-fnd').value;
+  const ann=document.getElementById('ef-ann').value;
+  const prg=document.getElementById('ef-prg').value;
+  const fnd=document.getElementById('ef-fnd').value;
 
   // Budget filtré
-  const budRows=BUD.filter(b=>(!ann||b.annee===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd));
+  const budRows=BUDGET.filter(b=>
+    (!ann||b.annee===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)
+  );
   const totBud=budRows.reduce((s,r)=>s+r.bud,0);
-  const totCDA=budRows.reduce((s,r)=>s+r.cda,0);
-  const totRAR=budRows.reduce((s,r)=>s+r.rar,0);
-  const budVal=Math.round(totBud*100)/100;
-  const prevDelta=Math.round((totCDA+totRAR)*100)/100;
+  const totPrevisReste=budRows.reduce((s,r)=>s+r.cda+r.rar,0); // CDa + reste à réceptionner
 
-  // Engagements mensuels : montants positifs uniquement
+  // Conso filtrée
   const consoRows=CONSO.filter(r=>
     (!ann||r.annee===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&r.m>0
   );
+
+  // Agrégation par mois (YYYY-MM)
+  // SheetJS peut produire : DD/MM/YYYY, MM/DD/YY, MM/DD/YYYY, ou YYYY-MM-DD
   const monthly={};
   for(const r of consoRows){
-    const mois=r.dtMois||'';
+    const dt=(r.dt||'').toString().trim();
+    let mois='';
+    if(/^\d{4}-\d{2}/.test(dt)){
+      mois=dt.substring(0,7); // YYYY-MM-DD → YYYY-MM
+    } else if(/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(dt)){
+      const p=dt.split('/');
+      let yr=p[2]; if(yr.length===2) yr=(parseInt(yr)<50?'20':'19')+yr;
+      // Ambiguïté MM/DD vs DD/MM : si p[0] > 12 c'est forcément DD/MM
+      const isUS=(parseInt(p[0])<=12 && parseInt(p[1])>12)||yr.length===4&&parseInt(p[0])<=12&&parseInt(p[1])<=12;
+      // SheetJS dans Grist produit MM/DD → on suppose US par défaut
+      mois=`${yr}-${p[0].padStart(2,'0')}`;
+    }
     if(!mois||mois.length<7) continue;
     monthly[mois]=(monthly[mois]||0)+r.m;
   }
   const sortedMois=Object.keys(monthly).sort();
-  // === DIAGNOSTIC ===
-  console.log('[EVOL] consoRows count:', consoRows.length);
-  console.log('[EVOL] monthly:', JSON.stringify(monthly));
-  console.log('[EVOL] sortedMois:', sortedMois);
-  console.log('[EVOL] totBud:', totBud, 'totCDA:', totCDA, 'totRAR:', totRAR);
-  if(consoRows.length>0){ const r0=consoRows[0]; console.log('[EVOL] r0:', JSON.stringify({tm:r0.tm,dtMois:r0.dtMois,dt:r0.dt,m:r0.m})); }
-  if(!sortedMois.length){console.warn('[EVOL] monthly vide -> pas de courbe');if(_line)_line.destroy();return}
-
-  // Cumul progressif
-  let cumul=0;
-  const cumulArr=sortedMois.map(m=>{cumul+=monthly[m];return Math.round(cumul*100)/100});
-  const lastCumul=cumulArr[cumulArr.length-1]||0;
-  const prevision=Math.round((lastCumul+prevDelta)*100)/100;
-
-  // moisFin = décembre de la dernière année des données
-  const derniereAnnee=Math.max(...sortedMois.map(m=>parseInt(m)));
-  const moisFin=`${derniereAnnee}-12`;
-  const dernierMois=sortedMois[sortedMois.length-1];
-
-  // Construction des tableaux de données
-  // Les 3 datasets partagent les mêmes labels
-  const labels=[...sortedMois];
-  const dCumul=[...cumulArr];
-  const dBudget=labels.map(()=>budVal);
-  const dPrev=labels.map(()=>null);
-
-  if(moisFin>dernierMois){
-    // Cas normal (année en cours) : ajouter moisFin pour projeter la prévision
-    labels.push(moisFin);
-    dCumul.push(null);          // pas de données réelles sur ce mois
-    dBudget.push(budVal);
-    dPrev.push(null);           // sera rempli ci-dessous
-    dPrev[dPrev.length-2]=lastCumul;  // raccord : dernier mois réel
-    dPrev[dPrev.length-1]=prevision;  // projection fin d'année
-  } else {
-    // Cas année terminée (moisFin déjà dans les données) :
-    // ajouter un label "Prévision" pour afficher le point de prévision
-    labels.push('Prévision');
-    dCumul.push(null);
-    dBudget.push(budVal);
-    dPrev[dPrev.length-1]=lastCumul;  // raccord sur dernier mois réel
-    dPrev.push(prevision);
+  if(!sortedMois.length){
+    if(_line) _line.destroy();
+    return;
   }
 
-  if(_line)_line.destroy();
-  _line=new Chart(document.getElementById('chLine').getContext('2d'),{
+  // Cumul des dépenses
+  let cumul=0;
+  const cumulData=sortedMois.map(m=>{cumul+=monthly[m];return+cumul.toFixed(2)});
+
+  // Budget = ligne horizontale
+  const budgetLine=sortedMois.map(()=>+totBud.toFixed(2));
+
+  // Prévision = dernier cumul + reste prévu (CDa engagées + reste à réceptionner)
+  // On n'affiche la prévision que sur les mois futurs (après le dernier mois avec données)
+  const lastCumul=cumulData[cumulData.length-1]||0;
+  const prevision=lastCumul+totPrevisReste;
+  // Créer un point de prévision : valeur finale estimée, projetée sur le dernier mois connu
+  // + un point "prévision finale" à la fin de l'année
+  const dernierMois=sortedMois[sortedMois.length-1];
+  const anneeRef=ann||String(Math.max(...sortedMois.map(m=>parseInt(m.split('-')[0]))));
+  const moisFin=`${anneeRef}-12`;
+  let labels=[...sortedMois];
+  let prevData=sortedMois.map(()=>null);
+  if(!labels.includes(moisFin)&&moisFin>dernierMois){
+    labels.push(moisFin);
+    budgetLine.push(+totBud.toFixed(2));
+    cumulData.push(null);
+    prevData.push(+prevision.toFixed(2));
+  }
+  // Connecter la prévision au dernier point connu
+  prevData[sortedMois.length-1]=+lastCumul.toFixed(2);
+  if(!labels.includes(moisFin)) {
+    prevData[prevData.length-1]=+prevision.toFixed(2);
+  }
+
+  if(_line) _line.destroy();
+  const ctx=document.getElementById('myLine').getContext('2d');
+  _line=new Chart(ctx,{
     type:'line',
-    data:{labels,datasets:[
-      {label:'Engagements cumulés',data:dCumul,
-        borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.07)',
-        tension:.3,fill:true,pointRadius:3,borderWidth:2,spanGaps:false,order:2},
-      {label:'Budget AE N',data:dBudget,
-        borderColor:'#dc2626',backgroundColor:'transparent',
-        borderDash:[7,4],tension:0,pointRadius:0,borderWidth:2.5,order:3},
-      {label:`Prévision (CDa+RAR = ${fmt(prevDelta)} €)`,data:dPrev,
-        borderColor:'#d97706',backgroundColor:'transparent',
-        borderDash:[4,3],tension:0,pointRadius:5,borderWidth:2,
-        pointStyle:'triangle',spanGaps:true,order:1},
-    ]},
-    options:{responsive:true,
-      plugins:{legend:{position:'top'},
-        tooltip:{callbacks:{label:c=>c.raw!=null?`${c.dataset.label} : ${fmt(c.raw)} €`:null}}},
-      scales:{y:{ticks:{callback:v=>fmt(v)+' €'}},x:{ticks:{maxRotation:45,minRotation:30}}}
+    data:{
+      labels,
+      datasets:[
+        {
+          label:'Dépenses cumulées',data:cumulData,
+          borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.08)',
+          tension:.3,fill:true,pointRadius:3,borderWidth:2,spanGaps:false
+        },
+        {
+          label:'Budget AE N',data:budgetLine,
+          borderColor:'#dc2626',backgroundColor:'transparent',
+          borderDash:[6,4],tension:0,pointRadius:0,borderWidth:2
+        },
+        {
+          label:'Prévision finale',data:prevData,
+          borderColor:'#d97706',backgroundColor:'transparent',
+          borderDash:[3,3],tension:.2,pointRadius:4,borderWidth:2,
+          pointStyle:'triangle',spanGaps:true
+        },
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{position:'top'},
+        tooltip:{callbacks:{label:c=>`${c.dataset.label} : ${fmt(c.raw||0)} €`}}
+      },
+      scales:{
+        y:{ticks:{callback:v=>fmt(v)+' €'}},
+        x:{ticks:{maxTicksLimit:14}}
+      }
     }
   });
 }
 
-
-// ════════════════════════════════
+// ════════════════════════════════════════
 // TABLEAU CROISÉ
-// ════════════════════════════════
+// ════════════════════════════════════════
 function renderCross(){
-  const ann=document.getElementById('x-ann').value;
-  const prg=document.getElementById('x-prg').value;
-  const fnd=document.getElementById('x-fnd').value;
-  const rows=BUD.filter(b=>(!ann||b.annee===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd));
+  const ann=document.getElementById('xf-ann').value;
+  const prg=document.getElementById('xf-prg').value;
+  const fnd=document.getElementById('xf-fnd').value;
+  const rows=BUDGET.filter(b=>
+    (!ann||b.annee===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)
+  );
   const cols=[
-    {k:'cf',l:'Centre fin.'},{k:'annee',l:'Année'},{k:'prog',l:'Programme'},{k:'fonds',l:'Fonds'},
-    {k:'bud',l:'Budget AE N',n:1},{k:'conso',l:'Conso AE N',n:1},{k:'nconso',l:'Non Conso',n:1},
-    {k:'cda',l:'CDa engagées',n:1},{k:'rar',l:'Reste à réceptionner',n:1},
-    {k:'paye',l:'Payé (CP)',n:1},{k:'rap',l:'Reste à payer',n:1},{k:'_pct',l:'Taux conso'},
+    {k:'cf',l:'Centre fin.'},{k:'annee',l:'Année'},
+    {k:'prog',l:'Programme'},{k:'fonds',l:'Fonds'},
+    {k:'bud',l:'Budget AE N',n:true},{k:'conso',l:'Conso AE N',n:true},
+    {k:'nconso',l:'Non Conso',n:true},{k:'cda',l:'CDa engagées',n:true},
+    {k:'rar',l:'Reste à réceptionner',n:true},{k:'paye',l:'Payé (CP)',n:true},
+    {k:'rap',l:'Reste à payer',n:true},{k:'_pct',l:'Taux conso'}
   ];
-  document.getElementById('x-th').innerHTML='<tr>'+cols.map(c=>`<th>${c.l}</th>`).join('')+'</tr>';
-  document.getElementById('x-tb').innerHTML=rows.map(r=>{
-    const p=r.bud>0?r.conso/r.bud*100:0, cl=p>=90?'r-ok':p>=50?'r-wn':'r-er';
+  document.getElementById('cross-thead').innerHTML='<tr>'+cols.map(c=>`<th>${c.l}</th>`).join('')+'</tr>';
+  document.getElementById('cross-body').innerHTML=rows.map(r=>{
+    const pct=r.bud>0?r.conso/r.bud*100:0;
+    const cls=pct>=90?'rate-ok':pct>=50?'rate-warn':'rate-bad';
     return'<tr>'+cols.map(c=>{
-      if(c.k==='_pct') return`<td><span class="rb ${cl}">${pct(p)}</span></td>`;
+      if(c.k==='_pct') return`<td><span class="rate-badge ${cls}">${fmtPct(pct)}</span></td>`;
       return`<td style="${c.n?'text-align:right':''}">${c.n?fmt(r[c.k])+' €':esc(String(r[c.k]))}</td>`;
     }).join('')+'</tr>';
   }).join('');
 }
+// Auto-démarrage si données embarquées
+if(window.__PRELOADED__){ launch(); }
 </script>
 </body>
 </html>
