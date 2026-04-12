@@ -140,6 +140,13 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     </div>
   </div>
   <button id="btn-launch" disabled onclick="launch()">Lancer l'analyse →</button>
+  <div id="btn-resume-wrap" style="margin-top:16px;display:none">
+    <button id="btn-resume" onclick="resumeSaved()"
+      style="padding:10px 28px;background:#fff;border:2px solid #2563eb;border-radius:8px;color:#2563eb;font-size:.9rem;font-weight:600;cursor:pointer">
+      ↩ Reprendre la dernière analyse sauvegardée
+    </button>
+    <div id="resume-info" style="font-size:.75rem;color:#6b7280;margin-top:6px;text-align:center"></div>
+  </div>
   <div id="imp-err"></div>
 </div>
 
@@ -244,19 +251,6 @@ function handleFile(key,inp){
 }
 
 async function launch(){
-  // Si données pré-chargées (fichier sauvegardé), sauter l'import Excel
-  if(window.__PRELOADED__){
-    BUDGET=window.__PRELOADED__.budget||[];
-    CONSO=window.__PRELOADED__.conso||[];
-    CF_LABEL=window.__PRELOADED__.cf||'';
-    populateFilters();
-    document.getElementById('import-screen').style.display='none';
-    document.getElementById('dashboard').style.display='block';
-    document.getElementById('dash-title').textContent='Analyse budgétaire — Centre financier '+CF_LABEL;
-    hideLoading();
-    renderHisto();
-    return;
-  }
   showLoad('Lecture des fichiers…');
   try{
     const [wb25,wb26,wc25,wc26]=await Promise.all([
@@ -420,27 +414,38 @@ function switchTab(t){
 // SAVE
 // ════════════════════════════════════════
 function saveDashboard(){
-  // Embarquer les données JSON dans le HTML pour que le fichier soit autonome
-  const payload=JSON.stringify({budget:BUDGET,conso:CONSO,cf:CF_LABEL});
-  // Injecter un script d'auto-chargement avant </body>
-  const autoload=`<script id="__autoload__">
-(function(){
-  const p=${payload};
-  window.__PRELOADED__=p;
-})();
-<\/script>`;
-  let html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
-  // Supprimer l'éventuel ancien autoload
-  html=html.replace(/<script id="__autoload__">[\s\S]*?<\/script>/,'');
-  html=html.replace('</body>',autoload+'</body>');
-  const blob=new Blob([html],{type:'text/html'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
   const d=new Date();
   const stamp=d.getFullYear()+(d.getMonth()+1).toString().padStart(2,'0')+d.getDate().toString().padStart(2,'0');
-  a.download='analyse_budgetaire_CF'+CF_LABEL+'_'+stamp+'.html';
-  a.click();
-  URL.revokeObjectURL(a.href);
+  const payload={budget:BUDGET,conso:CONSO,cf:CF_LABEL,savedAt:stamp};
+
+  // ── 1. Sauvegarder dans localStorage (persistance Grist entre sessions)
+  try{
+    localStorage.setItem('budgetAnalysis',JSON.stringify(payload));
+    console.log('[SAVE] localStorage OK, taille='+JSON.stringify(payload).length);
+  }catch(e){
+    console.warn('[SAVE] localStorage échec:',e.message);
+  }
+
+  // ── 2. Télécharger un fichier HTML autonome (archive locale)
+  const jsonStr=JSON.stringify(payload).replace(/<\/script>/g,'<\\/script>');
+  const autoload='<script id="__al__">window.__PRELOADED__='+jsonStr+';<\/script>';
+  let html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+  html=html.replace(/<script id="__al__">[\s\S]*?<\/script>/g,'');
+  html=html.replace('</body>',autoload+'</body>');
+  try{
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));
+    a.download='analyse_CF'+CF_LABEL+'_'+stamp+'.html';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }catch(e){
+    // Dans certains contextes iframe le téléchargement est bloqué — pas grave, localStorage suffit
+    console.warn('[SAVE] téléchargement bloqué (normal en iframe):', e.message);
+  }
+
+  // Feedback visuel
+  const btn=document.querySelector('[onclick="saveDashboard()"]');
+  if(btn){const orig=btn.textContent;btn.textContent='✅ Sauvegardé';setTimeout(()=>btn.textContent=orig,2000);}
 }
 
 // ════════════════════════════════════════
@@ -712,8 +717,56 @@ function renderCross(){
     }).join('')+'</tr>';
   }).join('');
 }
-// Auto-démarrage si données embarquées
-if(window.__PRELOADED__){ launch(); }
+// ── Vérifier localStorage au démarrage
+function checkSavedData(){
+  try{
+    const raw=localStorage.getItem('budgetAnalysis');
+    if(!raw) return;
+    const data=JSON.parse(raw);
+    if(!data.budget||!data.conso) return;
+    const wrap=document.getElementById('btn-resume-wrap');
+    const info=document.getElementById('resume-info');
+    if(wrap){ wrap.style.display='block'; }
+    if(info){ info.textContent='Dernière sauvegarde : '+
+      (data.savedAt?data.savedAt.replace(/(\d{4})(\d{2})(\d{2})/,'$3/$2/$1'):'inconnue')+
+      ' — '+data.budget.length+' lignes budget, '+data.conso.length+' lignes conso'; }
+  }catch(e){}
+}
+
+function resumeSaved(){
+  try{
+    const raw=localStorage.getItem('budgetAnalysis');
+    if(!raw) return;
+    const data=JSON.parse(raw);
+    BUDGET=data.budget||[];
+    CONSO=data.conso||[];
+    CF_LABEL=data.cf||'';
+    populateFilters();
+    document.getElementById('import-screen').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+    document.getElementById('dash-title').textContent='Analyse budgétaire — Centre financier '+CF_LABEL;
+    renderHisto();
+  }catch(e){
+    document.getElementById('imp-err').textContent='❌ Erreur lors du chargement : '+e.message;
+  }
+}
+
+// Auto-démarrage si données pré-chargées (fichier HTML autonome)
+if(window.__PRELOADED__){
+  window.addEventListener('DOMContentLoaded',function(){
+    BUDGET=window.__PRELOADED__.budget||[];
+    CONSO=window.__PRELOADED__.conso||[];
+    CF_LABEL=window.__PRELOADED__.cf||'';
+    populateFilters();
+    document.getElementById('import-screen').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+    document.getElementById('dash-title').textContent='Analyse budgétaire — Centre financier '+CF_LABEL;
+    renderHisto();
+  });
+}
+
+// Vérifier localStorage au chargement de la page
+window.addEventListener('DOMContentLoaded', checkSavedData);
 </script>
 </body>
 </html>
