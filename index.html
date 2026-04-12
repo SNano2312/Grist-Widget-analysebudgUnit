@@ -305,17 +305,30 @@ function procBud(wb,annee){
 // ════════════════════════════════
 function procConso(wb,annee){
   const ws=wb.Sheets[wb.SheetNames[0]];
+  // raw:true + cellDates:true -> les dates arrivent comme objets Date JS (pas de sérialisation US)
   const hdr=XLSX.utils.sheet_to_json(ws,{header:1,defval:''})[0];
   const colD=String(hdr[3]||'');
-  const rows=XLSX.utils.sheet_to_json(ws,{defval:'',raw:false});
+  const rows=XLSX.utils.sheet_to_json(ws,{defval:'',cellDates:true});
   const EXCL=['Paiements','Comptabilis. coûts secondaires'];
   for(const r of rows){
     const tv=(r['Texte type val.']||'').toString().trim();
     if(!tv||EXCL.includes(tv)) continue;
     const fonds=(r['Fonds']||'').toString().trim(); if(!fonds) continue;
     const prog=(r['Programme de financement']||'').toString().trim()||'Non Applicable';
-    let dt=r['Date comptable']||'';
-    if(dt instanceof Date) dt=dt.toLocaleDateString('fr-FR'); else dt=dt.toString().trim();
+    // Date : objet Date JS -> 'DD/MM/YYYY' pour affichage, + mois 'YYYY-MM' pour la courbe
+    const rawDt=r['Date comptable'];
+    let dt='', dtMois='';
+    if(rawDt instanceof Date){
+      const y=rawDt.getFullYear(),mo=rawDt.getMonth()+1,d=rawDt.getDate();
+      dt=`${String(d).padStart(2,'0')}/${String(mo).padStart(2,'0')}/${y}`;
+      dtMois=`${y}-${String(mo).padStart(2,'0')}`;
+    } else {
+      dt=(rawDt||'').toString().trim();
+      // Tenter de parser dd/MM/yyyy ou yyyy-MM-dd
+      const p=dt.split('/');
+      if(p.length===3) dtMois=`${p[2]}-${p[1].padStart(2,'0')}`;
+      else dtMois=dt.substring(0,7);
+    }
     const m=N(getC(r,["Montant à vérifier avec le budget d'enga",
                        "Montant \u00e0 v\u00e9rifier avec le budget d\u2019enga",
                        "Montant \u00e0 v\u00e9rifier avec le budget d'enga"]));
@@ -323,7 +336,7 @@ function procConso(wb,annee){
       f:(r['Nom 1']||'').toString().trim(),
       cmd:(r[colD]||'').toString().trim(),
       d:getC(r,["Désign. poste Cde d'achat","D\u00e9sign. poste Cde d'achat","D\u00e9sign. poste Cde d\u2019achat"]),
-      dt,m,p:prog,fo:fonds,
+      dt, dtMois, m, p:prog, fo:fonds,
       tm:(r['Type de montant.1']||'').toString().trim(),
     });
   }
@@ -558,8 +571,7 @@ function renderEvol(){
   );
   const monthly={};
   for(const r of consoRows){
-    const parts=(r.dt||'').split('/');
-    const mois=parts.length===3?`${parts[2]}-${parts[1].padStart(2,'0')}`:r.dt.substring(0,7);
+    const mois=r.dtMois||'';
     if(!mois||mois.length<7) continue;
     monthly[mois]=(monthly[mois]||0)+r.m;
   }
