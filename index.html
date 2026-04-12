@@ -317,12 +317,21 @@ function procConso(wb,annee){
     const fonds=(r['Fonds']||'').toString().trim(); if(!fonds) continue;
     if(_dbgCount++<3){ console.log('[CONSO] row sample:', JSON.stringify({tv, fonds, dt:r['Date comptable'], tm:r['Type de montant.1']})); }
     const prog=(r['Programme de financement']||'').toString().trim()||'Non Applicable';
-    // Date au format YYYY-MM-DD (grâce à dateNF)
+    // Date : SheetJS peut produire MM/DD/YY, MM/DD/YYYY ou YYYY-MM-DD selon le contexte
     const rawDt=(r['Date comptable']||'').toString().trim();
-    const dtMois=rawDt.substring(0,7); // 'YYYY-MM'
-    // Affichage DD/MM/YYYY
-    const dp=rawDt.split('-');
-    const dt=dp.length===3?`${dp[2]}/${dp[1]}/${dp[0]}`:rawDt;
+    let dtMois='', dt=rawDt;
+    if(/^\d{4}-\d{2}/.test(rawDt)){
+      // Format ISO YYYY-MM-DD
+      dtMois=rawDt.substring(0,7);
+      const dp=rawDt.split('-'); dt=dp.length===3?`${dp[2]}/${dp[1]}/${dp[0]}`:rawDt;
+    } else if(/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(rawDt)){
+      // Format US MM/DD/YY ou MM/DD/YYYY
+      const p=rawDt.split('/');
+      const mo=p[0].padStart(2,'0'), day=p[1].padStart(2,'0');
+      let yr=p[2]; if(yr.length===2) yr=(parseInt(yr)<50?'20':'19')+yr;
+      dtMois=`${yr}-${mo}`;
+      dt=`${day}/${mo}/${yr}`;
+    }
     const m=N(getC(r,["Montant à vérifier avec le budget d'enga",
                        "Montant \u00e0 v\u00e9rifier avec le budget d\u2019enga",
                        "Montant \u00e0 v\u00e9rifier avec le budget d'enga"]));
@@ -559,9 +568,9 @@ function renderEvol(){
   const budVal=Math.round(totBud*100)/100;
   const prevDelta=Math.round((totCDA+totRAR)*100)/100;
 
-  // Engagements mensuels : uniquement type "Original"
+  // Engagements mensuels : montants positifs uniquement
   const consoRows=CONSO.filter(r=>
-    (!ann||r.annee===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&r.tm==='Original'
+    (!ann||r.annee===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&r.m>0
   );
   const monthly={};
   for(const r of consoRows){
@@ -575,7 +584,7 @@ function renderEvol(){
   console.log('[EVOL] monthly:', JSON.stringify(monthly));
   console.log('[EVOL] sortedMois:', sortedMois);
   console.log('[EVOL] totBud:', totBud, 'totCDA:', totCDA, 'totRAR:', totRAR);
-  if(consoRows.length>0){ const r0=consoRows[0]; console.log('[EVOL] r0.tm:', JSON.stringify(r0.tm), 'r0.dtMois:', r0.dtMois, 'r0.m:', r0.m); }
+  if(consoRows.length>0){ const r0=consoRows[0]; console.log('[EVOL] r0:', JSON.stringify({tm:r0.tm,dtMois:r0.dtMois,dt:r0.dt,m:r0.m})); }
   if(!sortedMois.length){console.warn('[EVOL] monthly vide -> pas de courbe');if(_line)_line.destroy();return}
 
   // Cumul progressif
