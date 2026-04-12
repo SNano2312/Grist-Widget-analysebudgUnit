@@ -305,30 +305,24 @@ function procBud(wb,annee){
 // ════════════════════════════════
 function procConso(wb,annee){
   const ws=wb.Sheets[wb.SheetNames[0]];
-  // raw:true + cellDates:true -> les dates arrivent comme objets Date JS (pas de sérialisation US)
+  // raw:false + dateNF:'YYYY-MM-DD' -> dates sérialisées en ISO -> parsing fiable
   const hdr=XLSX.utils.sheet_to_json(ws,{header:1,defval:''})[0];
   const colD=String(hdr[3]||'');
-  const rows=XLSX.utils.sheet_to_json(ws,{defval:'',cellDates:true});
+  const rows=XLSX.utils.sheet_to_json(ws,{defval:'',raw:false,dateNF:'YYYY-MM-DD'});
   const EXCL=['Paiements','Comptabilis. coûts secondaires'];
+  let _dbgCount=0;
   for(const r of rows){
     const tv=(r['Texte type val.']||'').toString().trim();
     if(!tv||EXCL.includes(tv)) continue;
     const fonds=(r['Fonds']||'').toString().trim(); if(!fonds) continue;
+    if(_dbgCount++<3){ console.log('[CONSO] row sample:', JSON.stringify({tv, fonds, dt:r['Date comptable'], tm:r['Type de montant.1']})); }
     const prog=(r['Programme de financement']||'').toString().trim()||'Non Applicable';
-    // Date : objet Date JS -> 'DD/MM/YYYY' pour affichage, + mois 'YYYY-MM' pour la courbe
-    const rawDt=r['Date comptable'];
-    let dt='', dtMois='';
-    if(rawDt instanceof Date){
-      const y=rawDt.getFullYear(),mo=rawDt.getMonth()+1,d=rawDt.getDate();
-      dt=`${String(d).padStart(2,'0')}/${String(mo).padStart(2,'0')}/${y}`;
-      dtMois=`${y}-${String(mo).padStart(2,'0')}`;
-    } else {
-      dt=(rawDt||'').toString().trim();
-      // Tenter de parser dd/MM/yyyy ou yyyy-MM-dd
-      const p=dt.split('/');
-      if(p.length===3) dtMois=`${p[2]}-${p[1].padStart(2,'0')}`;
-      else dtMois=dt.substring(0,7);
-    }
+    // Date au format YYYY-MM-DD (grâce à dateNF)
+    const rawDt=(r['Date comptable']||'').toString().trim();
+    const dtMois=rawDt.substring(0,7); // 'YYYY-MM'
+    // Affichage DD/MM/YYYY
+    const dp=rawDt.split('-');
+    const dt=dp.length===3?`${dp[2]}/${dp[1]}/${dp[0]}`:rawDt;
     const m=N(getC(r,["Montant à vérifier avec le budget d'enga",
                        "Montant \u00e0 v\u00e9rifier avec le budget d\u2019enga",
                        "Montant \u00e0 v\u00e9rifier avec le budget d'enga"]));
@@ -576,7 +570,13 @@ function renderEvol(){
     monthly[mois]=(monthly[mois]||0)+r.m;
   }
   const sortedMois=Object.keys(monthly).sort();
-  if(!sortedMois.length){if(_line)_line.destroy();return}
+  // === DIAGNOSTIC ===
+  console.log('[EVOL] consoRows count:', consoRows.length);
+  console.log('[EVOL] monthly:', JSON.stringify(monthly));
+  console.log('[EVOL] sortedMois:', sortedMois);
+  console.log('[EVOL] totBud:', totBud, 'totCDA:', totCDA, 'totRAR:', totRAR);
+  if(consoRows.length>0){ const r0=consoRows[0]; console.log('[EVOL] r0.tm:', JSON.stringify(r0.tm), 'r0.dtMois:', r0.dtMois, 'r0.m:', r0.m); }
+  if(!sortedMois.length){console.warn('[EVOL] monthly vide -> pas de courbe');if(_line)_line.destroy();return}
 
   // Cumul progressif
   let cumul=0;
