@@ -358,10 +358,16 @@ function readWorkbook(file) {
 function processBudget(wb, annee) {
   const ws = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+  // Dédoublonner sur (prog, fonds) : l'Excel contient 2 lignes identiques
+  // par triplet (une ligne de sous-total sans domaine fonctionnel + une avec)
+  const seen = new Set();
   for (const r of rows) {
-    const prog = (r['Programme de financement'] || '').toString().trim() || 'Non Applicable';
+    const prog  = (r['Programme de financement'] || '').toString().trim() || 'Non Applicable';
     const fonds = (r['Fonds'] || '').toString().trim();
     if (!fonds) continue;
+    const key = `${annee}|${prog}|${fonds}`;
+    if (seen.has(key)) continue;   // doublon → ignorer
+    seen.add(key);
     BUDGET.push({
       annee,
       prog,
