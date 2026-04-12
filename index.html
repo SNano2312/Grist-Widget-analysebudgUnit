@@ -3,709 +3,682 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Analyse budgétaire — Centre financier 496</title>
+<title>Analyse budgétaire</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-  :root {
-    --bg: #f5f6fa;
-    --surface: #ffffff;
-    --border: #dde1ea;
-    --text: #1a1d27;
-    --muted: #6b7280;
-    --primary: #2563eb;
-    --primary-light: #eff6ff;
-    --ok: #16a34a;
-    --warn: #d97706;
-    --bad: #dc2626;
-    --radius: 8px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+:root {
+  --bg:#f0f2f7; --surface:#fff; --border:#dde2ec; --text:#1b1f2e;
+  --muted:#6b7280; --primary:#2563eb; --primary-lt:#eff6ff;
+  --ok:#16a34a; --warn:#d97706; --bad:#dc2626; --r:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
 
-  /* ─── IMPORT SCREEN ─── */
-  #import-screen {
-    min-height: 100vh; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; padding: 32px 16px;
-    background: linear-gradient(135deg, #e8eeff 0%, #f5f6fa 60%);
-  }
-  .import-header { text-align: center; margin-bottom: 40px; }
-  .import-header h1 { font-size: 1.8rem; font-weight: 700; color: var(--text); }
-  .import-header p { margin-top: 8px; color: var(--muted); }
-  .import-grid {
-    display: grid; grid-template-columns: 1fr 1fr;
-    gap: 16px; width: 100%; max-width: 680px; margin-bottom: 32px;
-  }
-  .import-card {
-    background: var(--surface); border: 2px dashed var(--border);
-    border-radius: var(--radius); padding: 24px 20px;
-    text-align: center; cursor: pointer; transition: all .2s;
-    position: relative;
-  }
-  .import-card:hover { border-color: var(--primary); background: var(--primary-light); }
-  .import-card.loaded { border-color: var(--ok); border-style: solid; background: #f0fdf4; }
-  .import-card input[type=file] { display: none; }
-  .import-card .icon { font-size: 2rem; margin-bottom: 8px; display: block; }
-  .import-card .label { font-weight: 600; font-size: .9rem; color: var(--text); margin-bottom: 4px; }
-  .import-card .sublabel { font-size: .78rem; color: var(--muted); }
-  .import-card .status { font-size: .78rem; margin-top: 8px; font-weight: 500; }
-  .import-card.loaded .status { color: var(--ok); }
-  .import-card:not(.loaded) .status { color: var(--muted); }
-  .import-card .check { position: absolute; top: 10px; right: 12px; font-size: 1.1rem; }
-  #btn-launch {
-    padding: 14px 40px; background: var(--primary); color: #fff;
-    border: none; border-radius: var(--radius); font-size: 1rem;
-    font-weight: 600; cursor: pointer; transition: opacity .2s;
-  }
-  #btn-launch:disabled { opacity: .4; cursor: not-allowed; }
-  #btn-launch:not(:disabled):hover { opacity: .85; }
-  #import-error { color: var(--bad); margin-top: 12px; font-size: .85rem; }
+/* ── IMPORT ── */
+#import-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;background:linear-gradient(135deg,#e8eeff 0%,#f0f2f7 60%)}
+.imp-h1{font-size:1.75rem;font-weight:700;text-align:center;margin-bottom:6px}
+.imp-sub{color:var(--muted);text-align:center;margin-bottom:36px}
+.import-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%;max-width:660px;margin-bottom:28px}
+.icard{background:var(--surface);border:2px dashed var(--border);border-radius:var(--r);padding:22px 16px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.icard:hover{border-color:var(--primary);background:var(--primary-lt)}
+.icard.loaded{border-color:var(--ok);border-style:solid;background:#f0fdf4}
+.icard input{display:none}
+.icard .ico{font-size:1.9rem;display:block;margin-bottom:8px}
+.icard .lbl{font-weight:600;font-size:.88rem;margin-bottom:4px}
+.icard .sub{font-size:.76rem;color:var(--muted)}
+.icard .st{font-size:.76rem;margin-top:8px;font-weight:500;color:var(--muted)}
+.icard.loaded .st{color:var(--ok)}
+.icard .ck{position:absolute;top:9px;right:11px;font-size:1rem}
+#btn-launch{padding:13px 38px;background:var(--primary);color:#fff;border:none;border-radius:var(--r);font-size:.95rem;font-weight:600;cursor:pointer;transition:opacity .2s}
+#btn-launch:disabled{opacity:.35;cursor:not-allowed}
+#btn-launch:not(:disabled):hover{opacity:.85}
+#imp-err{color:var(--bad);margin-top:12px;font-size:.82rem}
 
-  /* ─── DASHBOARD ─── */
-  #dashboard { display: none; padding: 24px; max-width: 1200px; margin: 0 auto; }
-  .dash-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-  .dash-header h1 { font-size: 1.3rem; font-weight: 700; }
-  #btn-reset { padding: 6px 14px; background: #fff; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: .82rem; color: var(--muted); }
-  #btn-reset:hover { border-color: var(--primary); color: var(--primary); }
+/* ── DASHBOARD ── */
+#dashboard{display:none;padding:20px 24px;max-width:1240px;margin:0 auto}
+.dash-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.dash-hdr h1{font-size:1.2rem;font-weight:700}
+.dash-hdr-right{display:flex;gap:8px}
+.btn-sm{padding:6px 13px;background:#fff;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:.8rem;color:var(--muted)}
+.btn-sm:hover{border-color:var(--primary);color:var(--primary)}
+.btn-save{background:var(--primary);color:#fff;border-color:var(--primary)}
+.btn-save:hover{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
 
-  /* tabs */
-  .tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
-  .tab { padding: 8px 20px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; font-weight: 500; color: var(--muted); transition: all .15s; }
-  .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+/* tabs */
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:18px}
+.tab{padding:8px 18px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:500;color:var(--muted);transition:all .15s}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary)}
 
-  /* filters */
-  .filters { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 20px; }
-  .filter-group { display: flex; flex-direction: column; gap: 4px; }
-  .filter-group label { font-size: .75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-  .filter-group select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; background: #fff; font-size: .85rem; min-width: 150px; }
+/* filters */
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg label{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.fg select{padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:.83rem;min-width:148px}
 
-  /* kpi strip */
-  .kpi-strip { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
-  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; flex: 1 1 160px; }
-  .kpi-label { font-size: .75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
-  .kpi-val { font-size: 1.25rem; font-weight: 700; color: var(--text); }
-  .kpi-val.ok { color: var(--ok); }
-  .kpi-val.warn { color: var(--warn); }
-  .kpi-val.bad { color: var(--bad); }
+/* kpi */
+.kpi-strip{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;flex:1 1 150px}
+.kpi-lbl{font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+.kpi-val{font-size:1.15rem;font-weight:700}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
 
-  /* chart */
-  .chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
-  #myChart { max-height: 380px; }
+/* chart panels */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:16px}
+.panel-title{font-size:.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:14px}
+#myChart{max-height:340px}
+#myLine{max-height:300px}
 
-  /* drill */
-  #drill-view { display: none; margin-top: 20px; }
-  .drill-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-  #btn-back { padding: 6px 14px; background: #fff; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: .82rem; }
-  #btn-back:hover { border-color: var(--primary); color: var(--primary); }
-  #drill-title { font-size: 1rem; font-weight: 600; }
-  #drill-kpis { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
-  .drill-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: auto; max-height: 440px; }
-  table { width: 100%; border-collapse: collapse; font-size: .82rem; }
-  thead th { background: #f8f9fb; padding: 9px 12px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; position: sticky; top: 0; }
-  thead th:hover { color: var(--primary); }
-  tbody td { padding: 7px 12px; border-bottom: 1px solid #f0f1f5; white-space: nowrap; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
-  tbody tr:hover { background: var(--primary-light); }
-  tfoot td { padding: 8px 12px; font-weight: 700; background: #f8f9fb; border-top: 2px solid var(--border); }
-  #drill-count { font-size: .8rem; color: var(--muted); margin-bottom: 8px; }
+/* drill */
+#drill-view{display:none;margin-top:4px}
+.drill-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+#btn-back{padding:5px 12px;background:#fff;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:.8rem}
+#btn-back:hover{border-color:var(--primary);color:var(--primary)}
+#drill-title{font-size:.95rem;font-weight:600}
+#drill-kpis{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:auto;max-height:420px}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+thead th{background:#f7f8fb;padding:8px 10px;text-align:left;font-weight:700;border-bottom:2px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;position:sticky;top:0}
+thead th:hover{color:var(--primary)}
+tbody td{padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}
+tbody tr:hover{background:var(--primary-lt)}
+tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px solid var(--border)}
+#drill-count{font-size:.78rem;color:var(--muted);margin-bottom:6px}
 
-  /* cross table */
-  #cross-view { display: none; }
-  .cross-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: auto; }
-  .cross-table-wrap table thead th { background: #f8f9fb; }
-  .rate-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-weight: 600; font-size: .78rem; }
-  .rate-ok { background: #dcfce7; color: var(--ok); }
-  .rate-warn { background: #fef9c3; color: var(--warn); }
-  .rate-bad { background: #fee2e2; color: var(--bad); }
+/* cross */
+#cross-view{display:none}
+.rate-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-weight:600;font-size:.75rem}
+.rate-ok{background:#dcfce7;color:var(--ok)}.rate-warn{background:#fef9c3;color:var(--warn)}.rate-bad{background:#fee2e2;color:var(--bad)}
 
-  /* loading */
-  #loading-overlay {
-    display: none; position: fixed; inset: 0; background: rgba(255,255,255,.85);
-    align-items: center; justify-content: center; z-index: 999; flex-direction: column; gap: 12px;
-  }
-  #loading-overlay.active { display: flex; }
-  .spinner { width: 36px; height: 36px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* loading */
+#loading{display:none;position:fixed;inset:0;background:rgba(255,255,255,.87);align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:10px}
+#loading.on{display:flex}
+.spin{width:34px;height:34px;border:4px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 
-<!-- ─── LOADING OVERLAY ─── -->
-<div id="loading-overlay">
-  <div class="spinner"></div>
-  <div id="loading-msg" style="font-weight:600;color:var(--muted)">Traitement en cours…</div>
-</div>
+<div id="loading"><div class="spin"></div><div id="load-msg" style="font-weight:600;color:var(--muted)">Chargement…</div></div>
 
-<!-- ─── IMPORT SCREEN ─── -->
+<!-- ── IMPORT ── -->
 <div id="import-screen">
-  <div class="import-header">
-    <h1>📊 Analyse budgétaire — Centre financier 496</h1>
-    <p>Importez vos 4 fichiers Excel pour démarrer l'analyse</p>
-  </div>
+  <div class="imp-h1">📊 Analyse budgétaire</div>
+  <div class="imp-sub">Importez vos 4 fichiers Excel pour démarrer l'analyse</div>
   <div class="import-grid">
-    <div class="import-card" id="card-bud25" onclick="document.getElementById('file-bud25').click()">
-      <input type="file" id="file-bud25" accept=".xlsx,.xls" onchange="handleFile('bud25',this)">
-      <span class="check" id="check-bud25"></span>
-      <span class="icon">📋</span>
-      <div class="label">Budget 2025</div>
-      <div class="sublabel">budget_complet_2025.xlsx</div>
-      <div class="status" id="status-bud25">Cliquer pour importer</div>
+    <div class="icard" id="card-b25" onclick="document.getElementById('f-b25').click()">
+      <input type="file" id="f-b25" accept=".xlsx,.xls" onchange="handleFile('b25',this)">
+      <span class="ck" id="ck-b25"></span>
+      <span class="ico">📋</span>
+      <div class="lbl">Budget 2025</div>
+      <div class="sub">budget_complet_2025.xlsx</div>
+      <div class="st" id="st-b25">Cliquer pour importer</div>
     </div>
-    <div class="import-card" id="card-bud26" onclick="document.getElementById('file-bud26').click()">
-      <input type="file" id="file-bud26" accept=".xlsx,.xls" onchange="handleFile('bud26',this)">
-      <span class="check" id="check-bud26"></span>
-      <span class="icon">📋</span>
-      <div class="label">Budget 2026</div>
-      <div class="sublabel">budget_complet_2026.xlsx</div>
-      <div class="status" id="status-bud26">Cliquer pour importer</div>
+    <div class="icard" id="card-b26" onclick="document.getElementById('f-b26').click()">
+      <input type="file" id="f-b26" accept=".xlsx,.xls" onchange="handleFile('b26',this)">
+      <span class="ck" id="ck-b26"></span>
+      <span class="ico">📋</span>
+      <div class="lbl">Budget 2026</div>
+      <div class="sub">budget_complet_2026.xlsx</div>
+      <div class="st" id="st-b26">Cliquer pour importer</div>
     </div>
-    <div class="import-card" id="card-conso25" onclick="document.getElementById('file-conso25').click()">
-      <input type="file" id="file-conso25" accept=".xlsx,.xls" onchange="handleFile('conso25',this)">
-      <span class="check" id="check-conso25"></span>
-      <span class="icon">📊</span>
-      <div class="label">Conso AE 2025</div>
-      <div class="sublabel">conso_AE_2025.xlsx</div>
-      <div class="status" id="status-conso25">Cliquer pour importer</div>
+    <div class="icard" id="card-c25" onclick="document.getElementById('f-c25').click()">
+      <input type="file" id="f-c25" accept=".xlsx,.xls" onchange="handleFile('c25',this)">
+      <span class="ck" id="ck-c25"></span>
+      <span class="ico">📊</span>
+      <div class="lbl">Conso AE 2025</div>
+      <div class="sub">conso_AE_2025.xlsx</div>
+      <div class="st" id="st-c25">Cliquer pour importer</div>
     </div>
-    <div class="import-card" id="card-conso26" onclick="document.getElementById('file-conso26').click()">
-      <input type="file" id="file-conso26" accept=".xlsx,.xls" onchange="handleFile('conso26',this)">
-      <span class="check" id="check-conso26"></span>
-      <span class="icon">📊</span>
-      <div class="label">Conso AE 2026</div>
-      <div class="sublabel">conso_AE_2026.xlsx</div>
-      <div class="status" id="status-conso26">Cliquer pour importer</div>
+    <div class="icard" id="card-c26" onclick="document.getElementById('f-c26').click()">
+      <input type="file" id="f-c26" accept=".xlsx,.xls" onchange="handleFile('c26',this)">
+      <span class="ck" id="ck-c26"></span>
+      <span class="ico">📊</span>
+      <div class="lbl">Conso AE 2026</div>
+      <div class="sub">conso_AE_2026.xlsx</div>
+      <div class="st" id="st-c26">Cliquer pour importer</div>
     </div>
   </div>
-  <button id="btn-launch" disabled onclick="launchDashboard()">Lancer l'analyse →</button>
-  <div id="import-error"></div>
+  <button id="btn-launch" disabled onclick="launch()">Lancer l'analyse →</button>
+  <div id="imp-err"></div>
 </div>
 
-<!-- ─── DASHBOARD ─── -->
+<!-- ── DASHBOARD ── -->
 <div id="dashboard">
-  <div class="dash-header">
-    <h1>Analyse budgétaire — Centre financier 496</h1>
-    <button id="btn-reset" onclick="resetToImport()">↩ Changer les fichiers</button>
+  <div class="dash-hdr">
+    <h1 id="dash-title">Analyse budgétaire</h1>
+    <div class="dash-hdr-right">
+      <button class="btn-sm btn-save" onclick="saveDashboard()">💾 Sauvegarder</button>
+      <button class="btn-sm" onclick="resetImport()">↩ Changer les fichiers</button>
+    </div>
   </div>
 
   <div class="tabs">
-    <div class="tab active" id="tab-histo" onclick="switchTab('histo')">Histogramme</div>
-    <div class="tab" id="tab-cross" onclick="switchTab('cross')">Tableau croisé</div>
+    <div class="tab active" id="tab-h" onclick="switchTab('h')">Histogramme</div>
+    <div class="tab" id="tab-c" onclick="switchTab('c')">Évolution</div>
+    <div class="tab" id="tab-x" onclick="switchTab('x')">Tableau croisé</div>
   </div>
 
-  <!-- HISTO TAB -->
+  <!-- HISTOGRAMME -->
   <div id="histo-view">
     <div class="filters">
-      <div class="filter-group">
-        <label>Année</label>
-        <select id="f-annee" onchange="renderHisto()">
-          <option value="">Toutes</option>
-          <option value="2025">2025</option>
-          <option value="2026">2026</option>
-        </select>
-      </div>
-      <div class="filter-group">
-        <label>Programme</label>
-        <select id="f-prog" onchange="renderHisto()"><option value="">Tous</option></select>
-      </div>
-      <div class="filter-group">
-        <label>Fonds</label>
-        <select id="f-fonds" onchange="renderHisto()"><option value="">Tous</option></select>
-      </div>
-      <div class="filter-group">
-        <label>Regrouper par</label>
+      <div class="fg"><label>Année</label>
+        <select id="f-ann" onchange="renderHisto()"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Programme</label>
+        <select id="f-prg" onchange="renderHisto()"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label>
+        <select id="f-fnd" onchange="renderHisto()"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Regrouper par</label>
         <select id="f-grp" onchange="renderHisto()">
           <option value="prog">Programme</option>
           <option value="fonds">Fonds</option>
           <option value="annee">Année</option>
-        </select>
-      </div>
+        </select></div>
     </div>
     <div class="kpi-strip" id="kpi-strip"></div>
-    <div class="chart-wrap" id="chart-view">
-      <canvas id="myChart"></canvas>
-    </div>
+    <div class="panel" id="chart-view"><canvas id="myChart"></canvas></div>
     <div id="drill-view">
-      <div class="drill-header">
+      <div class="drill-hdr">
         <button id="btn-back" onclick="closeDrill()">← Retour</button>
         <span id="drill-title"></span>
       </div>
       <div id="drill-kpis" class="kpi-strip"></div>
       <div id="drill-count"></div>
-      <div class="drill-table-wrap">
-        <table>
-          <thead id="drill-thead"></thead>
-          <tbody id="drill-body"></tbody>
-          <tfoot id="drill-foot"></tfoot>
-        </table>
+      <div class="tbl-wrap">
+        <table><thead id="drill-thead"></thead><tbody id="drill-body"></tbody><tfoot id="drill-foot"></tfoot></table>
       </div>
     </div>
   </div>
 
-  <!-- CROSS TAB -->
+  <!-- ÉVOLUTION -->
+  <div id="evol-view" style="display:none">
+    <div class="filters">
+      <div class="fg"><label>Année</label>
+        <select id="ef-ann" onchange="renderEvol()"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Programme</label>
+        <select id="ef-prg" onchange="renderEvol()"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label>
+        <select id="ef-fnd" onchange="renderEvol()"><option value="">Tous</option></select></div>
+    </div>
+    <div class="panel"><div class="panel-title">Évolution mensuelle des dépenses et prévisions</div><canvas id="myLine"></canvas></div>
+  </div>
+
+  <!-- TABLEAU CROISÉ -->
   <div id="cross-view">
     <div class="filters">
-      <div class="filter-group">
-        <label>Année</label>
-        <select id="cf-annee" onchange="renderCross()">
-          <option value="">Toutes</option>
-          <option value="2025">2025</option>
-          <option value="2026">2026</option>
-        </select>
-      </div>
-      <div class="filter-group">
-        <label>Programme</label>
-        <select id="cf-prog" onchange="renderCross()"><option value="">Tous</option></select>
-      </div>
-      <div class="filter-group">
-        <label>Fonds</label>
-        <select id="cf-fonds" onchange="renderCross()"><option value="">Tous</option></select>
-      </div>
+      <div class="fg"><label>Année</label>
+        <select id="xf-ann" onchange="renderCross()"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Programme</label>
+        <select id="xf-prg" onchange="renderCross()"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label>
+        <select id="xf-fnd" onchange="renderCross()"><option value="">Tous</option></select></div>
     </div>
-    <div class="cross-table-wrap">
-      <table>
-        <thead id="cross-thead"></thead>
-        <tbody id="cross-body"></tbody>
-      </table>
+    <div class="tbl-wrap">
+      <table><thead id="cross-thead"></thead><tbody id="cross-body"></tbody></table>
     </div>
   </div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════
-// ÉTAT GLOBAL
-// ═══════════════════════════════════════════════
-let BUDGET = [];   // lignes budget traitées
-let CONSO  = [];   // lignes conso traitées
-let _chart = null;
-let _drillRows = [], _drillSortCol = null, _drillSortDir = 1;
-let _grp = 'prog', _grouped = {};
-let _loaded = { bud25: false, bud26: false, conso25: false, conso26: false };
-let _rawFiles = { bud25: null, bud26: null, conso25: null, conso26: null };
+// ════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════
+let BUDGET=[], CONSO=[], CF_LABEL='';
+let _chart=null, _line=null;
+let _drillRows=[], _dSortCol=null, _dSortDir=1;
+let _grp='prog', _grouped={};
+let _loaded={b25:false,b26:false,c25:false,c26:false};
+let _files={b25:null,b26:null,c25:null,c26:null};
 
-// ═══════════════════════════════════════════════
+// ════════════════════════════════════════
 // IMPORT
-// ═══════════════════════════════════════════════
-function handleFile(key, input) {
-  const file = input.files[0];
-  if (!file) return;
-  _rawFiles[key] = file;
-  _loaded[key] = true;
-  document.getElementById('card-' + key).classList.add('loaded');
-  document.getElementById('check-' + key).textContent = '✅';
-  document.getElementById('status-' + key).textContent = file.name;
-  document.getElementById('import-error').textContent = '';
-  checkAllLoaded();
+// ════════════════════════════════════════
+function handleFile(key,inp){
+  const f=inp.files[0]; if(!f) return;
+  _files[key]=f; _loaded[key]=true;
+  document.getElementById('card-'+key).classList.add('loaded');
+  document.getElementById('ck-'+key).textContent='✅';
+  document.getElementById('st-'+key).textContent=f.name;
+  document.getElementById('imp-err').textContent='';
+  document.getElementById('btn-launch').disabled=!Object.values(_loaded).every(Boolean);
 }
 
-function checkAllLoaded() {
-  const all = Object.values(_loaded).every(Boolean);
-  document.getElementById('btn-launch').disabled = !all;
-}
-
-async function launchDashboard() {
-  showLoading('Lecture des fichiers…');
-  try {
-    // Lire les 4 fichiers
-    const [wb25, wb26, wc25, wc26] = await Promise.all([
-      readWorkbook(_rawFiles.bud25),
-      readWorkbook(_rawFiles.bud26),
-      readWorkbook(_rawFiles.conso25),
-      readWorkbook(_rawFiles.conso26),
+async function launch(){
+  showLoad('Lecture des fichiers…');
+  try{
+    const [wb25,wb26,wc25,wc26]=await Promise.all([
+      readWB(_files.b25),readWB(_files.b26),readWB(_files.c25),readWB(_files.c26)
     ]);
-
-    updateLoading('Traitement du budget…');
-    BUDGET = [];
-    processBudget(wb25, 2025);
-    processBudget(wb26, 2026);
-
-    updateLoading('Traitement de la conso…');
-    CONSO = [];
-    processConso(wc25, 2025);
-    processConso(wc26, 2026);
-
-    updateLoading('Construction du tableau de bord…');
+    setLoad('Traitement du budget…');
+    BUDGET=[]; CF_LABEL='';
+    processBudget(wb25,2025); processBudget(wb26,2026);
+    setLoad('Traitement de la conso…');
+    CONSO=[];
+    processConso(wc25,2025); processConso(wc26,2026);
+    setLoad('Construction du tableau de bord…');
     populateFilters();
-    await sleep(100);
-    hideLoading();
-    showDashboard();
+    await sleep(80);
+    hideLoad();
+    document.getElementById('import-screen').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+    document.getElementById('dash-title').textContent='Analyse budgétaire — Centre financier '+CF_LABEL;
     renderHisto();
-  } catch(e) {
-    hideLoading();
-    document.getElementById('import-error').textContent = '❌ Erreur : ' + e.message;
+  }catch(e){
+    hideLoad();
+    document.getElementById('imp-err').textContent='❌ Erreur : '+e.message;
     console.error(e);
   }
 }
 
-function readWorkbook(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      try {
-        const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
-        resolve(wb);
-      } catch(err) { reject(err); }
-    };
-    reader.onerror = () => reject(new Error('Impossible de lire ' + file.name));
-    reader.readAsArrayBuffer(file);
+function readWB(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=e=>{try{res(XLSX.read(e.target.result,{type:'array',cellDates:true}))}catch(err){rej(err)}};
+    r.onerror=()=>rej(new Error('Lecture impossible : '+file.name));
+    r.readAsArrayBuffer(file);
   });
 }
 
-// ═══════════════════════════════════════════════
+// ════════════════════════════════════════
 // TRAITEMENT BUDGET
-// Colonnes : Centre financier, Programme de financement, Fonds,
-//            Budget AE N, Conso AE N, Non Conso AE N,
-//            Payé (CP) N, Reste à Payer (CP) N, etc.
-// ═══════════════════════════════════════════════
-function processBudget(wb, annee) {
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-  // Dédoublonner sur (prog, fonds) : l'Excel contient 2 lignes identiques
-  // par triplet (une ligne de sous-total sans domaine fonctionnel + une avec)
-  const seen = new Set();
-  for (const r of rows) {
-    const prog  = (r['Programme de financement'] || '').toString().trim() || 'Non Applicable';
-    const fonds = (r['Fonds'] || '').toString().trim();
-    if (!fonds) continue;
-    const key = `${annee}|${prog}|${fonds}`;
-    if (seen.has(key)) continue;   // doublon → ignorer
+// Dédoublonnage sur (annee,prog,fonds) — l'Excel contient 2 lignes identiques
+// par combinaison (ligne sans domaine fonctionnel + ligne avec A1ALIMH)
+// ════════════════════════════════════════
+function processBudget(wb,annee){
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+  const seen=new Set();
+  for(const r of rows){
+    const cf=(r['Centre financier']||'').toString().trim();
+    const prog=(r['Programme de financement']||'').toString().trim()||'Non Applicable';
+    const fonds=(r['Fonds']||'').toString().trim();
+    if(!fonds) continue;
+    const key=`${annee}|${prog}|${fonds}`;
+    if(seen.has(key)) continue;
     seen.add(key);
+    if(cf && !CF_LABEL) CF_LABEL=cf;
     BUDGET.push({
-      annee,
-      prog,
-      fonds,
-      bud:    toNum(r['Budget AE N']),
-      conso:  toNum(r['Conso AE N']),
-      nconso: toNum(r['Non Conso AE N']),
-      paye:   toNum(r['Payé (CP) N']),
-      rap:    toNum(r['Reste à Payer (CP) N']),
+      annee, cf, prog, fonds,
+      bud:   toNum(r['Budget AE N']),
+      conso: toNum(r['Conso AE N']),
+      nconso:toNum(r['Non Conso AE N']),
+      cda:   toNum(r['CDa engagées N']),
+      rar:   toNum(r['Reste à réceptionner N']),
+      om:    toNum(r['OM engagés N']),
+      nf:    toNum(r['NF en attente N']),
+      paye:  toNum(r['Payé (CP) N']),
+      rap:   toNum(r['Reste à Payer (CP) N']),
     });
   }
 }
 
-// Helper: cherche une valeur dans un objet selon plusieurs noms de clé possibles
-function findCol(row, keys) {
-  for (const k of keys) {
-    // Comparaison directe
-    if (row[k] !== undefined && row[k] !== null && row[k] !== '') return row[k].toString().trim();
-    // Comparaison normalisée (insensible aux apostrophes typographiques)
-    const kn = k.normalize('NFC');
-    for (const rk of Object.keys(row)) {
-      if (rk.normalize('NFC') === kn) {
-        const v = row[rk];
-        return v !== undefined && v !== null ? v.toString().trim() : '';
-      }
+// ════════════════════════════════════════
+// TRAITEMENT CONSO
+// Colonne D (index 3) = N° de pièce de référence = N° commande
+// ════════════════════════════════════════
+function processConso(wb,annee){
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{defval:'',raw:false});
+  // Récupérer les en-têtes dans l'ordre pour accès par index
+  const hdr=XLSX.utils.sheet_to_json(ws,{header:1,defval:''})[0];
+  const TV_EXCL=['Paiements','Comptabilis. coûts secondaires'];
+  for(const r of rows){
+    const tv=(r['Texte type val.']||'').toString().trim();
+    if(!tv||TV_EXCL.includes(tv)) continue;
+    const fonds=(r['Fonds']||'').toString().trim();
+    if(!fonds) continue;
+    const prog=(r['Programme de financement']||'').toString().trim()||'Non Applicable';
+    // Date
+    let dt=r['Date comptable']||'';
+    if(dt instanceof Date) dt=dt.toLocaleDateString('fr-FR');
+    else dt=dt.toString().trim();
+    // Montant — nom de colonne avec caractères spéciaux
+    const m=toNum(getCol(r,["Montant à vérifier avec le budget d'enga",
+                              "Montant \u00e0 v\u00e9rifier avec le budget d'enga",
+                              "Montant \u00e0 v\u00e9rifier avec le budget d\u2019enga"]));
+    // Désignation colonne D (index 3)
+    const colD=hdr[3]||'';
+    const numCmd=(r[colD]||'').toString().trim();
+    CONSO.push({
+      annee, tv,
+      f:(r['Nom 1']||'').toString().trim(),
+      cmd: numCmd,
+      d:  getCol(r,["Désign. poste Cde d'achat","D\u00e9sign. poste Cde d'achat","D\u00e9sign. poste Cde d\u2019achat"]),
+      dt, m, p:prog, fo:fonds,
+      tm:(r['Type de montant.1']||'').toString().trim(),
+    });
+  }
+}
+
+function getCol(row,keys){
+  for(const k of keys){
+    if(row[k]!==undefined&&row[k]!==null&&row[k]!=='') return row[k].toString().trim();
+    const kn=k.normalize('NFC');
+    for(const rk of Object.keys(row)){
+      if(rk.normalize('NFC')===kn){const v=row[rk];return v!=null?v.toString().trim():''}
     }
   }
   return '';
 }
 
-// ═══════════════════════════════════════════════
-// TRAITEMENT CONSO
-// Colonnes utilisées :
-//   Exercice comptable → annee
-//   Texte type val.    → tv
-//   Nom 1              → f (fournisseur)
-//   Désign. poste Cde d'achat → d (désignation)
-//   Date comptable     → dt
-//   Montant à vérifier avec le budget d'enga → m
-//   Programme de financement → p
-//   Fonds              → fo
-//   Type de montant.1  → tm
-// Exclusions : Texte type val. === 'Paiements'
-// ═══════════════════════════════════════════════
-function processConso(wb, annee) {
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-  const TV_EXCL = ['Paiements', 'Comptabilis. coûts secondaires'];
-  for (const r of rows) {
-    const tv = (r['Texte type val.'] || '').toString().trim();
-    if (!tv || TV_EXCL.includes(tv)) continue;
-    const prog = (r['Programme de financement'] || '').toString().trim() || 'Non Applicable';
-    const fonds = (r['Fonds'] || '').toString().trim();
-    if (!fonds) continue;
-    // Date : peut être un objet Date ou une chaîne
-    let dt = r['Date comptable'];
-    if (dt instanceof Date) {
-      dt = dt.toLocaleDateString('fr-FR');
-    } else {
-      dt = (dt || '').toString().trim();
-    }
-    CONSO.push({
-      annee,
-      tv,
-      f:  (r['Nom 1'] || '').toString().trim(),
-      d:  findCol(r, ["Désign. poste Cde d'achat", "D\u00e9sign. poste Cde d\u2019achat"]),
-      dt,
-      m:  toNum(findCol(r, ["Montant à vérifier avec le budget d'enga",
-                             "Montant \u00e0 v\u00e9rifier avec le budget d'enga",
-                             "Montant \u00e0 v\u00e9rifier avec le budget d\u2019enga"]) || 0),
-      p:  prog,
-      fo: fonds,
-      tm: (r['Type de montant.1'] || '').toString().trim(),
-    });
-  }
-}
-
-// ═══════════════════════════════════════════════
-// POPULATE FILTERS
-// ═══════════════════════════════════════════════
-function populateFilters() {
-  const progs = [...new Set(BUDGET.map(b => b.prog))].sort();
-  const fonds = [...new Set(BUDGET.map(b => b.fonds))].sort();
-  ['f-prog','cf-prog'].forEach(id => {
-    const sel = document.getElementById(id);
-    sel.innerHTML = '<option value="">Tous</option>';
-    progs.forEach(p => sel.innerHTML += `<option value="${p}">${p}</option>`);
+// ════════════════════════════════════════
+// FILTERS POPULATE
+// ════════════════════════════════════════
+function populateFilters(){
+  const progs=[...new Set(BUDGET.map(b=>b.prog))].sort();
+  const fonds=[...new Set(BUDGET.map(b=>b.fonds))].sort();
+  ['f-prg','ef-prg','xf-prg'].forEach(id=>{
+    const s=document.getElementById(id);
+    s.innerHTML='<option value="">Tous</option>';
+    progs.forEach(p=>s.innerHTML+=`<option value="${esc(p)}">${esc(p)}</option>`);
   });
-  ['f-fonds','cf-fonds'].forEach(id => {
-    const sel = document.getElementById(id);
-    sel.innerHTML = '<option value="">Tous</option>';
-    fonds.forEach(f => sel.innerHTML += `<option value="${f}">${f}</option>`);
+  ['f-fnd','ef-fnd','xf-fnd'].forEach(id=>{
+    const s=document.getElementById(id);
+    s.innerHTML='<option value="">Tous</option>';
+    fonds.forEach(f=>s.innerHTML+=`<option value="${esc(f)}">${esc(f)}</option>`);
   });
 }
 
-// ═══════════════════════════════════════════════
+// ════════════════════════════════════════
 // UI HELPERS
-// ═══════════════════════════════════════════════
-function showDashboard() {
-  document.getElementById('import-screen').style.display = 'none';
-  document.getElementById('dashboard').style.display = 'block';
-}
-function resetToImport() {
-  document.getElementById('dashboard').style.display = 'none';
-  document.getElementById('import-screen').style.display = 'flex';
-}
-function showLoading(msg) {
-  document.getElementById('loading-msg').textContent = msg || 'Traitement…';
-  document.getElementById('loading-overlay').classList.add('active');
-}
-function updateLoading(msg) {
-  document.getElementById('loading-msg').textContent = msg;
-}
-function hideLoading() {
-  document.getElementById('loading-overlay').classList.remove('active');
-}
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-function toNum(v) { return isNaN(parseFloat(v)) ? 0 : parseFloat(v); }
-function fmt(n) { return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-function fmtPct(n) { return n.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %'; }
-function switchTab(t) {
-  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-  document.getElementById('tab-' + t).classList.add('active');
-  document.getElementById('histo-view').style.display = t === 'histo' ? 'block' : 'none';
-  document.getElementById('cross-view').style.display  = t === 'cross'  ? 'block' : 'none';
-  if (t === 'cross') renderCross();
+// ════════════════════════════════════════
+function showLoad(m){document.getElementById('load-msg').textContent=m;document.getElementById('loading').classList.add('on')}
+function setLoad(m){document.getElementById('load-msg').textContent=m}
+function hideLoad(){document.getElementById('loading').classList.remove('on')}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+function toNum(v){const n=parseFloat(v);return isNaN(n)?0:n}
+function fmt(n){return n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function fmtPct(n){return n.toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1})+' %'}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function resetImport(){document.getElementById('dashboard').style.display='none';document.getElementById('import-screen').style.display='flex'}
+
+function switchTab(t){
+  ['h','c','x'].forEach(k=>{
+    document.getElementById('tab-'+k).classList.toggle('active',k===t);
+  });
+  document.getElementById('histo-view').style.display=t==='h'?'block':'none';
+  document.getElementById('evol-view').style.display=t==='c'?'block':'none';
+  document.getElementById('cross-view').style.display=t==='x'?'block':'none';
+  if(t==='c') renderEvol();
+  if(t==='x') renderCross();
 }
 
-// ═══════════════════════════════════════════════
+// ════════════════════════════════════════
+// SAVE
+// ════════════════════════════════════════
+function saveDashboard(){
+  // Snapshot HTML complet de la page actuelle
+  const html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+  const blob=new Blob([html],{type:'text/html'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  const d=new Date();
+  const stamp=d.getFullYear()+(d.getMonth()+1).toString().padStart(2,'0')+d.getDate().toString().padStart(2,'0');
+  a.download='analyse_budgetaire_CF'+CF_LABEL+'_'+stamp+'.html';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ════════════════════════════════════════
 // HISTOGRAMME
-// ═══════════════════════════════════════════════
-function getFilters() {
-  return {
-    annee: document.getElementById('f-annee').value,
-    prog:  document.getElementById('f-prog').value,
-    fonds: document.getElementById('f-fonds').value,
-    grp:   document.getElementById('f-grp').value,
+// ════════════════════════════════════════
+function getF(){
+  return{
+    ann:document.getElementById('f-ann').value,
+    prg:document.getElementById('f-prg').value,
+    fnd:document.getElementById('f-fnd').value,
+    grp:document.getElementById('f-grp').value,
   };
 }
 
-function filterBudget(f) {
-  return BUDGET.filter(b =>
-    (!f.annee || b.annee === parseInt(f.annee)) &&
-    (!f.prog  || b.prog  === f.prog)  &&
-    (!f.fonds || b.fonds === f.fonds)
+function filterBud(f){
+  return BUDGET.filter(b=>
+    (!f.ann||b.annee===parseInt(f.ann))&&
+    (!f.prg||b.prog===f.prg)&&
+    (!f.fnd||b.fonds===f.fnd)
   );
 }
 
-function renderHisto() {
+function renderHisto(){
   closeDrill();
-  const f = getFilters();
-  _grp = f.grp;
-  const rows = filterBudget(f);
+  const f=getF(); _grp=f.grp;
+  const rows=filterBud(f);
+  const totB=rows.reduce((s,r)=>s+r.bud,0);
+  const totC=rows.reduce((s,r)=>s+r.conso,0);
+  const totN=rows.reduce((s,r)=>s+r.nconso,0);
+  const totP=rows.reduce((s,r)=>s+r.paye,0);
+  const pct=totB>0?totC/totB*100:0;
+  const cls=pct>=90?'ok':pct>=50?'warn':'bad';
+  document.getElementById('kpi-strip').innerHTML=`
+    <div class="kpi"><div class="kpi-lbl">Budget total AE</div><div class="kpi-val">${fmt(totB)} €</div></div>
+    <div class="kpi"><div class="kpi-lbl">Conso AE totale</div><div class="kpi-val ${cls}">${fmt(totC)} €</div></div>
+    <div class="kpi"><div class="kpi-lbl">Non consommé</div><div class="kpi-val warn">${fmt(totN)} €</div></div>
+    <div class="kpi"><div class="kpi-lbl">Payé (CP)</div><div class="kpi-val">${fmt(totP)} €</div></div>
+    <div class="kpi"><div class="kpi-lbl">Taux de conso</div><div class="kpi-val ${cls}">${fmtPct(pct)}</div></div>`;
 
-  // KPIs globaux
-  const totBud   = rows.reduce((s,r) => s + r.bud,   0);
-  const totConso = rows.reduce((s,r) => s + r.conso,  0);
-  const totNC    = rows.reduce((s,r) => s + r.nconso, 0);
-  const totPaye  = rows.reduce((s,r) => s + r.paye,   0);
-  const pct      = totBud > 0 ? totConso / totBud * 100 : 0;
-  const cls      = pct >= 90 ? 'ok' : pct >= 50 ? 'warn' : 'bad';
-  document.getElementById('kpi-strip').innerHTML = `
-    <div class="kpi"><div class="kpi-label">Budget total AE</div><div class="kpi-val">${fmt(totBud)} €</div></div>
-    <div class="kpi"><div class="kpi-label">Conso AE totale</div><div class="kpi-val ${cls}">${fmt(totConso)} €</div></div>
-    <div class="kpi"><div class="kpi-label">Non consommé</div><div class="kpi-val warn">${fmt(totNC)} €</div></div>
-    <div class="kpi"><div class="kpi-label">Payé (CP)</div><div class="kpi-val">${fmt(totPaye)} €</div></div>
-    <div class="kpi"><div class="kpi-label">Taux de conso</div><div class="kpi-val ${cls}">${fmtPct(pct)}</div></div>
-  `;
-
-  // Groupement
-  _grouped = {};
-  for (const b of rows) {
-    const key = f.grp === 'prog' ? b.prog : f.grp === 'fonds' ? b.fonds : String(b.annee);
-    if (!_grouped[key]) _grouped[key] = { bud: 0, conso: 0, nconso: 0 };
-    _grouped[key].bud   += b.bud;
-    _grouped[key].conso += b.conso;
-    _grouped[key].nconso += b.nconso;
+  _grouped={};
+  for(const b of rows){
+    const key=f.grp==='prog'?b.prog:f.grp==='fonds'?b.fonds:String(b.annee);
+    if(!_grouped[key]) _grouped[key]={bud:0,conso:0,nconso:0};
+    _grouped[key].bud+=b.bud; _grouped[key].conso+=b.conso; _grouped[key].nconso+=b.nconso;
   }
-  const labels = Object.keys(_grouped).sort();
-  const buds   = labels.map(k => _grouped[k].bud);
-  const consos = labels.map(k => _grouped[k].conso);
-  const ncs    = labels.map(k => _grouped[k].nconso);
+  const labels=Object.keys(_grouped).sort();
+  if(_chart) _chart.destroy();
+  const ctx=document.getElementById('myChart').getContext('2d');
+  _chart=new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Budget AE N',data:labels.map(k=>_grouped[k].bud),backgroundColor:'#93c5fd'},
+      {label:'Conso AE N',data:labels.map(k=>_grouped[k].conso),backgroundColor:'#2563eb'},
+      {label:'Non Conso AE N',data:labels.map(k=>_grouped[k].nconso),backgroundColor:'#fbbf24'},
+    ]},
+    options:{
+      responsive:true,
+      plugins:{legend:{position:'top'},tooltip:{callbacks:{label:c=>`${c.dataset.label} : ${fmt(c.raw)} €`}}},
+      scales:{y:{ticks:{callback:v=>fmt(v)+' €'}}},
+      onClick:(e,els)=>{if(!els.length)return;openDrill(labels[els[0].index])},
+      onHover:(e,els)=>{e.native.target.style.cursor=els.length?'pointer':'default'}
+    }
+  });
+}
 
-  // Graphique
-  if (_chart) _chart.destroy();
-  const ctx = document.getElementById('myChart').getContext('2d');
-  _chart = new Chart(ctx, {
-    type: 'bar',
-    data: {
+// ════════════════════════════════════════
+// DRILL-DOWN
+// ════════════════════════════════════════
+function openDrill(label){
+  const f=getF();
+  document.getElementById('chart-view').style.display='none';
+  document.getElementById('drill-view').style.display='block';
+  const gl=_grp==='prog'?'Programme':_grp==='fonds'?'Fonds':'Année';
+  document.getElementById('drill-title').textContent=gl+' : '+label;
+  const g=_grouped[label];
+  const pct=g.bud>0?g.conso/g.bud*100:0;
+  const cls=pct>=90?'ok':pct>=50?'warn':'bad';
+  document.getElementById('drill-kpis').innerHTML=`
+    <div class="kpi"><div class="kpi-lbl">Budget AE</div><div class="kpi-val">${fmt(g.bud)} €</div></div>
+    <div class="kpi"><div class="kpi-lbl">Conso AE</div><div class="kpi-val ${cls}">${fmt(g.conso)} €</div></div>
+    <div class="kpi"><div class="kpi-lbl">Non consommé</div><div class="kpi-val warn">${fmt(g.nconso)} €</div></div>
+    <div class="kpi"><div class="kpi-lbl">Taux conso</div><div class="kpi-val ${cls}">${fmtPct(pct)}</div></div>`;
+  const fann=_grp==='annee'?parseInt(label):(f.ann?parseInt(f.ann):null);
+  const fp=_grp==='prog'?label:(f.prg&&f.prg!==''?f.prg:null);
+  const ff=_grp==='fonds'?label:(f.fnd&&f.fnd!==''?f.fnd:null);
+  const cRows=CONSO.filter(r=>
+    (fann===null||r.annee===fann)&&
+    (fp===null||r.p===fp)&&
+    (ff===null||r.fo===ff)
+  );
+  _drillRows=cRows; _dSortCol=null; _dSortDir=1;
+  renderDrillTable(cRows,null,1);
+}
+
+function closeDrill(){
+  document.getElementById('chart-view').style.display='block';
+  document.getElementById('drill-view').style.display='none';
+}
+
+function renderDrillTable(rows,sc,sd){
+  const cols=[
+    {k:'annee',l:'Année',n:false},{k:'dt',l:'Date',n:false},
+    {k:'tv',l:'Type',n:false},{k:'cmd',l:'N° Commande',n:false},
+    {k:'f',l:'Fournisseur',n:false},{k:'d',l:'Désignation',n:false},
+    {k:'p',l:'Programme',n:false},{k:'fo',l:'Fonds',n:false},
+    {k:'tm',l:'Type montant',n:false},{k:'m',l:'Montant (€)',n:true},
+  ];
+  let sorted=[...rows];
+  if(sc) sorted.sort((a,b)=>{
+    const av=a[sc],bv=b[sc];
+    return(typeof av==='number'?(av-bv):(String(av).localeCompare(String(bv))))*sd;
+  });
+  const total=sorted.reduce((s,r)=>s+r.m,0);
+  document.getElementById('drill-count').textContent=sorted.length+' ligne(s)';
+  document.getElementById('drill-thead').innerHTML='<tr>'+cols.map(c=>`<th onclick="sortDrill('${c.k}')">${c.l}${sc===c.k?(sd===1?' ▲':' ▼'):''}</th>`).join('')+'</tr>';
+  document.getElementById('drill-body').innerHTML=sorted.map(r=>`<tr>${cols.map(c=>`<td style="${c.n?'text-align:right':''}">${c.n?fmt(r[c.k]):(esc(r[c.k]||'-'))}</td>`).join('')}</tr>`).join('');
+  document.getElementById('drill-foot').innerHTML='<tr>'+cols.map((c,i)=>
+    i===cols.length-1?`<td style="text-align:right">${fmt(total)} €</td>`:i===0?'<td>TOTAL</td>':'<td></td>'
+  ).join('')+'</tr>';
+}
+
+function sortDrill(col){
+  if(_dSortCol===col) _dSortDir*=-1; else{_dSortCol=col;_dSortDir=1;}
+  renderDrillTable(_drillRows,_dSortCol,_dSortDir);
+}
+
+// ════════════════════════════════════════
+// ÉVOLUTION EN COURBES
+// Courbe 1 : dépenses cumulées (montants >0 par mois)
+// Courbe 2 : budget total (ligne horizontale)
+// Courbe 3 : prévision = conso actuelle + CDa engagées + reste à réceptionner
+// ════════════════════════════════════════
+function renderEvol(){
+  const ann=document.getElementById('ef-ann').value;
+  const prg=document.getElementById('ef-prg').value;
+  const fnd=document.getElementById('ef-fnd').value;
+
+  // Budget filtré
+  const budRows=BUDGET.filter(b=>
+    (!ann||b.annee===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)
+  );
+  const totBud=budRows.reduce((s,r)=>s+r.bud,0);
+  const totPrevisReste=budRows.reduce((s,r)=>s+r.cda+r.rar,0); // CDa + reste à réceptionner
+
+  // Conso filtrée
+  const consoRows=CONSO.filter(r=>
+    (!ann||r.annee===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&r.m>0
+  );
+
+  // Agrégation par mois (YYYY-MM)
+  const monthly={};
+  for(const r of consoRows){
+    let dt=r.dt||'';
+    // Format dd/MM/yyyy → yyyy-MM
+    let mois='';
+    const parts=dt.split('/');
+    if(parts.length===3) mois=`${parts[2]}-${parts[1].padStart(2,'0')}`;
+    else mois=dt.substring(0,7); // fallback
+    if(!mois) continue;
+    monthly[mois]=(monthly[mois]||0)+r.m;
+  }
+  const sortedMois=Object.keys(monthly).sort();
+  if(!sortedMois.length){
+    if(_line) _line.destroy();
+    return;
+  }
+
+  // Cumul des dépenses
+  let cumul=0;
+  const cumulData=sortedMois.map(m=>{cumul+=monthly[m];return+cumul.toFixed(2)});
+
+  // Budget = ligne horizontale
+  const budgetLine=sortedMois.map(()=>+totBud.toFixed(2));
+
+  // Prévision = dernier cumul + reste prévu (CDa engagées + reste à réceptionner)
+  // On n'affiche la prévision que sur les mois futurs (après le dernier mois avec données)
+  const lastCumul=cumulData[cumulData.length-1]||0;
+  const prevision=lastCumul+totPrevisReste;
+  // Créer un point de prévision : valeur finale estimée, projetée sur le dernier mois connu
+  // + un point "prévision finale" à la fin de l'année
+  const dernierMois=sortedMois[sortedMois.length-1];
+  const anneeRef=ann||String(Math.max(...sortedMois.map(m=>parseInt(m.split('-')[0]))));
+  const moisFin=`${anneeRef}-12`;
+  let labels=[...sortedMois];
+  let prevData=sortedMois.map(()=>null);
+  if(!labels.includes(moisFin)&&moisFin>dernierMois){
+    labels.push(moisFin);
+    budgetLine.push(+totBud.toFixed(2));
+    cumulData.push(null);
+    prevData.push(+prevision.toFixed(2));
+  }
+  // Connecter la prévision au dernier point connu
+  prevData[sortedMois.length-1]=+lastCumul.toFixed(2);
+  if(!labels.includes(moisFin)) {
+    prevData[prevData.length-1]=+prevision.toFixed(2);
+  }
+
+  if(_line) _line.destroy();
+  const ctx=document.getElementById('myLine').getContext('2d');
+  _line=new Chart(ctx,{
+    type:'line',
+    data:{
       labels,
-      datasets: [
-        { label: 'Budget AE N',   data: buds,   backgroundColor: '#93c5fd', order: 1 },
-        { label: 'Conso AE N',    data: consos,  backgroundColor: '#2563eb', order: 1 },
-        { label: 'Non Conso AE N',data: ncs,     backgroundColor: '#fbbf24', order: 1 },
+      datasets:[
+        {
+          label:'Dépenses cumulées',data:cumulData,
+          borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.08)',
+          tension:.3,fill:true,pointRadius:3,borderWidth:2,spanGaps:false
+        },
+        {
+          label:'Budget AE N',data:budgetLine,
+          borderColor:'#dc2626',backgroundColor:'transparent',
+          borderDash:[6,4],tension:0,pointRadius:0,borderWidth:2
+        },
+        {
+          label:'Prévision finale',data:prevData,
+          borderColor:'#d97706',backgroundColor:'transparent',
+          borderDash:[3,3],tension:.2,pointRadius:4,borderWidth:2,
+          pointStyle:'triangle',spanGaps:true
+        },
       ]
     },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { position: 'top' },
-        tooltip: {
-          callbacks: {
-            label: ctx => `${ctx.dataset.label} : ${fmt(ctx.raw)} €`
-          }
-        }
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{position:'top'},
+        tooltip:{callbacks:{label:c=>`${c.dataset.label} : ${fmt(c.raw||0)} €`}}
       },
-      scales: {
-        y: { ticks: { callback: v => fmt(v) + ' €' } }
-      },
-      onClick: (e, els) => {
-        if (!els.length) return;
-        const label = labels[els[0].index];
-        openDrill(label);
-      },
-      onHover: (e, els) => {
-        e.native.target.style.cursor = els.length ? 'pointer' : 'default';
+      scales:{
+        y:{ticks:{callback:v=>fmt(v)+' €'}},
+        x:{ticks:{maxTicksLimit:14}}
       }
     }
   });
 }
 
-// ═══════════════════════════════════════════════
-// DRILL-DOWN
-// ═══════════════════════════════════════════════
-function openDrill(label) {
-  const f = getFilters();
-  document.getElementById('chart-view').style.display = 'none';
-  document.getElementById('drill-view').style.display = 'block';
-  const grpLabel = _grp === 'prog' ? 'Programme' : _grp === 'fonds' ? 'Fonds' : 'Année';
-  document.getElementById('drill-title').textContent = grpLabel + ' : ' + label;
-
-  const g = _grouped[label];
-  const pct = g.bud > 0 ? g.conso / g.bud * 100 : 0;
-  const cls = pct >= 90 ? 'ok' : pct >= 50 ? 'warn' : 'bad';
-  document.getElementById('drill-kpis').innerHTML = `
-    <div class="kpi"><div class="kpi-label">Budget AE</div><div class="kpi-val">${fmt(g.bud)} €</div></div>
-    <div class="kpi"><div class="kpi-label">Conso AE</div><div class="kpi-val ${cls}">${fmt(g.conso)} €</div></div>
-    <div class="kpi"><div class="kpi-label">Non consommé</div><div class="kpi-val warn">${fmt(g.nconso)} €</div></div>
-    <div class="kpi"><div class="kpi-label">Taux conso</div><div class="kpi-val ${cls}">${fmtPct(pct)}</div></div>
-  `;
-
-  // Filtres conso
-  const fann = _grp === 'annee' ? parseInt(label) : (f.annee ? parseInt(f.annee) : null);
-  const fp   = _grp === 'prog'  ? label : (f.prog  && f.prog  !== '' ? f.prog  : null);
-  const ff   = _grp === 'fonds' ? label : (f.fonds && f.fonds !== '' ? f.fonds : null);
-
-  const cRows = CONSO.filter(r =>
-    (fann === null || r.annee === fann) &&
-    (fp   === null || r.p    === fp)    &&
-    (ff   === null || r.fo   === ff)
-  );
-
-  _drillRows = cRows;
-  _drillSortCol = null;
-  _drillSortDir = 1;
-  renderDrillTable(cRows, null, 1);
-}
-
-function closeDrill() {
-  document.getElementById('chart-view').style.display  = 'block';
-  document.getElementById('drill-view').style.display  = 'none';
-}
-
-function renderDrillTable(rows, sortCol, sortDir) {
-  const cols = [
-    { k: 'annee', label: 'Année',        num: false },
-    { k: 'dt',    label: 'Date',         num: false },
-    { k: 'tv',    label: 'Type',         num: false },
-    { k: 'f',     label: 'Fournisseur',  num: false },
-    { k: 'd',     label: 'Désignation',  num: false },
-    { k: 'p',     label: 'Programme',    num: false },
-    { k: 'fo',    label: 'Fonds',        num: false },
-    { k: 'tm',    label: 'Type montant', num: false },
-    { k: 'm',     label: 'Montant (€)',  num: true  },
-  ];
-  let sorted = [...rows];
-  if (sortCol) {
-    sorted.sort((a, b) => {
-      const av = a[sortCol], bv = b[sortCol];
-      if (typeof av === 'number') return (av - bv) * sortDir;
-      return String(av).localeCompare(String(bv)) * sortDir;
-    });
-  }
-  const total = sorted.reduce((s, r) => s + r.m, 0);
-  document.getElementById('drill-count').textContent = sorted.length + ' ligne(s)';
-  document.getElementById('drill-thead').innerHTML =
-    '<tr>' + cols.map(c => `<th onclick="sortDrill('${c.k}')">${c.label} ${sortCol === c.k ? (sortDir === 1 ? '▲' : '▼') : ''}</th>`).join('') + '</tr>';
-  document.getElementById('drill-body').innerHTML =
-    sorted.map(r => `<tr>${cols.map(c =>
-      `<td style="${c.num ? 'text-align:right' : ''}">${c.num ? fmt(r[c.k]) : (r[c.k] || '-')}</td>`
-    ).join('')}</tr>`).join('');
-  document.getElementById('drill-foot').innerHTML =
-    `<tr>${cols.map((c, i) =>
-      i === cols.length - 1
-        ? `<td style="text-align:right">${fmt(total)} €</td>`
-        : i === 0 ? `<td>TOTAL</td>` : '<td></td>'
-    ).join('')}</tr>`;
-}
-
-function sortDrill(col) {
-  if (_drillSortCol === col) _drillSortDir *= -1;
-  else { _drillSortCol = col; _drillSortDir = 1; }
-  renderDrillTable(_drillRows, _drillSortCol, _drillSortDir);
-}
-
-// ═══════════════════════════════════════════════
+// ════════════════════════════════════════
 // TABLEAU CROISÉ
-// ═══════════════════════════════════════════════
-function renderCross() {
-  const annee = document.getElementById('cf-annee').value;
-  const prog  = document.getElementById('cf-prog').value;
-  const fonds = document.getElementById('cf-fonds').value;
-  const rows = BUDGET.filter(b =>
-    (!annee || b.annee === parseInt(annee)) &&
-    (!prog  || b.prog  === prog)  &&
-    (!fonds || b.fonds === fonds)
+// ════════════════════════════════════════
+function renderCross(){
+  const ann=document.getElementById('xf-ann').value;
+  const prg=document.getElementById('xf-prg').value;
+  const fnd=document.getElementById('xf-fnd').value;
+  const rows=BUDGET.filter(b=>
+    (!ann||b.annee===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)
   );
-  const thead = document.getElementById('cross-thead');
-  const tbody = document.getElementById('cross-body');
-  const cols = [
-    { k: 'annee',  label: 'Année' },
-    { k: 'prog',   label: 'Programme' },
-    { k: 'fonds',  label: 'Fonds' },
-    { k: 'bud',    label: 'Budget AE N', num: true },
-    { k: 'conso',  label: 'Conso AE N',  num: true },
-    { k: 'nconso', label: 'Non Conso',   num: true },
-    { k: 'paye',   label: 'Payé (CP)',   num: true },
-    { k: 'rap',    label: 'Reste à payer', num: true },
-    { k: '_pct',   label: 'Taux conso',  num: false },
+  const cols=[
+    {k:'cf',l:'Centre fin.'},{k:'annee',l:'Année'},
+    {k:'prog',l:'Programme'},{k:'fonds',l:'Fonds'},
+    {k:'bud',l:'Budget AE N',n:true},{k:'conso',l:'Conso AE N',n:true},
+    {k:'nconso',l:'Non Conso',n:true},{k:'cda',l:'CDa engagées',n:true},
+    {k:'rar',l:'Reste à réceptionner',n:true},{k:'paye',l:'Payé (CP)',n:true},
+    {k:'rap',l:'Reste à payer',n:true},{k:'_pct',l:'Taux conso'}
   ];
-  thead.innerHTML = '<tr>' + cols.map(c => `<th>${c.label}</th>`).join('') + '</tr>';
-  tbody.innerHTML = rows.map(r => {
-    const pct = r.bud > 0 ? r.conso / r.bud * 100 : 0;
-    const cls = pct >= 90 ? 'rate-ok' : pct >= 50 ? 'rate-warn' : 'rate-bad';
-    return `<tr>${cols.map(c => {
-      if (c.k === '_pct') return `<td><span class="rate-badge ${cls}">${fmtPct(pct)}</span></td>`;
-      return `<td style="${c.num ? 'text-align:right' : ''}">${c.num ? fmt(r[c.k]) + ' €' : r[c.k]}</td>`;
-    }).join('')}</tr>`;
+  document.getElementById('cross-thead').innerHTML='<tr>'+cols.map(c=>`<th>${c.l}</th>`).join('')+'</tr>';
+  document.getElementById('cross-body').innerHTML=rows.map(r=>{
+    const pct=r.bud>0?r.conso/r.bud*100:0;
+    const cls=pct>=90?'rate-ok':pct>=50?'rate-warn':'rate-bad';
+    return'<tr>'+cols.map(c=>{
+      if(c.k==='_pct') return`<td><span class="rate-badge ${cls}">${fmtPct(pct)}</span></td>`;
+      return`<td style="${c.n?'text-align:right':''}">${c.n?fmt(r[c.k])+' €':esc(String(r[c.k]))}</td>`;
+    }).join('')+'</tr>';
   }).join('');
 }
 </script>
