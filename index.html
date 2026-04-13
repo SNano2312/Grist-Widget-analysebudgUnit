@@ -93,8 +93,8 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <select id="sel-c26"><option value="">-- Choisir une table --</option></select>
     </div>
     <div id="cfg-err"></div>
-    <button id="btn-analyse" disabled onclick="lanceAnalyse()">Lancer l'analyse →</button>
-    <button id="btn-debug" onclick="showCols()"
+    <button id="btn-analyse" disabled >Lancer l'analyse →</button>
+    <button id="btn-debug" id="btn-debug-inner"
       style="width:100%;margin-top:8px;padding:8px;background:#f0f2f7;border:1px solid #dde2ec;border-radius:6px;cursor:pointer;font-size:.8rem;color:#6b7280">
       🔍 Voir les noms de colonnes (debug)
     </button>
@@ -219,6 +219,24 @@ async function showCols(){
     out.textContent = 'Erreur: '+e.message;
   }
 }
+
+// Exposer les fonctions au scope global (nécessaire dans certains contextes iframe)
+window.showCols   = showCols;
+window.lanceAnalyse = lanceAnalyse;
+window.retourCfg  = retourCfg;
+window.switchTab  = switchTab;
+window.closeDrill = closeDrill;
+window.sortD      = sortD;
+window.renderHisto= renderHisto;
+window.renderEvol = renderEvol;
+window.renderCross= renderCross;
+
+document.addEventListener('DOMContentLoaded', function(){
+  const b = document.getElementById('btn-debug-inner');
+  if(b) b.addEventListener('click', showCols);
+  const ba = document.getElementById('btn-analyse');
+  if(ba) ba.addEventListener('click', lanceAnalyse);
+});
 
 // ════════════════════════════════════════
 // INIT GRIST
