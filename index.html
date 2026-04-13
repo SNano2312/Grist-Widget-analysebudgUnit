@@ -106,7 +106,10 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
 <div id="dash">
   <div class="dh">
     <h1 id="dash-title">Analyse budgétaire</h1>
-    <button class="btn" onclick="retourCfg()">↩ Changer les sources</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn" style="background:var(--pr);color:#fff;border-color:var(--pr)" onclick="refreshAnalyse()">🔄 Actualiser</button>
+      <button class="btn" onclick="retourCfg()">↩ Changer les sources</button>
+    </div>
   </div>
   <div class="tabs">
     <div class="tab on" id="tab-h" onclick="switchTab('h')">Histogramme</div>
@@ -213,6 +216,14 @@ async function showCols(){
 }
 
 // Exposer les fonctions au scope global (nécessaire dans certains contextes iframe)
+// Relancer l'analyse avec les mêmes tables (après mise à jour des Excel dans Grist)
+async function refreshAnalyse(){
+  const btn = document.querySelector('[onclick="refreshAnalyse()"]');
+  if(btn){ btn.textContent='⏳ Actualisation…'; btn.disabled=true; }
+  await lanceAnalyse();
+  if(btn){ btn.textContent='🔄 Actualiser'; btn.disabled=false; }
+}
+window.refreshAnalyse = refreshAnalyse;
 window.showCols   = showCols;
 window.lanceAnalyse = lanceAnalyse;
 window.retourCfg  = retourCfg;
@@ -238,17 +249,14 @@ grist.ready({
   onEditOptions: retourCfg,
 });
 
-// Au démarrage : lister les tables disponibles
+// Au démarrage : lister les tables et relancer auto si config mémorisée
 (async function init(){
   showLd('Chargement des tables Grist…');
   try{
-    // Récupérer toutes les tables du document via l'API Grist
     const tables = await grist.docApi.listTables();
     _tables = tables;
-    // Peupler les 4 selects
     ['sel-b25','sel-b26','sel-c25','sel-c26'].forEach(id=>{
       const sel=document.getElementById(id);
-      // Pré-sélection intelligente selon le nom
       tables.forEach(t=>{
         const opt=document.createElement('option');
         opt.value=t; opt.textContent=t;
@@ -257,17 +265,21 @@ grist.ready({
       sel.addEventListener('change', checkSelections);
     });
 
-    // Restaurer la config sauvegardée si elle existe
-    try{
-      const saved=JSON.parse(localStorage.getItem('budgetCfg')||'{}');
-      if(saved.b25) document.getElementById('sel-b25').value=saved.b25;
-      if(saved.b26) document.getElementById('sel-b26').value=saved.b26;
-      if(saved.c25) document.getElementById('sel-c25').value=saved.c25;
-      if(saved.c26) document.getElementById('sel-c26').value=saved.c26;
-    }catch(e){}
-
+    // Restaurer la config sauvegardée
+    let saved={};
+    try{ saved=JSON.parse(localStorage.getItem('budgetCfg')||'{}'); }catch(e){}
+    if(saved.b25) document.getElementById('sel-b25').value=saved.b25;
+    if(saved.b26) document.getElementById('sel-b26').value=saved.b26;
+    if(saved.c25) document.getElementById('sel-c25').value=saved.c25;
+    if(saved.c26) document.getElementById('sel-c26').value=saved.c26;
     checkSelections();
-    hideLd();
+
+    // Relance automatique si toutes les tables sont configurées
+    if(saved.b25 && saved.b26 && saved.c25 && saved.c26){
+      await lanceAnalyse();
+    } else {
+      hideLd();
+    }
   }catch(e){
     hideLd();
     document.getElementById('cfg-err').textContent='❌ Impossible de lister les tables : '+e.message;
@@ -310,10 +322,10 @@ async function lanceAnalyse(){
     setLd('Traitement…');
     BUDGET=[]; CONSO=[]; CF_LABEL='';
 
-    // DIAGNOSTIC
-    console.log('[DIAG] B25 cols:', JSON.stringify(Object.keys(rawB25)));
+    // DIAGNOSTIC Centre financier
+    console.log('[CF-B25] Centre_financier vals:', JSON.stringify((rawB25['Centre_financier']||[]).slice(0,5)));
+    console.log('[CF-B25] toutes cols avec "centre":', JSON.stringify(Object.keys(rawB25).filter(k=>k.toLowerCase().includes('centre'))));
     console.log('[DIAG] B25 rows:', (rawB25[Object.keys(rawB25)[0]]||[]).length);
-    console.log('[DIAG] C25 cols (extrait):', JSON.stringify(Object.keys(rawC25).slice(0,10)));
     console.log('[DIAG] C25 rows:', (rawC25[Object.keys(rawC25)[0]]||[]).length);
 
     procBudget(rawB25, 2025);
@@ -325,13 +337,11 @@ async function lanceAnalyse(){
     if(BUDGET.length) console.log('[RESULT] B0:', JSON.stringify(BUDGET[0]));
     if(CONSO.length) console.log('[RESULT] C0:', JSON.stringify(CONSO[0]));
 
-    // Si CF_LABEL non trouvé dans budget, chercher dans conso (colonne Centre_financier texte)
+    // CF_LABEL depuis la conso (Centre_de_couts "0496C0001" → "496")
     if(!CF_LABEL && CONSO.length){
-      const cf = CONSO.find(r=>r.cf && r.cf!=='null' && r.cf!=='0');
-      if(cf) CF_LABEL = cf.cf;
+      const found = CONSO.find(r=>r.cf && r.cf.length>0);
+      if(found) CF_LABEL = found.cf;
     }
-    // Fallback : extraire depuis le nom de la table (ex: "budget_complet_2025" → non pertinent)
-    // On affiche juste ce qu'on a
     fillFilters();
     hideLd();
     document.getElementById('cfg-screen').style.display='none';
@@ -452,10 +462,13 @@ function procConso(raw, annee){
       }
     }
 
-    const cfConso = (raw['Centre_financier']||raw['Centre financier']||[])[i];
+    // Extraire le centre financier depuis Centre_de_couts ex: "0496C0001" → "496"
+    const cdc = (raw['Centre_de_couts']||[])[i]||'';
+    const cfMatch = cdc.toString().match(/^0*(\d+)[A-Z]/);
+    const cfConso = cfMatch ? cfMatch[1] : '';
     CONSO.push({
       annee, tv,
-      cf: cfConso != null ? String(cfConso).replace(/^-?\d+$/, '').trim() || '' : '',
+      cf: cfConso,
       f:(fours[i]||'').toString().trim(),
       cmd:(cmds[i]||'').toString().trim(),
       d:(desigs[i]||'').toString().trim(),
