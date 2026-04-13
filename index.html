@@ -337,11 +337,6 @@ async function lanceAnalyse(){
     if(BUDGET.length) console.log('[RESULT] B0:', JSON.stringify(BUDGET[0]));
     if(CONSO.length) console.log('[RESULT] C0:', JSON.stringify(CONSO[0]));
 
-    // CF_LABEL depuis la conso (Centre_de_couts "0496C0001" → "496")
-    if(!CF_LABEL && CONSO.length){
-      const found = CONSO.find(r=>r.cf && r.cf.length>0);
-      if(found) CF_LABEL = found.cf;
-    }
     fillFilters();
     hideLd();
     document.getElementById('cfg-screen').style.display='none';
@@ -392,12 +387,11 @@ function procBudget(raw, annee){
     const key = `${annee}|${prog}|${fond}`;
     if(seen.has(key)) continue;
     seen.add(key);
-    // Centre financier peut être null (lignes de total) ou numérique
-    const cfRaw = cfs[i];
-    const cf = (cfRaw != null && cfRaw !== '' && cfRaw !== 0) ? String(cfRaw).trim() : '';
-    if(cf && !CF_LABEL) CF_LABEL = cf;
+    // Lire CF depuis la colonne (première valeur non vide)
+    const cfVal = (cfs[i]||'').toString().trim();
+    if(cfVal && cfVal !== '0') CF_LABEL = cfVal;
     BUDGET.push({
-      annee, cf, prog, fonds:fond,
+      annee, cf:CF_LABEL, prog, fonds:fond,
       bud:N(buds[i]), conso:N(consos[i]), nconso:N(nconsos[i]),
       cda:N(cdas[i]), rar:N(rars[i]), om:N(oms[i]), nf:N(nfs[i]),
       paye:N(payes[i]), rap:N(raps[i]),
@@ -462,13 +456,9 @@ function procConso(raw, annee){
       }
     }
 
-    // Extraire le centre financier depuis Centre_de_couts ex: "0496C0001" → "496"
-    const cdc = (raw['Centre_de_couts']||[])[i]||'';
-    const cfMatch = cdc.toString().match(/^0*(\d+)[A-Z]/);
-    const cfConso = cfMatch ? cfMatch[1] : '';
     CONSO.push({
       annee, tv,
-      cf: cfConso,
+      cf: CF_LABEL,
       f:(fours[i]||'').toString().trim(),
       cmd:(cmds[i]||'').toString().trim(),
       d:(desigs[i]||'').toString().trim(),
@@ -612,7 +602,11 @@ function renderEvol(){
   const totBud=budRows.reduce((s,r)=>s+r.bud,0);
   const totCDA=budRows.reduce((s,r)=>s+r.cda,0);
   const totRAR=budRows.reduce((s,r)=>s+r.rar,0);
-  const consoRows=CONSO.filter(r=>(!ann||r.annee===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&r.m>0);
+  // Commandes d'achat Original uniquement = engagements formels ne dépassant pas le budget
+  const consoRows=CONSO.filter(r=>
+    (!ann||r.annee===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&
+    r.tv==="Commandes d'achat"&&r.tm==='Original'
+  );
   const monthly={};
   for(const r of consoRows){
     const mois=r.dtMois||''; if(!mois||mois.length<7) continue;
@@ -642,7 +636,7 @@ function renderEvol(){
   _line=new Chart(document.getElementById('chLine').getContext('2d'),{
     type:'line',
     data:{labels,datasets:[
-      {label:'Engagements cumulés',data:dCumul,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.07)',tension:.3,fill:true,pointRadius:3,borderWidth:2,spanGaps:false},
+      {label:'Commandes engagées (cumulées)',data:dCumul,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.07)',tension:.3,fill:true,pointRadius:3,borderWidth:2,spanGaps:false},
       {label:'Budget AE N',data:dBudget,borderColor:'#dc2626',backgroundColor:'transparent',borderDash:[7,4],tension:0,pointRadius:0,borderWidth:2.5},
       {label:`Prévision (CDa+RAR = ${fmt(totCDA+totRAR)} €)`,data:dPrev,borderColor:'#d97706',backgroundColor:'transparent',borderDash:[4,3],tension:0,pointRadius:5,borderWidth:2,pointStyle:'triangle',spanGaps:true},
     ]},
