@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Analyse budgétaire</title>
+<!-- SDK Grist : gère l'auth et l'accès aux tables automatiquement -->
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f0f2f7;--s:#fff;--bd:#dde2ec;--tx:#1b1f2e;--mu:#6b7280;--pr:#2563eb;--pl:#eff6ff;--ok:#16a34a;--wn:#d97706;--er:#dc2626;--r:8px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:14px}
+
+/* ── CONFIG ── */
+#cfg-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;background:linear-gradient(135deg,#e8eeff,#f0f2f7)}
+.cfg-h1{font-size:1.6rem;font-weight:700;text-align:center;margin-bottom:6px}
+.cfg-sub{color:var(--mu);text-align:center;margin-bottom:32px;font-size:.9rem}
+.cfg-card{background:var(--s);border:1px solid var(--bd);border-radius:var(--r);padding:28px;width:100%;max-width:520px}
+.cfg-card h2{font-size:.95rem;font-weight:700;margin-bottom:20px;color:var(--tx)}
+.cfg-row{display:flex;flex-direction:column;gap:4px;margin-bottom:14px}
+.cfg-row label{font-size:.72rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.04em}
+.cfg-row select{padding:8px 10px;border:1px solid var(--bd);border-radius:6px;background:#fff;font-size:.85rem}
+#cfg-err{color:var(--er);font-size:.82rem;margin:10px 0}
+#btn-analyse{width:100%;padding:12px;background:var(--pr);color:#fff;border:none;border-radius:var(--r);font-size:.95rem;font-weight:600;cursor:pointer;margin-top:6px}
+#btn-analyse:hover{background:#1d4ed8}
+#btn-analyse:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── DASHBOARD ── */
+#dash{display:none;padding:20px 24px;max-width:1260px;margin:0 auto}
+.dh{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.dh h1{font-size:1.15rem;font-weight:700}
+.btn{padding:6px 13px;background:var(--s);border:1px solid var(--bd);border-radius:6px;cursor:pointer;font-size:.8rem;color:var(--mu)}
+.btn:hover{border-color:var(--pr);color:var(--pr)}
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--bd);margin-bottom:18px}
+.tab{padding:8px 18px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:500;color:var(--mu);transition:all .15s}
+.tab.on{color:var(--pr);border-bottom-color:var(--pr)}
+.flt{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg label{font-size:.7rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.04em}
+.fg select{padding:6px 10px;border:1px solid var(--bd);border-radius:6px;background:#fff;font-size:.83rem;min-width:148px}
+.ks{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.kpi{background:var(--s);border:1px solid var(--bd);border-radius:var(--r);padding:12px 16px;flex:1 1 150px}
+.kl{font-size:.7rem;color:var(--mu);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+.kv{font-size:1.15rem;font-weight:700}
+.c-ok{color:var(--ok)}.c-wn{color:var(--wn)}.c-er{color:var(--er)}
+.pnl{background:var(--s);border:1px solid var(--bd);border-radius:var(--r);padding:18px;margin-bottom:16px}
+.pnl-t{font-size:.82rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.04em;margin-bottom:14px}
+#chBar{max-height:340px}
+#chLine{max-height:310px}
+#drv{display:none;margin-top:4px}
+.drh{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.dk{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tw{background:var(--s);border:1px solid var(--bd);border-radius:var(--r);overflow:auto;max-height:430px}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+thead th{background:#f7f8fb;padding:8px 10px;text-align:left;font-weight:700;border-bottom:2px solid var(--bd);white-space:nowrap;cursor:pointer;position:sticky;top:0}
+thead th:hover{color:var(--pr)}
+tbody td{padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis}
+tbody tr:hover{background:var(--pl)}
+tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px solid var(--bd)}
+.rb{display:inline-block;padding:2px 8px;border-radius:12px;font-weight:600;font-size:.75rem}
+.r-ok{background:#dcfce7;color:var(--ok)}.r-wn{background:#fef9c3;color:var(--wn)}.r-er{background:#fee2e2;color:var(--er)}
+#ld{display:none;position:fixed;inset:0;background:rgba(255,255,255,.88);align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:10px}
+#ld.on{display:flex}
+.sp{width:34px;height:34px;border:4px solid var(--bd);border-top-color:var(--pr);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div id="ld"><div class="sp"></div><div id="ld-msg" style="font-weight:600;color:var(--mu)">Chargement…</div></div>
+
+<!-- ── ÉCRAN DE CONFIGURATION ── -->
+<div id="cfg-screen">
+  <div class="cfg-h1">📊 Analyse budgétaire</div>
+  <div class="cfg-sub">Sélectionnez les tables Grist correspondant à vos fichiers sources</div>
+  <div class="cfg-card">
+    <h2>Configuration des sources de données</h2>
+    <div class="cfg-row">
+      <label>Table Budget 2025</label>
+      <select id="sel-b25"><option value="">-- Choisir une table --</option></select>
+    </div>
+    <div class="cfg-row">
+      <label>Table Budget 2026</label>
+      <select id="sel-b26"><option value="">-- Choisir une table --</option></select>
+    </div>
+    <div class="cfg-row">
+      <label>Table Conso AE 2025</label>
+      <select id="sel-c25"><option value="">-- Choisir une table --</option></select>
+    </div>
+    <div class="cfg-row">
+      <label>Table Conso AE 2026</label>
+      <select id="sel-c26"><option value="">-- Choisir une table --</option></select>
+    </div>
+    <div id="cfg-err"></div>
+    <button id="btn-analyse" disabled >Lancer l'analyse →</button>
+    <button id="btn-debug" id="btn-debug-inner"
+      style="width:100%;margin-top:8px;padding:8px;background:#f0f2f7;border:1px solid #dde2ec;border-radius:6px;cursor:pointer;font-size:.8rem;color:#6b7280">
+      🔍 Voir les noms de colonnes (debug)
+    </button>
+    <pre id="debug-out" style="margin-top:12px;font-size:.72rem;background:#f7f8fb;padding:10px;border-radius:6px;overflow:auto;max-height:300px;display:none"></pre>
+  </div>
+</div>
+
+<!-- ── DASHBOARD ── -->
+<div id="dash">
+  <div class="dh">
+    <h1 id="dash-title">Analyse budgétaire</h1>
+    <div style="display:flex;gap:8px">
+      <button class="btn" style="background:var(--pr);color:#fff;border-color:var(--pr)" onclick="refreshAnalyse()">🔄 Actualiser</button>
+      <button class="btn" onclick="retourCfg()">↩ Changer les sources</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab on" id="tab-h" onclick="switchTab('h')">Histogramme</div>
+    <div class="tab" id="tab-e" onclick="switchTab('e')">Évolution</div>
+    <div class="tab" id="tab-x" onclick="switchTab('x')">Tableau croisé</div>
+  </div>
+
+  <!-- HISTOGRAMME -->
+  <div id="vw-h">
+    <div class="flt">
+      <div class="fg"><label>Année</label><select id="h-ann" onchange="renderHisto()"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Programme</label><select id="h-prg" onchange="renderHisto()"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label><select id="h-fnd" onchange="renderHisto()"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Regrouper par</label>
+        <select id="h-grp" onchange="renderHisto()">
+          <option value="prog">Programme</option>
+          <option value="fonds">Fonds</option>
+          <option value="annee">Année</option>
+        </select>
+      </div>
+    </div>
+    <div class="ks" id="kpi-strip"></div>
+    <div class="pnl" id="cv"><canvas id="chBar"></canvas></div>
+    <div id="drv">
+      <div class="drh">
+        <button class="btn" onclick="closeDrill()">← Retour</button>
+        <span id="dr-title" style="font-weight:600;font-size:.95rem"></span>
+      </div>
+      <div class="dk" id="dr-kpis"></div>
+      <div id="dr-cnt" style="font-size:.78rem;color:var(--mu);margin-bottom:6px"></div>
+      <div class="tw"><table><thead id="dr-th"></thead><tbody id="dr-tb"></tbody><tfoot id="dr-tf"></tfoot></table></div>
+    </div>
+  </div>
+
+  <!-- ÉVOLUTION -->
+  <div id="vw-e" style="display:none">
+    <div class="flt">
+      <div class="fg"><label>Année</label><select id="e-ann" onchange="renderEvol()"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Programme</label><select id="e-prg" onchange="renderEvol()"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label><select id="e-fnd" onchange="renderEvol()"><option value="">Tous</option></select></div>
+    </div>
+    <div class="pnl"><div class="pnl-t">Évolution mensuelle des engagements et prévisions</div><canvas id="chLine"></canvas></div>
+  </div>
+
+  <!-- TABLEAU CROISÉ -->
+  <div id="vw-x" style="display:none">
+    <div class="flt">
+      <div class="fg"><label>Année</label><select id="x-ann" onchange="renderCross()"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Programme</label><select id="x-prg" onchange="renderCross()"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label><select id="x-fnd" onchange="renderCross()"><option value="">Tous</option></select></div>
+    </div>
+    <div class="tw"><table><thead id="x-th"></thead><tbody id="x-tb"></tbody></table></div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════
+let BUDGET=[], CONSO=[], CF_LABEL='';
+let _chart=null, _line=null;
+let _dRows=[], _dSC=null, _dSD=1;
+let _grp='prog', _grpd={};
+let _tables=[];  // tables disponibles dans Grist
+
+// ════════════════════════════════════════
+// DEBUG
+// ════════════════════════════════════════
+async function showCols(){
+  const out = document.getElementById('debug-out');
+  out.style.display='block';
+  out.textContent = 'Chargement...';
+  try{
+    const tB = document.getElementById('sel-b25').value;
+    const tC = document.getElementById('sel-c25').value;
+    let txt = '';
+    if(tB){
+      const d = await grist.docApi.fetchTable(tB);
+      txt += '=== BUDGET ('+tB+') ===\n';
+      txt += 'Colonnes: '+JSON.stringify(Object.keys(d))+'\n';
+      const n = (d[Object.keys(d)[0]]||[]).length;
+      if(n>0){
+        const row = {};
+        Object.entries(d).forEach(([k,v])=>{row[k]=v[0];});
+        txt += '1ere ligne: '+JSON.stringify(row)+'\n';
+      }
+    }
+    txt += '\n';
+    if(tC){
+      const d = await grist.docApi.fetchTable(tC);
+      txt += '=== CONSO ('+tC+') ===\n';
+      txt += 'Colonnes: '+JSON.stringify(Object.keys(d))+'\n';
+      const n = (d[Object.keys(d)[0]]||[]).length;
+      if(n>0){
+        const row = {};
+        Object.entries(d).forEach(([k,v])=>{row[k]=v[0];});
+        txt += '1ere ligne: '+JSON.stringify(row)+'\n';
+      }
+    }
+    out.textContent = txt;
+  }catch(e){
+    out.textContent = 'Erreur: '+e.message;
+  }
+}
+
+// Exposer les fonctions au scope global (nécessaire dans certains contextes iframe)
+// Relancer l'analyse avec les mêmes tables (après mise à jour des Excel dans Grist)
+async function refreshAnalyse(){
+  const btn = document.querySelector('[onclick="refreshAnalyse()"]');
+  if(btn){ btn.textContent='⏳ Actualisation…'; btn.disabled=true; }
+  await lanceAnalyse();
+  if(btn){ btn.textContent='🔄 Actualiser'; btn.disabled=false; }
+}
+window.refreshAnalyse = refreshAnalyse;
+window.showCols   = showCols;
+window.lanceAnalyse = lanceAnalyse;
+window.retourCfg  = retourCfg;
+window.switchTab  = switchTab;
+window.closeDrill = closeDrill;
+window.sortD      = sortD;
+window.renderHisto= renderHisto;
+window.renderEvol = renderEvol;
+window.renderCross= renderCross;
+
+document.addEventListener('DOMContentLoaded', function(){
+  const b = document.getElementById('btn-debug-inner');
+  if(b) b.addEventListener('click', showCols);
+  const ba = document.getElementById('btn-analyse');
+  if(ba) ba.addEventListener('click', lanceAnalyse);
+});
+
+// ════════════════════════════════════════
+// INIT GRIST
+// ════════════════════════════════════════
+grist.ready({
+  requiredAccess: 'read table',
+  onEditOptions: retourCfg,
+});
+
+// Au démarrage : lister les tables et relancer auto si config mémorisée
+(async function init(){
+  showLd('Chargement des tables Grist…');
+  try{
+    const tables = await grist.docApi.listTables();
+    _tables = tables;
+    ['sel-b25','sel-b26','sel-c25','sel-c26'].forEach(id=>{
+      const sel=document.getElementById(id);
+      tables.forEach(t=>{
+        const opt=document.createElement('option');
+        opt.value=t; opt.textContent=t;
+        sel.appendChild(opt);
+      });
+      sel.addEventListener('change', checkSelections);
+    });
+
+    // Restaurer la config sauvegardée
+    let saved={};
+    try{ saved=JSON.parse(localStorage.getItem('budgetCfg')||'{}'); }catch(e){}
+    if(saved.b25) document.getElementById('sel-b25').value=saved.b25;
+    if(saved.b26) document.getElementById('sel-b26').value=saved.b26;
+    if(saved.c25) document.getElementById('sel-c25').value=saved.c25;
+    if(saved.c26) document.getElementById('sel-c26').value=saved.c26;
+    checkSelections();
+
+    // Relance automatique si toutes les tables sont configurées
+    if(saved.b25 && saved.b26 && saved.c25 && saved.c26){
+      await lanceAnalyse();
+    } else {
+      hideLd();
+    }
+  }catch(e){
+    hideLd();
+    document.getElementById('cfg-err').textContent='❌ Impossible de lister les tables : '+e.message;
+  }
+})();
+
+function checkSelections(){
+  const vals=['sel-b25','sel-b26','sel-c25','sel-c26'].map(id=>document.getElementById(id).value);
+  document.getElementById('btn-analyse').disabled=!vals.every(v=>v!=='');
+}
+
+function retourCfg(){
+  document.getElementById('dash').style.display='none';
+  document.getElementById('cfg-screen').style.display='flex';
+}
+
+// ════════════════════════════════════════
+// LANCEMENT ANALYSE
+// ════════════════════════════════════════
+async function lanceAnalyse(){
+  const tB25=document.getElementById('sel-b25').value;
+  const tB26=document.getElementById('sel-b26').value;
+  const tC25=document.getElementById('sel-c25').value;
+  const tC26=document.getElementById('sel-c26').value;
+
+  // Mémoriser la config
+  try{localStorage.setItem('budgetCfg',JSON.stringify({b25:tB25,b26:tB26,c25:tC25,c26:tC26}));}catch(e){}
+
+  showLd('Lecture des données…');
+  try{
+    setLd('Lecture Budget 2025…');
+    const rawB25 = await grist.docApi.fetchTable(tB25);
+    setLd('Lecture Budget 2026…');
+    const rawB26 = await grist.docApi.fetchTable(tB26);
+    setLd('Lecture Conso 2025…');
+    const rawC25 = await grist.docApi.fetchTable(tC25);
+    setLd('Lecture Conso 2026…');
+    const rawC26 = await grist.docApi.fetchTable(tC26);
+
+    setLd('Traitement…');
+    BUDGET=[]; CONSO=[]; CF_LABEL='';
+
+    // DIAGNOSTIC Centre financier
+    console.log('[CF-B25] Centre_financier vals:', JSON.stringify((rawB25['Centre_financier']||[]).slice(0,5)));
+    console.log('[CF-B25] toutes cols avec "centre":', JSON.stringify(Object.keys(rawB25).filter(k=>k.toLowerCase().includes('centre'))));
+    console.log('[DIAG] B25 rows:', (rawB25[Object.keys(rawB25)[0]]||[]).length);
+    console.log('[DIAG] C25 rows:', (rawC25[Object.keys(rawC25)[0]]||[]).length);
+
+    procBudget(rawB25, 2025);
+    procBudget(rawB26, 2026);
+    procConso(rawC25, 2025);
+    procConso(rawC26, 2026);
+
+    console.log('[RESULT] BUDGET:', BUDGET.length, 'CF:', CF_LABEL, 'CONSO:', CONSO.length);
+    if(BUDGET.length) console.log('[RESULT] B0:', JSON.stringify(BUDGET[0]));
+    if(CONSO.length) console.log('[RESULT] C0:', JSON.stringify(CONSO[0]));
+
+    fillFilters();
+    hideLd();
+    document.getElementById('cfg-screen').style.display='none';
+    document.getElementById('dash').style.display='block';
+    document.getElementById('dash-title').textContent='Analyse budgétaire'+(CF_LABEL?' — Centre financier '+CF_LABEL:'');
+    renderHisto();
+  }catch(e){
+    hideLd();
+    document.getElementById('cfg-err').textContent='❌ '+e.message;
+  }
+}
+
+// ════════════════════════════════════════
+// TRAITEMENT BUDGET
+// grist.docApi.fetchTable retourne un objet {colName: [val1,val2,...], ...}
+// ════════════════════════════════════════
+function procBudget(raw, annee){
+  const n = (raw[Object.keys(raw)[0]]||[]).length;
+  // Recherche flexible : nom Grist exact OU fallback insensible à la casse
+  const col = (...names) => {
+    for(const name of names){
+      if(raw[name] !== undefined) return raw[name];
+      const k = Object.keys(raw).find(k => k.toLowerCase()===name.toLowerCase());
+      if(k) return raw[k];
+    }
+    return new Array(n).fill('');
+  };
+
+  const progs   = col('Programme_de_financement', 'Programme de financement');
+  const fonds   = col('Fonds');
+  const cfs     = col('Centre_financier', 'Centre financier');
+  const buds    = col('Budget_AE_N', 'Budget AE N');
+  const consos  = col('Conso_AE_N', 'Conso AE N');
+  const nconsos = col('Non_Conso_AE_N', 'Non Conso AE N');
+  const cdas    = col('CDa_engagees_N', 'CDa engagées N');
+  const rars    = col('Reste_a_receptionner_N', 'Reste à réceptionner N');
+  const oms     = col('OM_engages_N', 'OM engagés N');
+  const nfs     = col('NF_en_attente_N', 'NF en attente N');
+  const payes   = col('Paye_CP_N', 'Payé (CP) N');
+  const raps    = col('Reste_a_Payer_CP_N', 'Reste à Payer (CP) N');
+
+  const seen = new Set();
+  for(let i=0;i<n;i++){
+    const fond = (fonds[i]||'').toString().trim();
+    if(!fond) continue;
+    const raw_prog = (progs[i]||'').toString().trim();
+    const prog = (!raw_prog || raw_prog==='NA') ? 'Non Applicable' : raw_prog;
+    const key = `${annee}|${prog}|${fond}`;
+    if(seen.has(key)) continue;
+    seen.add(key);
+    // Lire CF depuis la colonne (première valeur non vide)
+    const cfVal = (cfs[i]||'').toString().trim();
+    if(cfVal && cfVal !== '0') CF_LABEL = cfVal;
+    BUDGET.push({
+      annee, cf:CF_LABEL, prog, fonds:fond,
+      bud:N(buds[i]), conso:N(consos[i]), nconso:N(nconsos[i]),
+      cda:N(cdas[i]), rar:N(rars[i]), om:N(oms[i]), nf:N(nfs[i]),
+      paye:N(payes[i]), rap:N(raps[i]),
+    });
+  }
+}
+
+// ════════════════════════════════════════
+// TRAITEMENT CONSO
+// ════════════════════════════════════════
+function procConso(raw, annee){
+  const n = (raw[Object.keys(raw)[0]]||[]).length;
+  // Grist transforme les noms : accents supprimés, espaces → _
+  // Recherche flexible : nom exact Grist OU fallback insensible
+  const col = (...names) => {
+    for(const name of names){
+      if(raw[name]) return raw[name];
+      const k = Object.keys(raw).find(k =>
+        k.toLowerCase() === name.toLowerCase()
+      );
+      if(k) return raw[k];
+    }
+    return new Array(n).fill('');
+  };
+
+  const TV_EXCL = ['Paiements','Comptabilis. coûts secondaires'];
+  const tvs    = col('Texte_type_val_', 'Texte type val.');
+  const fonds  = col('Fonds');
+  const progs  = col('Programme_de_financement', 'Programme de financement');
+  const fours  = col('Nom_1', 'Nom 1');
+  const cmds   = col('Numero_de_piece_de_la_piece_de_reference', 'Numéro de pièce de la pièce de référence');
+  const desigs = col('Design_poste_Cde_d_achat', "Désign. poste Cde d'achat");
+  const dts    = col('Date_comptable', 'Date comptable');
+  const monts  = col('Montant_a_verifier_avec_le_budget_d_enga', "Montant à vérifier avec le budget d'enga");
+  const tms    = col('Type_de_montant2', 'Type de montant.1');
+
+  for(let i=0;i<n;i++){
+    const tv = (tvs[i]||'').toString().trim();
+    if(!tv || TV_EXCL.includes(tv)) continue;
+    const fond = (fonds[i]||'').toString().trim();
+    if(!fond) continue;
+    const raw_prog = (progs[i]||'').toString().trim();
+    const prog = (!raw_prog || raw_prog==='NA') ? 'Non Applicable' : raw_prog;
+
+    // Date : Grist stocke les dates comme timestamp Unix (secondes) ou string
+    let dt='', dtMois='';
+    const rawDt = dts[i];
+    if(typeof rawDt === 'number' && rawDt > 0){
+      // Timestamp Unix en secondes
+      const d = new Date(rawDt * 1000);
+      const y=d.getFullYear(), mo=d.getMonth()+1, day=d.getDate();
+      dt = `${String(day).padStart(2,'0')}/${String(mo).padStart(2,'0')}/${y}`;
+      dtMois = `${y}-${String(mo).padStart(2,'0')}`;
+    } else {
+      dt = (rawDt||'').toString().trim();
+      // Tenter de parser différents formats
+      if(/^\d{4}-\d{2}/.test(dt)) dtMois = dt.substring(0,7);
+      else if(/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(dt)){
+        const p=dt.split('/');
+        let yr=p[2]; if(yr.length===2) yr=(parseInt(yr)<50?'20':'19')+yr;
+        dtMois=`${yr}-${p[0].padStart(2,'0')}`;
+      }
+    }
+
+    CONSO.push({
+      annee, tv,
+      cf: CF_LABEL,
+      f:(fours[i]||'').toString().trim(),
+      cmd:(cmds[i]||'').toString().trim(),
+      d:(desigs[i]||'').toString().trim(),
+      dt, dtMois,
+      m:N(monts[i]),
+      p:prog, fo:fond,
+      tm:(tms[i]||'').toString().trim(),
+    });
+  }
+}
+
+// ════════════════════════════════════════
+// UTILITAIRES
+// ════════════════════════════════════════
+function N(v){const n=parseFloat(v);return isNaN(n)?0:n}
+function fmt(n){return n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function pct(n){return n.toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1})+' %'}
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function showLd(m){document.getElementById('ld-msg').textContent=m;document.getElementById('ld').classList.add('on')}
+function setLd(m){document.getElementById('ld-msg').textContent=m}
+function hideLd(){document.getElementById('ld').classList.remove('on')}
+
+function fillFilters(){
+  const progs=[...new Set(BUDGET.map(b=>b.prog))].sort();
+  const fonds=[...new Set(BUDGET.map(b=>b.fonds))].sort();
+  ['h-prg','e-prg','x-prg'].forEach(id=>{
+    const s=document.getElementById(id);
+    s.innerHTML='<option value="">Tous</option>';
+    progs.forEach(p=>s.innerHTML+=`<option value="${esc(p)}">${esc(p)}</option>`);
+  });
+  ['h-fnd','e-fnd','x-fnd'].forEach(id=>{
+    const s=document.getElementById(id);
+    s.innerHTML='<option value="">Tous</option>';
+    fonds.forEach(f=>s.innerHTML+=`<option value="${esc(f)}">${esc(f)}</option>`);
+  });
+}
+
+function switchTab(t){
+  ['h','e','x'].forEach(k=>{
+    document.getElementById('tab-'+k).classList.toggle('on',k===t);
+    document.getElementById('vw-'+k).style.display=k===t?'block':'none';
+  });
+  if(t==='e') renderEvol();
+  if(t==='x') renderCross();
+}
+
+// ════════════════════════════════════════
+// HISTOGRAMME
+// ════════════════════════════════════════
+function gf(){return{ann:document.getElementById('h-ann').value,prg:document.getElementById('h-prg').value,fnd:document.getElementById('h-fnd').value,grp:document.getElementById('h-grp').value}}
+function fb(f){
+  const rows=BUDGET.filter(b=>(!f.ann||b.annee===parseInt(f.ann))&&(!f.prg||b.prog===f.prg)&&(!f.fnd||b.fonds===f.fnd));
+  if(f.prg||f.fnd) console.log('[FILTER] prg='+f.prg+' fnd='+f.fnd+' -> '+rows.length+' lignes budget');
+  if(f.prg&&BUDGET.length) console.log('[FILTER] BUDGET[0].prog='+JSON.stringify(BUDGET[0].prog)+' vs f.prg='+JSON.stringify(f.prg));
+  return rows;
+}
+
+function renderHisto(){
+  closeDrill();
+  const f=gf(); _grp=f.grp;
+  const rows=fb(f);
+  const tB=rows.reduce((s,r)=>s+r.bud,0),tC=rows.reduce((s,r)=>s+r.conso,0),
+        tN=rows.reduce((s,r)=>s+r.nconso,0),tP=rows.reduce((s,r)=>s+r.paye,0);
+  const p=tB>0?tC/tB*100:0, cl=p>=90?'c-ok':p>=50?'c-wn':'c-er';
+  document.getElementById('kpi-strip').innerHTML=`
+    <div class="kpi"><div class="kl">Budget total AE</div><div class="kv">${fmt(tB)} €</div></div>
+    <div class="kpi"><div class="kl">Conso AE totale</div><div class="kv ${cl}">${fmt(tC)} €</div></div>
+    <div class="kpi"><div class="kl">Non consommé</div><div class="kv c-wn">${fmt(tN)} €</div></div>
+    <div class="kpi"><div class="kl">Payé (CP)</div><div class="kv">${fmt(tP)} €</div></div>
+    <div class="kpi"><div class="kl">Taux de conso</div><div class="kv ${cl}">${pct(p)}</div></div>`;
+  _grpd={};
+  for(const b of rows){
+    const k=f.grp==='prog'?b.prog:f.grp==='fonds'?b.fonds:String(b.annee);
+    if(!_grpd[k]) _grpd[k]={bud:0,conso:0,nconso:0};
+    _grpd[k].bud+=b.bud; _grpd[k].conso+=b.conso; _grpd[k].nconso+=b.nconso;
+  }
+  const lbs=Object.keys(_grpd).sort();
+  if(_chart) _chart.destroy();
+  _chart=new Chart(document.getElementById('chBar').getContext('2d'),{
+    type:'bar',
+    data:{labels:lbs,datasets:[
+      {label:'Budget AE N',data:lbs.map(k=>_grpd[k].bud),backgroundColor:'#93c5fd'},
+      {label:'Conso AE N',data:lbs.map(k=>_grpd[k].conso),backgroundColor:'#2563eb'},
+      {label:'Non Conso AE N',data:lbs.map(k=>_grpd[k].nconso),backgroundColor:'#fbbf24'},
+    ]},
+    options:{responsive:true,
+      plugins:{legend:{position:'top'},tooltip:{callbacks:{label:c=>`${c.dataset.label} : ${fmt(c.raw)} €`}}},
+      scales:{y:{ticks:{callback:v=>fmt(v)+' €'}}},
+      onClick:(e,els)=>{if(els.length) openDrill(lbs[els[0].index])},
+      onHover:(e,els)=>{e.native.target.style.cursor=els.length?'pointer':'default'}
+    }
+  });
+}
+
+// ════════════════════════════════════════
+// DRILL-DOWN
+// ════════════════════════════════════════
+function openDrill(label){
+  const f=gf();
+  document.getElementById('cv').style.display='none';
+  document.getElementById('drv').style.display='block';
+  const gl=_grp==='prog'?'Programme':_grp==='fonds'?'Fonds':'Année';
+  document.getElementById('dr-title').textContent=gl+' : '+label;
+  const g=_grpd[label], p=g.bud>0?g.conso/g.bud*100:0, cl=p>=90?'c-ok':p>=50?'c-wn':'c-er';
+  document.getElementById('dr-kpis').innerHTML=`
+    <div class="kpi"><div class="kl">Budget AE</div><div class="kv">${fmt(g.bud)} €</div></div>
+    <div class="kpi"><div class="kl">Conso AE</div><div class="kv ${cl}">${fmt(g.conso)} €</div></div>
+    <div class="kpi"><div class="kl">Non consommé</div><div class="kv c-wn">${fmt(g.nconso)} €</div></div>
+    <div class="kpi"><div class="kl">Taux conso</div><div class="kv ${cl}">${pct(p)}</div></div>`;
+  const fann=_grp==='annee'?parseInt(label):(f.ann?parseInt(f.ann):null);
+  const fp=_grp==='prog'?label:(f.prg||null);
+  const ff=_grp==='fonds'?label:(f.fnd||null);
+  _dRows=CONSO.filter(r=>(fann==null||r.annee===fann)&&(fp==null||r.p===fp)&&(ff==null||r.fo===ff));
+  _dSC=null; _dSD=1;
+  renderDrill(_dRows,null,1);
+}
+function closeDrill(){
+  document.getElementById('cv').style.display='block';
+  document.getElementById('drv').style.display='none';
+}
+function renderDrill(rows,sc,sd){
+  const cols=[
+    {k:'annee',l:'Année'},{k:'dt',l:'Date'},{k:'tv',l:'Type'},
+    {k:'cmd',l:'N° Commande'},{k:'f',l:'Fournisseur'},{k:'d',l:'Désignation'},
+    {k:'p',l:'Programme'},{k:'fo',l:'Fonds'},{k:'tm',l:'Type montant'},
+    {k:'m',l:'Montant (€)',n:true},
+  ];
+  let s=[...rows];
+  if(sc) s.sort((a,b)=>{const av=a[sc],bv=b[sc];return(typeof av==='number'?(av-bv):String(av).localeCompare(String(bv)))*sd});
+  const tot=s.reduce((t,r)=>t+r.m,0);
+  document.getElementById('dr-cnt').textContent=s.length+' ligne(s)';
+  document.getElementById('dr-th').innerHTML='<tr>'+cols.map(c=>`<th onclick="sortD('${c.k}')">${c.l}${sc===c.k?(sd===1?' ▲':' ▼'):''}</th>`).join('')+'</tr>';
+  document.getElementById('dr-tb').innerHTML=s.map(r=>`<tr>${cols.map(c=>`<td style="${c.n?'text-align:right':''}">${c.n?fmt(r[c.k]):esc(r[c.k]||'-')}</td>`).join('')}</tr>`).join('');
+  document.getElementById('dr-tf').innerHTML='<tr>'+cols.map((c,i)=>i===cols.length-1?`<td style="text-align:right">${fmt(tot)} €</td>`:i===0?'<td>TOTAL</td>':'<td></td>').join('')+'</tr>';
+}
+function sortD(col){if(_dSC===col)_dSD*=-1;else{_dSC=col;_dSD=1;}renderDrill(_dRows,_dSC,_dSD);}
+
+// ════════════════════════════════════════
+// ÉVOLUTION — 3 courbes
+// ════════════════════════════════════════
+function renderEvol(){
+  const ann=document.getElementById('e-ann').value;
+  const prg=document.getElementById('e-prg').value;
+  const fnd=document.getElementById('e-fnd').value;
+  const budRows=BUDGET.filter(b=>(!ann||b.annee===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd));
+  const totBud=budRows.reduce((s,r)=>s+r.bud,0);
+  const totCDA=budRows.reduce((s,r)=>s+r.cda,0);
+  const totRAR=budRows.reduce((s,r)=>s+r.rar,0);
+  // Commandes d'achat Original uniquement = engagements formels ne dépassant pas le budget
+  // Normaliser l'apostrophe (droite ou typographique) pour la comparaison
+  const normTV = s => (s||'').replace(/[\u2018\u2019\u201a\u201b']/g,"'");
+  const consoRows=CONSO.filter(r=>
+    (!ann||r.annee===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&
+    normTV(r.tv)==="Commandes d'achat"&&r.tm==='Original'
+  );
+  const monthly={};
+  for(const r of consoRows){
+    const mois=r.dtMois||''; if(!mois||mois.length<7) continue;
+    monthly[mois]=(monthly[mois]||0)+r.m;
+  }
+  const sortedMois=Object.keys(monthly).sort();
+  if(!sortedMois.length){if(_line)_line.destroy();return}
+  let cumul=0;
+  const cumulArr=sortedMois.map(m=>{cumul+=monthly[m];return Math.round(cumul*100)/100});
+  const lastCumul=cumulArr[cumulArr.length-1]||0;
+  const prevision=Math.round((lastCumul+totCDA+totRAR)*100)/100;
+  const derniereAnnee=Math.max(...sortedMois.map(m=>parseInt(m)));
+  const moisFin=`${derniereAnnee}-12`;
+  const dernierMois=sortedMois[sortedMois.length-1];
+  const labels=[...sortedMois];
+  const dCumul=[...cumulArr];
+  const dBudget=labels.map(()=>Math.round(totBud*100)/100);
+  const dPrev=labels.map(()=>null);
+  if(moisFin>dernierMois){
+    labels.push(moisFin); dCumul.push(null); dBudget.push(Math.round(totBud*100)/100); dPrev.push(null);
+    dPrev[dPrev.length-2]=lastCumul; dPrev[dPrev.length-1]=prevision;
+  } else {
+    labels.push('Prévision'); dCumul.push(null); dBudget.push(Math.round(totBud*100)/100);
+    dPrev[dPrev.length-1]=lastCumul; dPrev.push(prevision);
+  }
+  if(_line)_line.destroy();
+  _line=new Chart(document.getElementById('chLine').getContext('2d'),{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Commandes engagées (cumulées)',data:dCumul,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.07)',tension:.3,fill:true,pointRadius:3,borderWidth:2,spanGaps:false},
+      {label:'Budget AE N',data:dBudget,borderColor:'#dc2626',backgroundColor:'transparent',borderDash:[7,4],tension:0,pointRadius:0,borderWidth:2.5},
+      {label:`Prévision (CDa+RAR = ${fmt(totCDA+totRAR)} €)`,data:dPrev,borderColor:'#d97706',backgroundColor:'transparent',borderDash:[4,3],tension:0,pointRadius:5,borderWidth:2,pointStyle:'triangle',spanGaps:true},
+    ]},
+    options:{responsive:true,
+      plugins:{legend:{position:'top'},tooltip:{callbacks:{label:c=>c.raw!=null?`${c.dataset.label} : ${fmt(c.raw)} €`:null}}},
+      scales:{y:{ticks:{callback:v=>fmt(v)+' €'}},x:{ticks:{maxRotation:45,minRotation:30}}}
+    }
+  });
+}
+
+// ════════════════════════════════════════
+// TABLEAU CROISÉ
+// ════════════════════════════════════════
+function renderCross(){
+  const ann=document.getElementById('x-ann').value;
+  const prg=document.getElementById('x-prg').value;
+  const fnd=document.getElementById('x-fnd').value;
+  const rows=BUDGET.filter(b=>(!ann||b.annee===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd));
+  const cols=[
+    {k:'cf',l:'Centre fin.'},{k:'annee',l:'Année'},{k:'prog',l:'Programme'},{k:'fonds',l:'Fonds'},
+    {k:'bud',l:'Budget AE N',n:1},{k:'conso',l:'Conso AE N',n:1},{k:'nconso',l:'Non Conso',n:1},
+    {k:'cda',l:'CDa engagées',n:1},{k:'rar',l:'Reste à réceptionner',n:1},
+    {k:'paye',l:'Payé (CP)',n:1},{k:'rap',l:'Reste à payer',n:1},{k:'_pct',l:'Taux conso'},
+  ];
+  document.getElementById('x-th').innerHTML='<tr>'+cols.map(c=>`<th>${c.l}</th>`).join('')+'</tr>';
+  document.getElementById('x-tb').innerHTML=rows.map(r=>{
+    const p=r.bud>0?r.conso/r.bud*100:0, cl=p>=90?'r-ok':p>=50?'r-wn':'r-er';
+    return'<tr>'+cols.map(c=>{
+      if(c.k==='_pct') return`<td><span class="rb ${cl}">${pct(p)}</span></td>`;
+      return`<td style="${c.n?'text-align:right':''}">${c.n?fmt(r[c.k])+' €':esc(String(r[c.k]))}</td>`;
+    }).join('')+'</tr>';
+  }).join('');
+}
+</script>
+</body>
+</html>
