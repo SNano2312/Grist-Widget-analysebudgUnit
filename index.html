@@ -509,7 +509,12 @@ function switchTab(t){
 // HISTOGRAMME
 // ════════════════════════════════════════
 function gf(){return{ann:document.getElementById('h-ann').value,prg:document.getElementById('h-prg').value,fnd:document.getElementById('h-fnd').value,grp:document.getElementById('h-grp').value}}
-function fb(f){return BUDGET.filter(b=>(!f.ann||b.annee===parseInt(f.ann))&&(!f.prg||b.prog===f.prg)&&(!f.fnd||b.fonds===f.fnd))}
+function fb(f){
+  const rows=BUDGET.filter(b=>(!f.ann||b.annee===parseInt(f.ann))&&(!f.prg||b.prog===f.prg)&&(!f.fnd||b.fonds===f.fnd));
+  if(f.prg||f.fnd) console.log('[FILTER] prg='+f.prg+' fnd='+f.fnd+' -> '+rows.length+' lignes budget');
+  if(f.prg&&BUDGET.length) console.log('[FILTER] BUDGET[0].prog='+JSON.stringify(BUDGET[0].prog)+' vs f.prg='+JSON.stringify(f.prg));
+  return rows;
+}
 
 function renderHisto(){
   closeDrill();
@@ -603,9 +608,11 @@ function renderEvol(){
   const totCDA=budRows.reduce((s,r)=>s+r.cda,0);
   const totRAR=budRows.reduce((s,r)=>s+r.rar,0);
   // Commandes d'achat Original uniquement = engagements formels ne dépassant pas le budget
+  // Normaliser l'apostrophe (droite ou typographique) pour la comparaison
+  const normTV = s => (s||'').replace(/[\u2018\u2019\u201a\u201b']/g,"'");
   const consoRows=CONSO.filter(r=>
     (!ann||r.annee===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&
-    r.tv==="Commandes d'achat"&&r.tm==='Original'
+    normTV(r.tv)==="Commandes d'achat"&&r.tm==='Original'
   );
   const monthly={};
   for(const r of consoRows){
