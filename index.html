@@ -120,11 +120,11 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
   <!-- HISTOGRAMME -->
   <div id="vw-h">
     <div class="flt">
-      <div class="fg"><label>Année</label><select id="h-ann" onchange="renderHisto()"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
-      <div class="fg"><label>Programme</label><select id="h-prg" onchange="renderHisto()"><option value="">Tous</option></select></div>
-      <div class="fg"><label>Fonds</label><select id="h-fnd" onchange="renderHisto()"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Année</label><select id="h-ann" ><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Programme</label><select id="h-prg" ><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label><select id="h-fnd" ><option value="">Tous</option></select></div>
       <div class="fg"><label>Regrouper par</label>
-        <select id="h-grp" onchange="renderHisto()">
+        <select id="h-grp" >
           <option value="prog">Programme</option>
           <option value="fonds">Fonds</option>
           <option value="annee">Année</option>
@@ -147,9 +147,9 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
   <!-- ÉVOLUTION -->
   <div id="vw-e" style="display:none">
     <div class="flt">
-      <div class="fg"><label>Année</label><select id="e-ann" onchange="renderEvol()"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
-      <div class="fg"><label>Programme</label><select id="e-prg" onchange="renderEvol()"><option value="">Tous</option></select></div>
-      <div class="fg"><label>Fonds</label><select id="e-fnd" onchange="renderEvol()"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Année</label><select id="e-ann" ><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Programme</label><select id="e-prg" ><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label><select id="e-fnd" ><option value="">Tous</option></select></div>
     </div>
     <div class="pnl"><div class="pnl-t">Évolution mensuelle des engagements et prévisions</div><canvas id="chLine"></canvas></div>
   </div>
@@ -157,9 +157,9 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
   <!-- TABLEAU CROISÉ -->
   <div id="vw-x" style="display:none">
     <div class="flt">
-      <div class="fg"><label>Année</label><select id="x-ann" onchange="renderCross()"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
-      <div class="fg"><label>Programme</label><select id="x-prg" onchange="renderCross()"><option value="">Tous</option></select></div>
-      <div class="fg"><label>Fonds</label><select id="x-fnd" onchange="renderCross()"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Année</label><select id="x-ann" ><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Programme</label><select id="x-prg" ><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label><select id="x-fnd" ><option value="">Tous</option></select></div>
     </div>
     <div class="tw"><table><thead id="x-th"></thead><tbody id="x-tb"></tbody></table></div>
   </div>
@@ -225,6 +225,22 @@ async function refreshAnalyse(){
 }
 window.refreshAnalyse = refreshAnalyse;
 window.showCols   = showCols;
+
+// Attacher les listeners des filtres via JS (plus fiable que onchange inline dans iframe)
+document.addEventListener('DOMContentLoaded', function(){
+  ['h-ann','h-prg','h-fnd','h-grp'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('change', renderHisto);
+  });
+  ['e-ann','e-prg','e-fnd'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('change', renderEvol);
+  });
+  ['x-ann','x-prg','x-fnd'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('change', renderCross);
+  });
+});
 window.lanceAnalyse = lanceAnalyse;
 window.retourCfg  = retourCfg;
 window.switchTab  = switchTab;
