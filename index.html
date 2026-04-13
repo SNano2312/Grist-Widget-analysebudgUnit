@@ -339,11 +339,18 @@ async function lanceAnalyse(){
     if(BUDGET.length) console.log('[RESULT] BUDGET[0]:', JSON.stringify(BUDGET[0]));
     console.log('[RESULT] CONSO:', CONSO.length, 'lignes');
 
+    // Si CF_LABEL non trouvé dans budget, chercher dans conso (colonne Centre_financier texte)
+    if(!CF_LABEL && CONSO.length){
+      const cf = CONSO.find(r=>r.cf && r.cf!=='null' && r.cf!=='0');
+      if(cf) CF_LABEL = cf.cf;
+    }
+    // Fallback : extraire depuis le nom de la table (ex: "budget_complet_2025" → non pertinent)
+    // On affiche juste ce qu'on a
     fillFilters();
     hideLd();
     document.getElementById('cfg-screen').style.display='none';
     document.getElementById('dash').style.display='block';
-    document.getElementById('dash-title').textContent='Analyse budgétaire — Centre financier '+CF_LABEL;
+    document.getElementById('dash-title').textContent='Analyse budgétaire'+(CF_LABEL?' — Centre financier '+CF_LABEL:'');
     renderHisto();
   }catch(e){
     hideLd();
@@ -357,36 +364,41 @@ async function lanceAnalyse(){
 // ════════════════════════════════════════
 function procBudget(raw, annee){
   const n = (raw[Object.keys(raw)[0]]||[]).length;
-  // Trouver les colonnes (insensible à la casse et aux accents)
-  const col = (name) => {
-    const k = Object.keys(raw).find(k =>
-      k.normalize('NFC').toLowerCase() === name.normalize('NFC').toLowerCase()
-    );
-    return k ? raw[k] : new Array(n).fill('');
+  // Recherche flexible : nom Grist exact OU fallback insensible à la casse
+  const col = (...names) => {
+    for(const name of names){
+      if(raw[name] !== undefined) return raw[name];
+      const k = Object.keys(raw).find(k => k.toLowerCase()===name.toLowerCase());
+      if(k) return raw[k];
+    }
+    return new Array(n).fill('');
   };
 
-  const progs   = col('Programme de financement');
+  const progs   = col('Programme_de_financement', 'Programme de financement');
   const fonds   = col('Fonds');
-  const cfs     = col('Centre financier');
-  const buds    = col('Budget AE N');
-  const consos  = col('Conso AE N');
-  const nconsos = col('Non Conso AE N');
-  const cdas    = col('CDa engagées N');
-  const rars    = col('Reste à réceptionner N');
-  const oms     = col('OM engagés N');
-  const nfs     = col('NF en attente N');
-  const payes   = col('Payé (CP) N');
-  const raps    = col('Reste à Payer (CP) N');
+  const cfs     = col('Centre_financier', 'Centre financier');
+  const buds    = col('Budget_AE_N', 'Budget AE N');
+  const consos  = col('Conso_AE_N', 'Conso AE N');
+  const nconsos = col('Non_Conso_AE_N', 'Non Conso AE N');
+  const cdas    = col('CDa_engagees_N', 'CDa engagées N');
+  const rars    = col('Reste_a_receptionner_N', 'Reste à réceptionner N');
+  const oms     = col('OM_engages_N', 'OM engagés N');
+  const nfs     = col('NF_en_attente_N', 'NF en attente N');
+  const payes   = col('Paye_CP_N', 'Payé (CP) N');
+  const raps    = col('Reste_a_Payer_CP_N', 'Reste à Payer (CP) N');
 
   const seen = new Set();
   for(let i=0;i<n;i++){
-    const cf   = (cfs[i]||'').toString().trim();
-    const prog = (progs[i]||'').toString().trim() || 'Non Applicable';
     const fond = (fonds[i]||'').toString().trim();
     if(!fond) continue;
+    const raw_prog = (progs[i]||'').toString().trim();
+    const prog = (!raw_prog || raw_prog==='NA') ? 'Non Applicable' : raw_prog;
     const key = `${annee}|${prog}|${fond}`;
     if(seen.has(key)) continue;
     seen.add(key);
+    // Centre financier peut être null (lignes de total) ou numérique
+    const cfRaw = cfs[i];
+    const cf = (cfRaw != null && cfRaw !== '' && cfRaw !== 0) ? String(cfRaw).trim() : '';
     if(cf && !CF_LABEL) CF_LABEL = cf;
     BUDGET.push({
       annee, cf, prog, fonds:fond,
@@ -402,30 +414,37 @@ function procBudget(raw, annee){
 // ════════════════════════════════════════
 function procConso(raw, annee){
   const n = (raw[Object.keys(raw)[0]]||[]).length;
-  const col = (name) => {
-    const k = Object.keys(raw).find(k =>
-      k.normalize('NFC').toLowerCase() === name.normalize('NFC').toLowerCase()
-    );
-    return k ? raw[k] : new Array(n).fill('');
+  // Grist transforme les noms : accents supprimés, espaces → _
+  // Recherche flexible : nom exact Grist OU fallback insensible
+  const col = (...names) => {
+    for(const name of names){
+      if(raw[name]) return raw[name];
+      const k = Object.keys(raw).find(k =>
+        k.toLowerCase() === name.toLowerCase()
+      );
+      if(k) return raw[k];
+    }
+    return new Array(n).fill('');
   };
 
   const TV_EXCL = ['Paiements','Comptabilis. coûts secondaires'];
-  const tvs    = col('Texte type val.');
+  const tvs    = col('Texte_type_val_', 'Texte type val.');
   const fonds  = col('Fonds');
-  const progs  = col('Programme de financement');
-  const fours  = col('Nom 1');
-  const cmds   = col('Numéro de pièce de la pièce de référence');
-  const desigs = col("Désign. poste Cde d'achat");
-  const dts    = col('Date comptable');
-  const monts  = col("Montant à vérifier avec le budget d'enga");
-  const tms    = col('Type de montant.1');
+  const progs  = col('Programme_de_financement', 'Programme de financement');
+  const fours  = col('Nom_1', 'Nom 1');
+  const cmds   = col('Numero_de_piece_de_la_piece_de_reference', 'Numéro de pièce de la pièce de référence');
+  const desigs = col('Design_poste_Cde_d_achat', "Désign. poste Cde d'achat");
+  const dts    = col('Date_comptable', 'Date comptable');
+  const monts  = col('Montant_a_verifier_avec_le_budget_d_enga', "Montant à vérifier avec le budget d'enga");
+  const tms    = col('Type_de_montant2', 'Type de montant.1');
 
   for(let i=0;i<n;i++){
     const tv = (tvs[i]||'').toString().trim();
     if(!tv || TV_EXCL.includes(tv)) continue;
     const fond = (fonds[i]||'').toString().trim();
     if(!fond) continue;
-    const prog = (progs[i]||'').toString().trim() || 'Non Applicable';
+    const raw_prog = (progs[i]||'').toString().trim();
+    const prog = (!raw_prog || raw_prog==='NA') ? 'Non Applicable' : raw_prog;
 
     // Date : Grist stocke les dates comme timestamp Unix (secondes) ou string
     let dt='', dtMois='';
@@ -447,8 +466,10 @@ function procConso(raw, annee){
       }
     }
 
+    const cfConso = (raw['Centre_financier']||raw['Centre financier']||[])[i];
     CONSO.push({
       annee, tv,
+      cf: cfConso != null ? String(cfConso).replace(/^-?\d+$/, '').trim() || '' : '',
       f:(fours[i]||'').toString().trim(),
       cmd:(cmds[i]||'').toString().trim(),
       d:(desigs[i]||'').toString().trim(),
