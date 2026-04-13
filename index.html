@@ -178,40 +178,32 @@ let _tables=[];  // tables disponibles dans Grist
 async function showCols(){
   const out = document.getElementById('debug-out');
   out.style.display='block';
-  out.textContent = 'Chargement…';
+  out.textContent = 'Chargement...';
   try{
     const tB = document.getElementById('sel-b25').value;
     const tC = document.getElementById('sel-c25').value;
     let txt = '';
     if(tB){
       const d = await grist.docApi.fetchTable(tB);
-      txt += '=== BUDGET ('+tB+') ===
-';
-      txt += 'Colonnes: '+JSON.stringify(Object.keys(d))+'
-';
-      // Afficher la 1ère ligne non-vide
+      txt += '=== BUDGET ('+tB+') ===\n';
+      txt += 'Colonnes: '+JSON.stringify(Object.keys(d))+'\n';
       const n = (d[Object.keys(d)[0]]||[]).length;
       if(n>0){
         const row = {};
-        Object.entries(d).forEach(([k,v])=>row[k]=v[0]);
-        txt += '1ère ligne: '+JSON.stringify(row,null,2)+'
-';
+        Object.entries(d).forEach(([k,v])=>{row[k]=v[0];});
+        txt += '1ere ligne: '+JSON.stringify(row)+'\n';
       }
     }
-    txt += '
-';
+    txt += '\n';
     if(tC){
       const d = await grist.docApi.fetchTable(tC);
-      txt += '=== CONSO ('+tC+') ===
-';
-      txt += 'Colonnes: '+JSON.stringify(Object.keys(d))+'
-';
+      txt += '=== CONSO ('+tC+') ===\n';
+      txt += 'Colonnes: '+JSON.stringify(Object.keys(d))+'\n';
       const n = (d[Object.keys(d)[0]]||[]).length;
       if(n>0){
         const row = {};
-        Object.entries(d).forEach(([k,v])=>row[k]=v[0]);
-        txt += '1ère ligne: '+JSON.stringify(row,null,2)+'
-';
+        Object.entries(d).forEach(([k,v])=>{row[k]=v[0];});
+        txt += '1ere ligne: '+JSON.stringify(row)+'\n';
       }
     }
     out.textContent = txt;
@@ -318,26 +310,20 @@ async function lanceAnalyse(){
     setLd('Traitement…');
     BUDGET=[]; CONSO=[]; CF_LABEL='';
 
-    // DIAGNOSTIC — colonnes disponibles
-    console.log('[B25] colonnes:', Object.keys(rawB25));
-    console.log('[B25] nb lignes:', (rawB25[Object.keys(rawB25)[0]]||[]).length);
-    console.log('[B25] 1ère ligne sample:', Object.fromEntries(
-      Object.entries(rawB25).map(([k,v])=>[k, v[0]])
-    ));
-    console.log('[C25] colonnes:', Object.keys(rawC25));
-    console.log('[C25] nb lignes:', (rawC25[Object.keys(rawC25)[0]]||[]).length);
-    console.log('[C25] 1ère ligne sample:', Object.fromEntries(
-      Object.entries(rawC25).map(([k,v])=>[k, v[0]])
-    ));
+    // DIAGNOSTIC
+    console.log('[DIAG] B25 cols:', JSON.stringify(Object.keys(rawB25)));
+    console.log('[DIAG] B25 rows:', (rawB25[Object.keys(rawB25)[0]]||[]).length);
+    console.log('[DIAG] C25 cols (extrait):', JSON.stringify(Object.keys(rawC25).slice(0,10)));
+    console.log('[DIAG] C25 rows:', (rawC25[Object.keys(rawC25)[0]]||[]).length);
 
     procBudget(rawB25, 2025);
     procBudget(rawB26, 2026);
     procConso(rawC25, 2025);
     procConso(rawC26, 2026);
 
-    console.log('[RESULT] BUDGET:', BUDGET.length, 'lignes, CF_LABEL:', CF_LABEL);
-    if(BUDGET.length) console.log('[RESULT] BUDGET[0]:', JSON.stringify(BUDGET[0]));
-    console.log('[RESULT] CONSO:', CONSO.length, 'lignes');
+    console.log('[RESULT] BUDGET:', BUDGET.length, 'CF:', CF_LABEL, 'CONSO:', CONSO.length);
+    if(BUDGET.length) console.log('[RESULT] B0:', JSON.stringify(BUDGET[0]));
+    if(CONSO.length) console.log('[RESULT] C0:', JSON.stringify(CONSO[0]));
 
     // Si CF_LABEL non trouvé dans budget, chercher dans conso (colonne Centre_financier texte)
     if(!CF_LABEL && CONSO.length){
