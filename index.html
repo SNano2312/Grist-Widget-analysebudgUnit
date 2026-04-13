@@ -587,7 +587,20 @@ function openDrill(label){
   const fann=_grp==='annee'?parseInt(label):(f.ann?parseInt(f.ann):null);
   const fp=_grp==='prog'?label:(f.prg||null);
   const ff=_grp==='fonds'?label:(f.fnd||null);
+  console.log('[DRILL] label='+label+' grp='+_grp+' fann='+fann+' fp='+fp+' ff='+ff);
+  console.log('[DRILL] CONSO total='+CONSO.length);
+  if(CONSO.length){
+    const s=CONSO[0];
+    console.log('[DRILL] CONSO[0] annee='+JSON.stringify(s.annee)+
+      ' typeof='+typeof s.annee+' p='+JSON.stringify(s.p)+' fo='+JSON.stringify(s.fo));
+  }
+  // Compter les lignes qui matchent chaque critère séparément
+  const mAnn=CONSO.filter(r=>fann==null||parseInt(r.annee)===fann);
+  const mFo=CONSO.filter(r=>ff==null||r.fo===ff);
+  const mProg=CONSO.filter(r=>fp==null||r.p===fp);
+  console.log('[DRILL] match annee='+mAnn.length+' match fo='+mFo.length+' match prog='+mProg.length);
   _dRows=CONSO.filter(r=>(fann==null||parseInt(r.annee)===fann)&&(fp==null||r.p===fp)&&(ff==null||r.fo===ff));
+  console.log('[DRILL] result='+_dRows.length);
   _dSC=null; _dSD=1;
   renderDrill(_dRows,null,1);
 }
