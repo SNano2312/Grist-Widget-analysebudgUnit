@@ -140,13 +140,6 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     </div>
   </div>
   <button id="btn-launch" disabled onclick="launch()">Lancer l'analyse →</button>
-  <div id="btn-resume-wrap" style="margin-top:16px;display:none">
-    <button id="btn-resume" onclick="resumeSaved()"
-      style="padding:10px 28px;background:#fff;border:2px solid #2563eb;border-radius:8px;color:#2563eb;font-size:.9rem;font-weight:600;cursor:pointer">
-      ↩ Reprendre la dernière analyse sauvegardée
-    </button>
-    <div id="resume-info" style="font-size:.75rem;color:#6b7280;margin-top:6px;text-align:center"></div>
-  </div>
   <div id="imp-err"></div>
 </div>
 
@@ -155,7 +148,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
   <div class="dash-hdr">
     <h1 id="dash-title">Analyse budgétaire</h1>
     <div class="dash-hdr-right">
-      <button class="btn-sm btn-save" onclick="saveDashboard()">💾 Sauvegarder</button>
+      <button class="btn-sm btn-save" onclick="openSaveModal()">💾 Sauvegarder dans Grist</button>
       <button class="btn-sm" onclick="resetImport()">↩ Changer les fichiers</button>
     </div>
   </div>
@@ -413,40 +406,6 @@ function switchTab(t){
 // ════════════════════════════════════════
 // SAVE
 // ════════════════════════════════════════
-function saveDashboard(){
-  const d=new Date();
-  const stamp=d.getFullYear()+(d.getMonth()+1).toString().padStart(2,'0')+d.getDate().toString().padStart(2,'0');
-  const payload={budget:BUDGET,conso:CONSO,cf:CF_LABEL,savedAt:stamp};
-
-  // ── 1. Sauvegarder dans localStorage (persistance Grist entre sessions)
-  try{
-    localStorage.setItem('budgetAnalysis',JSON.stringify(payload));
-    console.log('[SAVE] localStorage OK, taille='+JSON.stringify(payload).length);
-  }catch(e){
-    console.warn('[SAVE] localStorage échec:',e.message);
-  }
-
-  // ── 2. Télécharger un fichier HTML autonome (archive locale)
-  const jsonStr=JSON.stringify(payload).replace(/<\/script>/g,'<\\/script>');
-  const autoload='<script id="__al__">window.__PRELOADED__='+jsonStr+';<\/script>';
-  let html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
-  html=html.replace(/<script id="__al__">[\s\S]*?<\/script>/g,'');
-  html=html.replace('</body>',autoload+'</body>');
-  try{
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));
-    a.download='analyse_CF'+CF_LABEL+'_'+stamp+'.html';
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }catch(e){
-    // Dans certains contextes iframe le téléchargement est bloqué — pas grave, localStorage suffit
-    console.warn('[SAVE] téléchargement bloqué (normal en iframe):', e.message);
-  }
-
-  // Feedback visuel
-  const btn=document.querySelector('[onclick="saveDashboard()"]');
-  if(btn){const orig=btn.textContent;btn.textContent='✅ Sauvegardé';setTimeout(()=>btn.textContent=orig,2000);}
-}
 
 // ════════════════════════════════════════
 // HISTOGRAMME
@@ -596,19 +555,17 @@ function renderEvol(){
   );
 
   // Agrégation par mois (YYYY-MM)
-  // SheetJS peut produire : DD/MM/YYYY, MM/DD/YY, MM/DD/YYYY, ou YYYY-MM-DD
+  // SheetJS peut produire DD/MM/YYYY, MM/DD/YY, MM/DD/YYYY ou YYYY-MM-DD
   const monthly={};
   for(const r of consoRows){
     const dt=(r.dt||'').toString().trim();
     let mois='';
     if(/^\d{4}-\d{2}/.test(dt)){
-      mois=dt.substring(0,7); // YYYY-MM-DD → YYYY-MM
+      mois=dt.substring(0,7);
     } else if(/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(dt)){
       const p=dt.split('/');
       let yr=p[2]; if(yr.length===2) yr=(parseInt(yr)<50?'20':'19')+yr;
-      // Ambiguïté MM/DD vs DD/MM : si p[0] > 12 c'est forcément DD/MM
-      const isUS=(parseInt(p[0])<=12 && parseInt(p[1])>12)||yr.length===4&&parseInt(p[0])<=12&&parseInt(p[1])<=12;
-      // SheetJS dans Grist produit MM/DD → on suppose US par défaut
+      // SheetJS dans Grist = format US MM/DD
       mois=`${yr}-${p[0].padStart(2,'0')}`;
     }
     if(!mois||mois.length<7) continue;
@@ -717,56 +674,198 @@ function renderCross(){
     }).join('')+'</tr>';
   }).join('');
 }
-// ── Vérifier localStorage au démarrage
-function checkSavedData(){
+</script>
+
+<!-- ── MODAL SAUVEGARDE GRIST ── -->
+<div id="save-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:8px;padding:28px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+    <h2 style="font-size:1rem;font-weight:700;margin-bottom:6px">💾 Sauvegarder dans Grist</h2>
+    <p style="font-size:.82rem;color:#6b7280;margin-bottom:18px">
+      Les données seront écrites dans votre document Grist (remplacement complet des tables existantes).
+    </p>
+
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:18px">
+      <p style="font-size:.8rem;color:#6b7280;background:#f0f2f7;padding:8px 12px;border-radius:6px">
+        Les tables <strong>Budget_AE</strong> et <strong>Conso_AE</strong> seront créées automatiquement si elles n'existent pas, ou mises à jour si elles existent déjà.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <label style="font-size:.72rem;font-weight:700;color:#6b7280;text-transform:uppercase">Clé API
+          <a href="https://grist.numerique.gouv.fr/account" target="_blank"
+            style="font-weight:400;color:#2563eb;text-transform:none;margin-left:8px">Obtenir ma clé →</a>
+        </label>
+        <input type="password" id="s-api-key" placeholder="Votre clé API personnelle"
+          style="padding:7px 10px;border:1px solid #dde2ec;border-radius:6px;font-size:.85rem">
+        <label style="display:flex;align-items:center;gap:6px;font-size:.78rem;color:#6b7280;cursor:pointer">
+          <input type="checkbox" id="s-remember" checked>
+          Mémoriser sur ce poste (localStorage)
+        </label>
+      </div>
+    </div>
+
+    <div id="save-msg" style="font-size:.82rem;min-height:20px;margin-bottom:12px"></div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="closeSaveModal()"
+        style="padding:6px 14px;background:#fff;border:1px solid #dde2ec;border-radius:6px;cursor:pointer;font-size:.85rem">
+        Annuler
+      </button>
+      <button onclick="doSave()"
+        style="padding:6px 14px;background:#1a7f64;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;font-weight:600">
+        Sauvegarder →
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// GRIST — Sauvegarde
+// ════════════════════════════════════════
+const GRIST_URL='https://grist.numerique.gouv.fr';
+const GRIST_DOC='upva6djkondM';
+
+function openSaveModal(){
+  // Pré-remplir depuis localStorage si dispo
   try{
-    const raw=localStorage.getItem('budgetAnalysis');
-    if(!raw) return;
-    const data=JSON.parse(raw);
-    if(!data.budget||!data.conso) return;
-    const wrap=document.getElementById('btn-resume-wrap');
-    const info=document.getElementById('resume-info');
-    if(wrap){ wrap.style.display='block'; }
-    if(info){ info.textContent='Dernière sauvegarde : '+
-      (data.savedAt?data.savedAt.replace(/(\d{4})(\d{2})(\d{2})/,'$3/$2/$1'):'inconnue')+
-      ' — '+data.budget.length+' lignes budget, '+data.conso.length+' lignes conso'; }
+    const cfg=JSON.parse(localStorage.getItem('gristCfg')||'{}');
+    if(cfg.key) document.getElementById('s-api-key').value=cfg.key;
+    if(cfg.tblBud) document.getElementById('s-tbl-bud').value=cfg.tblBud;
+    if(cfg.tblCon) document.getElementById('s-tbl-con').value=cfg.tblCon;
   }catch(e){}
+  document.getElementById('save-msg').innerHTML='';
+  document.getElementById('save-modal').style.display='flex';
+}
+function closeSaveModal(){
+  document.getElementById('save-modal').style.display='none';
 }
 
-function resumeSaved(){
+async function doSave(){
+  const key=(document.getElementById('s-api-key').value||'').trim();
+  const msg=document.getElementById('save-msg');
+  if(!key){msg.innerHTML='<span style="color:#dc2626">Clé API requise.</span>';return}
+
+  if(document.getElementById('s-remember').checked){
+    try{localStorage.setItem('gristCfg',JSON.stringify({key}));}catch(e){}
+  }
+
+  const base=`${GRIST_URL}/api/docs/${GRIST_DOC}/tables`;
+  const hdrs={'Content-Type':'application/json','Authorization':'Bearer '+key};
+  const TBL_BUD='Budget_AE';
+  const TBL_CON='Conso_AE';
+
+  // Colonnes des deux tables
+  const COL_BUD=[
+    {id:'Centre_financier',fields:{label:'Centre financier',type:'Text'}},
+    {id:'Annee',fields:{label:'Année',type:'Int'}},
+    {id:'Programme',fields:{label:'Programme',type:'Text'}},
+    {id:'Fonds',fields:{label:'Fonds',type:'Text'}},
+    {id:'Budget_AE',fields:{label:'Budget AE N',type:'Numeric'}},
+    {id:'Conso_AE',fields:{label:'Conso AE N',type:'Numeric'}},
+    {id:'Non_Conso',fields:{label:'Non Conso AE N',type:'Numeric'}},
+    {id:'CDa_engagees',fields:{label:'CDa engagées N',type:'Numeric'}},
+    {id:'Reste_a_receptionner',fields:{label:'Reste à réceptionner N',type:'Numeric'}},
+    {id:'OM_engages',fields:{label:'OM engagés N',type:'Numeric'}},
+    {id:'NF_attente',fields:{label:'NF en attente N',type:'Numeric'}},
+    {id:'Paye_CP',fields:{label:'Payé (CP) N',type:'Numeric'}},
+    {id:'Reste_a_payer',fields:{label:'Reste à payer (CP) N',type:'Numeric'}},
+  ];
+  const COL_CON=[
+    {id:'Annee',fields:{label:'Année',type:'Int'}},
+    {id:'Type_valeur',fields:{label:'Type valeur',type:'Text'}},
+    {id:'Fournisseur',fields:{label:'Fournisseur',type:'Text'}},
+    {id:'Num_commande',fields:{label:'N° Commande',type:'Text'}},
+    {id:'Designation',fields:{label:'Désignation',type:'Text'}},
+    {id:'Date_comptable',fields:{label:'Date comptable',type:'Text'}},
+    {id:'Montant',fields:{label:'Montant',type:'Numeric'}},
+    {id:'Programme',fields:{label:'Programme',type:'Text'}},
+    {id:'Fonds',fields:{label:'Fonds',type:'Text'}},
+    {id:'Type_montant',fields:{label:'Type montant',type:'Text'}},
+  ];
+
   try{
-    const raw=localStorage.getItem('budgetAnalysis');
-    if(!raw) return;
-    const data=JSON.parse(raw);
-    BUDGET=data.budget||[];
-    CONSO=data.conso||[];
-    CF_LABEL=data.cf||'';
-    populateFilters();
-    document.getElementById('import-screen').style.display='none';
-    document.getElementById('dashboard').style.display='block';
-    document.getElementById('dash-title').textContent='Analyse budgétaire — Centre financier '+CF_LABEL;
-    renderHisto();
+    // ── Lister les tables existantes
+    msg.innerHTML='<span style="color:#6b7280">⏳ Vérification des tables…</span>';
+    const tblResp=await fetch(`${GRIST_URL}/api/docs/${GRIST_DOC}/tables`,{headers:hdrs});
+    if(!tblResp.ok) throw new Error('Accès Grist refusé (vérifiez la clé API) : HTTP '+tblResp.status);
+    const existingTbls=((await tblResp.json()).tables||[]).map(t=>t.id);
+
+    // ── Créer ou vider Budget_AE
+    if(!existingTbls.includes(TBL_BUD)){
+      msg.innerHTML='<span style="color:#6b7280">⏳ Création de la table Budget_AE…</span>';
+      const r=await fetch(`${GRIST_URL}/api/docs/${GRIST_DOC}/tables`,{
+        method:'POST',headers:hdrs,
+        body:JSON.stringify({tables:[{id:TBL_BUD,columns:COL_BUD}]})
+      });
+      if(!r.ok) throw new Error('Création Budget_AE : HTTP '+r.status+' — '+(await r.text()).substring(0,150));
+    } else {
+      msg.innerHTML='<span style="color:#6b7280">⏳ Budget_AE : nettoyage…</span>';
+      await gristClear(base,TBL_BUD,hdrs);
+    }
+
+    // ── Créer ou vider Conso_AE
+    if(!existingTbls.includes(TBL_CON)){
+      msg.innerHTML='<span style="color:#6b7280">⏳ Création de la table Conso_AE…</span>';
+      const r=await fetch(`${GRIST_URL}/api/docs/${GRIST_DOC}/tables`,{
+        method:'POST',headers:hdrs,
+        body:JSON.stringify({tables:[{id:TBL_CON,columns:COL_CON}]})
+      });
+      if(!r.ok) throw new Error('Création Conso_AE : HTTP '+r.status+' — '+(await r.text()).substring(0,150));
+    } else {
+      msg.innerHTML='<span style="color:#6b7280">⏳ Conso_AE : nettoyage…</span>';
+      await gristClear(base,TBL_CON,hdrs);
+    }
+
+    // ── Insérer Budget
+    msg.innerHTML=`<span style="color:#6b7280">⏳ Budget : envoi de ${BUDGET.length} lignes…</span>`;
+    await gristInsert(base,TBL_BUD,hdrs, BUDGET.map(b=>({
+      Centre_financier:b.cf||CF_LABEL, Annee:b.annee,
+      Programme:b.prog, Fonds:b.fonds,
+      Budget_AE:r2(b.bud), Conso_AE:r2(b.conso), Non_Conso:r2(b.nconso),
+      CDa_engagees:r2(b.cda), Reste_a_receptionner:r2(b.rar),
+      OM_engages:r2(b.om), NF_attente:r2(b.nf),
+      Paye_CP:r2(b.paye), Reste_a_payer:r2(b.rap),
+    })));
+
+    // ── Insérer Conso par lots de 500
+    const BATCH=500;
+    for(let i=0;i<CONSO.length;i+=BATCH){
+      const pct=Math.round(i/CONSO.length*100);
+      msg.innerHTML=`<span style="color:#6b7280">⏳ Conso : ${i}–${Math.min(i+BATCH,CONSO.length)} / ${CONSO.length} (${pct}%)…</span>`;
+      await gristInsert(base,TBL_CON,hdrs, CONSO.slice(i,i+BATCH).map(c=>({
+        Annee:c.annee, Type_valeur:c.tv, Fournisseur:c.f,
+        Num_commande:c.cmd, Designation:c.d,
+        Date_comptable:c.dt, Montant:r2(c.m),
+        Programme:c.p, Fonds:c.fo, Type_montant:c.tm,
+      })));
+    }
+
+    msg.innerHTML=`<span style="color:#16a34a">✅ Terminé — ${BUDGET.length} lignes budget, ${CONSO.length} lignes conso dans Grist.</span>`;
+
   }catch(e){
-    document.getElementById('imp-err').textContent='❌ Erreur lors du chargement : '+e.message;
+    msg.innerHTML='<span style="color:#dc2626">❌ '+e.message+'</span>';
   }
 }
 
-// Auto-démarrage si données pré-chargées (fichier HTML autonome)
-if(window.__PRELOADED__){
-  window.addEventListener('DOMContentLoaded',function(){
-    BUDGET=window.__PRELOADED__.budget||[];
-    CONSO=window.__PRELOADED__.conso||[];
-    CF_LABEL=window.__PRELOADED__.cf||'';
-    populateFilters();
-    document.getElementById('import-screen').style.display='none';
-    document.getElementById('dashboard').style.display='block';
-    document.getElementById('dash-title').textContent='Analyse budgétaire — Centre financier '+CF_LABEL;
-    renderHisto();
-  });
+async function gristClear(base,tbl,hdrs){
+  const r=await fetch(`${base}/${tbl}/records`,{headers:hdrs});
+  if(!r.ok) throw new Error(`Lecture ${tbl}: HTTP ${r.status} — ${await r.text()}`);
+  const ids=((await r.json()).records||[]).map(x=>x.id);
+  if(!ids.length) return;
+  const d=await fetch(`${base}/${tbl}/data/delete`,{method:'POST',headers:hdrs,body:JSON.stringify(ids)});
+  if(!d.ok) throw new Error(`Suppression ${tbl}: HTTP ${d.status}`);
 }
 
-// Vérifier localStorage au chargement de la page
-window.addEventListener('DOMContentLoaded', checkSavedData);
+async function gristInsert(base,tbl,hdrs,rows){
+  if(!rows.length) return;
+  const r=await fetch(`${base}/${tbl}/records`,{
+    method:'POST',headers:hdrs,
+    body:JSON.stringify({records:rows.map(fields=>({fields}))})
+  });
+  if(!r.ok) throw new Error(`Insertion ${tbl}: HTTP ${r.status} — ${(await r.text()).substring(0,200)}`);
+}
+
+function r2(v){return Math.round((v||0)*100)/100;}
 </script>
+
 </body>
 </html>
