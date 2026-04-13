@@ -526,7 +526,7 @@ function switchTab(t){
 // ════════════════════════════════════════
 function gf(){return{ann:document.getElementById('h-ann').value,prg:document.getElementById('h-prg').value,fnd:document.getElementById('h-fnd').value,grp:document.getElementById('h-grp').value}}
 function fb(f){
-  const rows=BUDGET.filter(b=>(!f.ann||b.annee===parseInt(f.ann))&&(!f.prg||b.prog===f.prg)&&(!f.fnd||b.fonds===f.fnd));
+  const rows=BUDGET.filter(b=>(!f.ann||parseInt(b.annee)===parseInt(f.ann))&&(!f.prg||b.prog===f.prg)&&(!f.fnd||b.fonds===f.fnd));
   if(f.prg||f.fnd) console.log('[FILTER] prg='+f.prg+' fnd='+f.fnd+' -> '+rows.length+' lignes budget');
   if(f.prg&&BUDGET.length) console.log('[FILTER] BUDGET[0].prog='+JSON.stringify(BUDGET[0].prog)+' vs f.prg='+JSON.stringify(f.prg));
   return rows;
@@ -587,7 +587,7 @@ function openDrill(label){
   const fann=_grp==='annee'?parseInt(label):(f.ann?parseInt(f.ann):null);
   const fp=_grp==='prog'?label:(f.prg||null);
   const ff=_grp==='fonds'?label:(f.fnd||null);
-  _dRows=CONSO.filter(r=>(fann==null||r.annee===fann)&&(fp==null||r.p===fp)&&(ff==null||r.fo===ff));
+  _dRows=CONSO.filter(r=>(fann==null||parseInt(r.annee)===fann)&&(fp==null||r.p===fp)&&(ff==null||r.fo===ff));
   _dSC=null; _dSD=1;
   renderDrill(_dRows,null,1);
 }
@@ -619,7 +619,7 @@ function renderEvol(){
   const ann=document.getElementById('e-ann').value;
   const prg=document.getElementById('e-prg').value;
   const fnd=document.getElementById('e-fnd').value;
-  const budRows=BUDGET.filter(b=>(!ann||b.annee===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd));
+  const budRows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd));
   const totBud=budRows.reduce((s,r)=>s+r.bud,0);
   const totCDA=budRows.reduce((s,r)=>s+r.cda,0);
   const totRAR=budRows.reduce((s,r)=>s+r.rar,0);
@@ -627,7 +627,7 @@ function renderEvol(){
   // Normaliser l'apostrophe (droite ou typographique) pour la comparaison
   const normTV = s => (s||'').replace(/[\u2018\u2019\u201a\u201b']/g,"'");
   const consoRows=CONSO.filter(r=>
-    (!ann||r.annee===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&
+    (!ann||parseInt(r.annee)===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&
     normTV(r.tv)==="Commandes d'achat"&&r.tm==='Original'
   );
   const monthly={};
@@ -640,7 +640,10 @@ function renderEvol(){
   let cumul=0;
   const cumulArr=sortedMois.map(m=>{cumul+=monthly[m];return Math.round(cumul*100)/100});
   const lastCumul=cumulArr[cumulArr.length-1]||0;
-  const prevision=Math.round((lastCumul+totCDA+totRAR)*100)/100;
+  // Prévision = dernier cumul + engagements restants, plafonnée au budget
+  const budVal=Math.round(totBud*100)/100;
+  const prevBrut=Math.round((lastCumul+totCDA+totRAR)*100)/100;
+  const prevision=Math.min(prevBrut, budVal);
   const derniereAnnee=Math.max(...sortedMois.map(m=>parseInt(m)));
   const moisFin=`${derniereAnnee}-12`;
   const dernierMois=sortedMois[sortedMois.length-1];
@@ -677,7 +680,7 @@ function renderCross(){
   const ann=document.getElementById('x-ann').value;
   const prg=document.getElementById('x-prg').value;
   const fnd=document.getElementById('x-fnd').value;
-  const rows=BUDGET.filter(b=>(!ann||b.annee===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd));
+  const rows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd));
   const cols=[
     {k:'cf',l:'Centre fin.'},{k:'annee',l:'Année'},{k:'prog',l:'Programme'},{k:'fonds',l:'Fonds'},
     {k:'bud',l:'Budget AE N',n:1},{k:'conso',l:'Conso AE N',n:1},{k:'nconso',l:'Non Conso',n:1},
