@@ -246,10 +246,27 @@ async function lanceAnalyse(){
 
     setLd('Traitement…');
     BUDGET=[]; CONSO=[]; CF_LABEL='';
+
+    // DIAGNOSTIC — colonnes disponibles
+    console.log('[B25] colonnes:', Object.keys(rawB25));
+    console.log('[B25] nb lignes:', (rawB25[Object.keys(rawB25)[0]]||[]).length);
+    console.log('[B25] 1ère ligne sample:', Object.fromEntries(
+      Object.entries(rawB25).map(([k,v])=>[k, v[0]])
+    ));
+    console.log('[C25] colonnes:', Object.keys(rawC25));
+    console.log('[C25] nb lignes:', (rawC25[Object.keys(rawC25)[0]]||[]).length);
+    console.log('[C25] 1ère ligne sample:', Object.fromEntries(
+      Object.entries(rawC25).map(([k,v])=>[k, v[0]])
+    ));
+
     procBudget(rawB25, 2025);
     procBudget(rawB26, 2026);
     procConso(rawC25, 2025);
     procConso(rawC26, 2026);
+
+    console.log('[RESULT] BUDGET:', BUDGET.length, 'lignes, CF_LABEL:', CF_LABEL);
+    if(BUDGET.length) console.log('[RESULT] BUDGET[0]:', JSON.stringify(BUDGET[0]));
+    console.log('[RESULT] CONSO:', CONSO.length, 'lignes');
 
     fillFilters();
     hideLd();
