@@ -631,10 +631,13 @@ function renderEvol(){
   const totRAR=budRows.reduce((s,r)=>s+r.rar,0);
   // Commandes d'achat Original uniquement = engagements formels ne dépassant pas le budget
   // Normaliser l'apostrophe (droite ou typographique) pour la comparaison
-  const normTV = s => (s||'').replace(/[\u2018\u2019\u201a\u201b']/g,"'");
+  // Type de montant = Original uniquement (tous types de valeur)
+  // Cumul plafonné au budget pour rester cohérent
   const consoRows=CONSO.filter(r=>
-    (!ann||parseInt(r.annee)===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&
-    normTV(r.tv)==="Commandes d'achat"&&r.tm==='Original'
+    (!ann||parseInt(r.annee)===parseInt(ann))&&
+    (!prg||r.p===prg)&&
+    (!fnd||r.fo===fnd)&&
+    r.tm==='Original'
   );
   const monthly={};
   for(const r of consoRows){
@@ -643,11 +646,15 @@ function renderEvol(){
   }
   const sortedMois=Object.keys(monthly).sort();
   if(!sortedMois.length){if(_line)_line.destroy();return}
+  // Cumul plafonné au budget à chaque mois
+  const budVal=Math.round(totBud*100)/100;
   let cumul=0;
-  const cumulArr=sortedMois.map(m=>{cumul+=monthly[m];return Math.round(cumul*100)/100});
+  const cumulArr=sortedMois.map(m=>{
+    cumul+=monthly[m];
+    return Math.min(Math.round(cumul*100)/100, budVal);
+  });
   const lastCumul=cumulArr[cumulArr.length-1]||0;
   // Prévision = dernier cumul + engagements restants, plafonnée au budget
-  const budVal=Math.round(totBud*100)/100;
   const prevBrut=Math.round((lastCumul+totCDA+totRAR)*100)/100;
   const prevision=Math.min(prevBrut, budVal);
   const derniereAnnee=Math.max(...sortedMois.map(m=>parseInt(m)));
