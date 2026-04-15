@@ -326,6 +326,28 @@ async function lanceAnalyse(){
 
   showLd('Lecture des données…');
   try{
+    setLd('Lecture référentiel programmes…');
+    let rawTable1 = {};
+    try{ rawTable1 = await grist.docApi.fetchTable('Table1'); }catch(e){}
+    // Construire la map : N°prog -> {nom, dateFin (YYYY-MM ou null)}
+    const PROG_INFO = {};
+    if(rawTable1['A']){
+      const nA=rawTable1['A'].length;
+      for(let i=0;i<nA;i++){
+        const num=(rawTable1['A'][i]||'').toString().trim();
+        const nom=(rawTable1['B'][i]||'').toString().trim();
+        const ts =rawTable1['C'][i];
+        let dateFin=null;
+        if(ts && typeof ts==='number' && ts>0){
+          const d=new Date(ts*1000);
+          dateFin=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+        }
+        if(num) PROG_INFO[num]={nom, dateFin};
+      }
+    }
+    window._PROG_INFO=PROG_INFO;
+    console.log('[PROG_INFO]', JSON.stringify(PROG_INFO));
+
     setLd('Lecture Budget 2025…');
     const rawB25 = await grist.docApi.fetchTable(tB25);
     setLd('Lecture Budget 2026…');
@@ -657,8 +679,16 @@ function renderEvol(){
   // Prévision = dernier cumul + engagements restants, plafonnée au budget
   const prevBrut=Math.round((lastCumul+totCDA+totRAR)*100)/100;
   const prevision=Math.min(prevBrut, budVal);
+  // moisFin = date de fin du programme si disponible, sinon décembre de la dernière année
   const derniereAnnee=Math.max(...sortedMois.map(m=>parseInt(m)));
-  const moisFin=`${derniereAnnee}-12`;
+  let moisFin=derniereAnnee+'-12'; // défaut
+  var progInfo=window._PROG_INFO||{};
+  if(prg && prg!=='' && progInfo[prg] && progInfo[prg].dateFin){
+    moisFin=progInfo[prg].dateFin;
+  } else {
+    var dates=Object.values(progInfo).map(function(p){return p.dateFin;}).filter(Boolean);
+    if(dates.length){ var maxD=dates.sort().pop(); if(maxD>derniereAnnee+'-12') moisFin=maxD; }
+  }
   const dernierMois=sortedMois[sortedMois.length-1];
   const labels=[...sortedMois];
   const dCumul=[...cumulArr];
