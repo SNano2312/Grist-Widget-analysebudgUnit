@@ -137,6 +137,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <div class="tab" id="tab-e" onclick="switchTab('e')">Évolution</div>
     <div class="tab" id="tab-x" onclick="switchTab('x')">Tableau croisé</div>
     <div class="tab" id="tab-f" onclick="switchTab('f')">Top fournisseurs</div>
+    <div class="tab" id="tab-d" onclick="switchTab('d')">⏱ Délais</div>
   </div>
 
   <!-- SYNTHÈSE -->
@@ -205,6 +206,17 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       </div>
     </div>
     <div class="tw"><table><thead id="f-th"></thead><tbody id="f-tb"></tbody></table></div>
+  </div>
+
+  <!-- DÉLAIS DE LIQUIDATION -->
+  <div id="vw-d" style="display:none">
+    <div class="flt">
+      <div class="fg"><label>Année</label><select id="d-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Programme</label><select id="d-prg"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label><select id="d-fnd"><option value="">Tous</option></select></div>
+    </div>
+    <div class="ks" id="delai-kpis"></div>
+    <div class="tw" style="max-height:500px"><table><thead id="d-th"></thead><tbody id="d-tb"></tbody></table></div>
   </div>
 </div>
 
@@ -302,7 +314,7 @@ function renderSynthese(){
       else if(diffMois<3) finCl='proche';
       else finCl='ok';
       // Alerte si proche ou dépassé et nconso > 10%
-      if(diffMois<3 && g.nconso/g.bud>0.1){
+      if(diffMois<4 && g.nconso/g.bud>0.05){
         alerts.push({prog:prog,nom:info.nom||prog,fin:finTxt,nconso:g.nconso,diffMois:diffMois});
       }
     } else {
@@ -398,6 +410,90 @@ function renderFournisseurs(){
 }
 
 // ════════════════════════════════════════
+// DÉLAIS DE LIQUIDATION
+// Calcul : date facture - date commande par N° pièce précédente
+// ════════════════════════════════════════
+function renderDelais(){
+  var ann=document.getElementById('d-ann').value;
+  var prg=document.getElementById('d-prg').value;
+  var fnd=document.getElementById('d-fnd').value;
+
+  // Construire map : N° commande -> {date, prog, fonds, fournisseur}
+  var cmdMap={};
+  CONSO.forEach(function(r){
+    if(r.tv!=="Commandes d'achat") return;
+    if(!r.cmd) return;
+    if(!cmdMap[r.cmd]) cmdMap[r.cmd]={dt:r.dt,p:r.p,fo:r.fo,f:r.f,annee:r.annee};
+  });
+
+  // Trouver les factures et calculer le délai
+  var rows=[];
+  CONSO.forEach(function(r){
+    if(r.tv!=='Factures') return;
+    if(ann && parseInt(r.annee)!==parseInt(ann)) return;
+    if(prg && r.p!==prg) return;
+    if(fnd && r.fo!==fnd) return;
+    if(!r.piecePrec) return;
+    var cmd=cmdMap[r.piecePrec];
+    if(!cmd) return;
+    // Calculer délai en jours
+    function parseDate(s){
+      if(!s) return null;
+      var p=s.split('/');
+      if(p.length===3) return new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));
+      return new Date(s);
+    }
+    var dCmd=parseDate(cmd.dt);
+    var dFac=parseDate(r.dt);
+    if(!dCmd||!dFac) return;
+    var delai=Math.round((dFac-dCmd)/(1000*60*60*24));
+    if(delai<0) return;
+    rows.push({
+      annee:r.annee, prog:r.p, fonds:r.fo,
+      fournisseur:r.f||cmd.f,
+      dateCmd:cmd.dt, dateFac:r.dt,
+      delai:delai, montant:r.m
+    });
+  });
+
+  // KPIs
+  var total=rows.length;
+  var moy=total?Math.round(rows.reduce(function(s,r){return s+r.delai;},0)/total):0;
+  var med=0;
+  if(total){
+    var sorted=[...rows].sort(function(a,b){return a.delai-b.delai;});
+    med=sorted[Math.floor(total/2)].delai;
+  }
+  var inf30=rows.filter(function(r){return r.delai<=30;}).length;
+  var sup90=rows.filter(function(r){return r.delai>90;}).length;
+
+  document.getElementById('delai-kpis').innerHTML=
+    '<div class="kpi"><div class="kl">Délai moyen</div><div class="kv">'+moy+' jours</div></div>'+
+    '<div class="kpi"><div class="kl">Délai médian</div><div class="kv">'+med+' jours</div></div>'+
+    '<div class="kpi"><div class="kl">≤ 30 jours</div><div class="kv c-ok">'+inf30+'</div></div>'+
+    '<div class="kpi"><div class="kl">> 90 jours</div><div class="kv c-er">'+sup90+'</div></div>'+
+    '<div class="kpi"><div class="kl">Nb factures analysées</div><div class="kv">'+total+'</div></div>';
+
+  // Tableau trié par délai décroissant
+  var sorted2=[...rows].sort(function(a,b){return b.delai-a.delai;});
+  document.getElementById('d-th').innerHTML=
+    '<tr><th>Année</th><th>Programme</th><th>Fonds</th><th>Fournisseur</th>'+
+    '<th>Date commande</th><th>Date facture</th>'+
+    '<th style="text-align:right">Délai (j)</th>'+
+    '<th style="text-align:right">Montant (€)</th></tr>';
+  document.getElementById('d-tb').innerHTML=sorted2.map(function(r){
+    var cl=r.delai>90?'c-er':r.delai>30?'c-wn':'c-ok';
+    return'<tr>'+
+      '<td>'+r.annee+'</td><td>'+esc(r.prog)+'</td><td>'+esc(r.fonds)+'</td>'+
+      '<td>'+esc(r.fournisseur)+'</td>'+
+      '<td>'+r.dateCmd+'</td><td>'+r.dateFac+'</td>'+
+      '<td style="text-align:right;font-weight:700" class="'+cl+'">'+r.delai+'</td>'+
+      '<td style="text-align:right">'+fmt(r.montant)+' €</td>'+
+    '</tr>';
+  }).join('');
+}
+
+// ════════════════════════════════════════
 // Exposer les fonctions au scope global (nécessaire dans certains contextes iframe)
 // Relancer l'analyse avec les mêmes tables (après mise à jour des Excel dans Grist)
 async function refreshAnalyse(){
@@ -409,6 +505,7 @@ async function refreshAnalyse(){
 window.refreshAnalyse = refreshAnalyse;
 window.renderSynthese = renderSynthese;
 window.renderFournisseurs = renderFournisseurs;
+window.renderDelais = renderDelais;
 window.showCols   = showCols;
 
 // Attacher les listeners immédiatement (DOM déjà prêt dans Grist iframe)
@@ -428,6 +525,10 @@ function attachFilterListeners(){
   ['f-ann2','f-prg2','f-fnd2','f-top'].forEach(function(id){
     var el=document.getElementById(id);
     if(el){ el.removeEventListener('change',renderFournisseurs); el.addEventListener('change',renderFournisseurs); }
+  });
+  ['d-ann','d-prg','d-fnd'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){ el.removeEventListener('change',renderDelais); el.addEventListener('change',renderDelais); }
   });
   var sAnn=document.getElementById('s-ann');
   if(sAnn){ sAnn.removeEventListener('change',renderSynthese); sAnn.addEventListener('change',renderSynthese); }
@@ -706,11 +807,14 @@ function procConso(raw, annee){
       }
     }
 
+    // Stocker aussi la pièce précédente (pour relier facture -> commande)
+    const piecePrec = col('Numero_de_la_piece_precedente','Numéro de la pièce précédente');
     CONSO.push({
       annee, tv,
       cf: CF_LABEL,
       f:(fours[i]||'').toString().trim(),
       cmd:(cmds[i]||'').toString().trim(),
+      piecePrec:(piecePrec[i]!=null?String(piecePrec[i]).trim():''),
       d:(desigs[i]||'').toString().trim(),
       dt, dtMois,
       m:N(monts[i]),
@@ -734,12 +838,12 @@ function hideLd(){document.getElementById('ld').classList.remove('on')}
 function fillFilters(){
   const progs=[...new Set(BUDGET.map(b=>b.prog))].sort();
   const fonds=[...new Set(BUDGET.map(b=>b.fonds))].sort();
-  ['h-prg','e-prg','x-prg','f-prg2'].forEach(id=>{
+  ['h-prg','e-prg','x-prg','f-prg2','d-prg'].forEach(id=>{
     const s=document.getElementById(id);
     s.innerHTML='<option value="">Tous</option>';
     progs.forEach(p=>s.innerHTML+=`<option value="${esc(p)}">${esc(p)}</option>`);
   });
-  ['h-fnd','e-fnd','x-fnd','f-fnd2'].forEach(id=>{
+  ['h-fnd','e-fnd','x-fnd','f-fnd2','d-fnd'].forEach(id=>{
     const s=document.getElementById(id);
     s.innerHTML='<option value="">Tous</option>';
     fonds.forEach(f=>s.innerHTML+=`<option value="${esc(f)}">${esc(f)}</option>`);
@@ -747,13 +851,14 @@ function fillFilters(){
 }
 
 function switchTab(t){
-  ['s','h','e','x','f'].forEach(function(k){
+  ['s','h','e','x','f','d'].forEach(function(k){
     var tab=document.getElementById('tab-'+k);
     var vw=document.getElementById('vw-'+k);
     if(tab) tab.classList.toggle('on',k===t);
     if(vw) vw.style.display=k===t?'block':'none';
   });
   if(t==='s') renderSynthese();
+  if(t==='d') renderDelais();
   if(t==='e') renderEvol();
   if(t==='x') renderCross();
   if(t==='f') renderFournisseurs();
