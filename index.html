@@ -26,6 +26,34 @@ function renderSynthese(){
     var tauxEng=g.bud>0?engage/g.bud*100:0;
     var rae=Math.max(0,g.bud-engage);
     var prev=Math.min(g.conso+g.cda+g.rar,g.bud);
+    // Projection : rythme mensuel des 3 derniers mois depuis CONSO
+    var moisData={};
+    CONSO.forEach(function(r){
+      if(r.p!==prog||r.tm!=='Original') return;
+      if(ann&&parseInt(r.annee)!==parseInt(ann)) return;
+      if(r.dtMois) moisData[r.dtMois]=(moisData[r.dtMois]||0)+r.m;
+    });
+    var moisList=Object.keys(moisData).sort();
+    var rythme=0;
+    if(moisList.length>=2){
+      var derniers=moisList.slice(-3);
+      rythme=derniers.reduce(function(s,m){return s+moisData[m];},0)/derniers.length;
+    }
+    var dateEpuis='';
+    if(rythme>0&&g.bud>0){
+      var cumActuel=moisList.reduce(function(s,m){return s+moisData[m];},0);
+      var resteB=g.bud-Math.min(cumActuel,g.bud);
+      var moisManquants=Math.ceil(resteB/rythme);
+      if(moisManquants>0&&moisManquants<36&&moisList.length>0){
+        var dernierMoisStr=moisList[moisList.length-1];
+        var dy=parseInt(dernierMoisStr.split('-')[0]);
+        var dm=parseInt(dernierMoisStr.split('-')[1])-1+moisManquants;
+        var finProj=new Date(dy,dm,1);
+        dateEpuis='Épuisement ~'+String(finProj.getMonth()+1).padStart(2,'0')+'/'+finProj.getFullYear();
+      } else if(moisManquants<=0){
+        dateEpuis='Budget épuisé';
+      }
+    }
     var cl=taux>=90?'badge-ok':taux>=50?'badge-wn':'badge-er';
     var bc=taux>=90?'#16a34a':taux>=50?'#d97706':'#dc2626';
     var clE=tauxEng>=90?'c-ok':tauxEng>=50?'c-wn':'c-er';
@@ -39,7 +67,7 @@ function renderSynthese(){
       if(diff<4&&g.bud>0&&g.nconso/g.bud>0.05)
         alerts+='<div class="alert-item"><span>'+esc(info.nom||prog)+'</span><span>'+finTxt+' — '+(diff<0?'Dépassée':'Dans '+Math.round(diff)+' mois')+' — Non conso : '+fmt(g.nconso)+' €</span></div>';
     }
-    cards+='<div class="synth-card">'+
+    cards+='<div class="synth-card" style="cursor:pointer" onclick="drillFromSynthese('+JSON.stringify(prog)+')'+'">'+
       '<span class="synth-badge '+cl+'">'+pct(taux)+'</span>'+
       '<div class="prog-nom">'+esc(info.nom||prog)+'</div>'+
       '<div class="prog-num">'+esc(prog)+'</div>'+
@@ -47,7 +75,9 @@ function renderSynthese(){
       '<div class="synth-bar-wrap"><div class="synth-bar" style="width:'+Math.min(taux,100).toFixed(1)+'%;background:'+bc+'"></div></div>'+
       '<div class="synth-metrics"><span>Budget <strong>'+fmt(g.bud)+' €</strong></span><span>Conso <strong>'+fmt(g.conso)+' €</strong></span><span>Prévision <strong>'+fmt(prev)+' €</strong></span></div>'+
       '<div class="synth-metrics"><span>Engagé <strong class="'+clE+'">'+pct(tauxEng)+'</strong></span><span>Reste à engager <strong>'+fmt(rae)+' €</strong></span></div>'+
+      (g.om>0?'<div class="synth-metrics"><span>dont OM engagés <strong>'+fmt(g.om)+' €</strong></span></div>':'')+
       '<div class="synth-metrics"><span>Payé <strong>'+fmt(g.paye)+' €</strong></span><span>Reste à payer <strong>'+fmt(g.rap)+' €</strong></span></div>'+
+      (dateEpuis?'<div class="synth-metrics" style="margin-top:4px;font-size:.72rem;color:var(--mu)">📅 <em>'+esc(dateEpuis)+'</em></div>':'')+
     '</div>';
   });
   document.getElementById('synthese-content').innerHTML=
@@ -191,6 +221,75 @@ function exportCSV(){
   a.href=URL.createObjectURL(new Blob(['\uFEFF'+lines.join(nl)],{type:'text/csv;charset=utf-8'}));
   a.download='export_'+t+'_'+new Date().toISOString().slice(0,10)+'.csv';
   a.click(); URL.revokeObjectURL(a.href);
+}
+
+
+// ════════════════════════════════════
+// ÉVOLUTION PLURIANNUELLE
+// ════════════════════════════════════
+function renderEvolMulti(prg,fnd){
+  var datasets=[], allMois=new Set();
+  var colors2025='#2563eb', colors2026='#16a34a';
+  [2025,2026].forEach(function(annee){
+    var budRows=BUDGET.filter(function(b){return parseInt(b.annee)===annee&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd);});
+    var totBud=budRows.reduce(function(s,r){return s+r.bud;},0);
+    var bv=Math.round(totBud*100)/100;
+    var monthly={};
+    CONSO.forEach(function(r){
+      if(parseInt(r.annee)!==annee||(!prg||r.p===prg)&&(!fnd||r.fo===fnd)){
+        if(r.tm==='Original'&&r.dtMois){
+          // Normaliser en mois relatif (1,2,...12)
+          var m=r.dtMois.split('-')[1];
+          monthly[m]=(monthly[m]||0)+r.m;
+        }
+      }
+    });
+    var mois=['01','02','03','04','05','06','07','08','09','10','11','12'];
+    var cumul=0;
+    var data=mois.map(function(m){
+      if(monthly[m]!=null){ cumul+=monthly[m]; cumul=Math.min(cumul,bv); return Math.round(cumul*100)/100; }
+      return null;
+    });
+    mois.forEach(function(m){allMois.add(m);});
+    datasets.push({
+      label:'Engagements '+annee+' (budget '+fmt(totBud)+' €)',
+      data:data,
+      borderColor:annee===2025?colors2025:colors2026,
+      backgroundColor:'transparent',
+      tension:.3,pointRadius:3,borderWidth:2,spanGaps:false
+    });
+    datasets.push({
+      label:'Budget '+annee,
+      data:mois.map(function(){return bv;}),
+      borderColor:annee===2025?colors2025:colors2026,
+      backgroundColor:'transparent',
+      borderDash:[6,4],tension:0,pointRadius:0,borderWidth:1.5
+    });
+  });
+  var labels=['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'];
+  if(_line) _line.destroy();
+  _line=new Chart(document.getElementById('chLine').getContext('2d'),{
+    type:'line',
+    data:{labels:labels,datasets:datasets},
+    options:{responsive:true,
+      plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.raw!=null?c.dataset.label+' : '+fmt(c.raw)+' €':null;}}}},
+      scales:{y:{ticks:{callback:function(v){return fmt(v)+' €';}}},x:{ticks:{maxRotation:0}}}
+    }
+  });
+}
+
+// ════════════════════════════════════
+// DRILL DEPUIS SYNTHÈSE
+// ════════════════════════════════════
+function drillFromSynthese(prog){
+  // Aller sur l'histogramme filtré sur ce programme
+  var annSel=document.getElementById('s-ann').value;
+  switchTab('h');
+  var hPrg=document.getElementById('h-prg');
+  var hAnn=document.getElementById('h-ann');
+  if(hPrg) hPrg.value=prog;
+  if(hAnn&&annSel) hAnn.value=annSel;
+  renderHisto();
 }
 
 </script>
@@ -215,6 +314,34 @@ function renderSynthese(){
     var tauxEng=g.bud>0?engage/g.bud*100:0;
     var rae=Math.max(0,g.bud-engage);
     var prev=Math.min(g.conso+g.cda+g.rar,g.bud);
+    // Projection : rythme mensuel des 3 derniers mois depuis CONSO
+    var moisData={};
+    CONSO.forEach(function(r){
+      if(r.p!==prog||r.tm!=='Original') return;
+      if(ann&&parseInt(r.annee)!==parseInt(ann)) return;
+      if(r.dtMois) moisData[r.dtMois]=(moisData[r.dtMois]||0)+r.m;
+    });
+    var moisList=Object.keys(moisData).sort();
+    var rythme=0;
+    if(moisList.length>=2){
+      var derniers=moisList.slice(-3);
+      rythme=derniers.reduce(function(s,m){return s+moisData[m];},0)/derniers.length;
+    }
+    var dateEpuis='';
+    if(rythme>0&&g.bud>0){
+      var cumActuel=moisList.reduce(function(s,m){return s+moisData[m];},0);
+      var resteB=g.bud-Math.min(cumActuel,g.bud);
+      var moisManquants=Math.ceil(resteB/rythme);
+      if(moisManquants>0&&moisManquants<36&&moisList.length>0){
+        var dernierMoisStr=moisList[moisList.length-1];
+        var dy=parseInt(dernierMoisStr.split('-')[0]);
+        var dm=parseInt(dernierMoisStr.split('-')[1])-1+moisManquants;
+        var finProj=new Date(dy,dm,1);
+        dateEpuis='Épuisement ~'+String(finProj.getMonth()+1).padStart(2,'0')+'/'+finProj.getFullYear();
+      } else if(moisManquants<=0){
+        dateEpuis='Budget épuisé';
+      }
+    }
     var cl=taux>=90?'badge-ok':taux>=50?'badge-wn':'badge-er';
     var bc=taux>=90?'#16a34a':taux>=50?'#d97706':'#dc2626';
     var clE=tauxEng>=90?'c-ok':tauxEng>=50?'c-wn':'c-er';
@@ -228,7 +355,7 @@ function renderSynthese(){
       if(diff<4&&g.bud>0&&g.nconso/g.bud>0.05)
         alerts+='<div class="alert-item"><span>'+esc(info.nom||prog)+'</span><span>'+finTxt+' — '+(diff<0?'Dépassée':'Dans '+Math.round(diff)+' mois')+' — Non conso : '+fmt(g.nconso)+' €</span></div>';
     }
-    cards+='<div class="synth-card">'+
+    cards+='<div class="synth-card" style="cursor:pointer" onclick="drillFromSynthese('+JSON.stringify(prog)+')'+'">'+
       '<span class="synth-badge '+cl+'">'+pct(taux)+'</span>'+
       '<div class="prog-nom">'+esc(info.nom||prog)+'</div>'+
       '<div class="prog-num">'+esc(prog)+'</div>'+
@@ -236,7 +363,9 @@ function renderSynthese(){
       '<div class="synth-bar-wrap"><div class="synth-bar" style="width:'+Math.min(taux,100).toFixed(1)+'%;background:'+bc+'"></div></div>'+
       '<div class="synth-metrics"><span>Budget <strong>'+fmt(g.bud)+' €</strong></span><span>Conso <strong>'+fmt(g.conso)+' €</strong></span><span>Prévision <strong>'+fmt(prev)+' €</strong></span></div>'+
       '<div class="synth-metrics"><span>Engagé <strong class="'+clE+'">'+pct(tauxEng)+'</strong></span><span>Reste à engager <strong>'+fmt(rae)+' €</strong></span></div>'+
+      (g.om>0?'<div class="synth-metrics"><span>dont OM engagés <strong>'+fmt(g.om)+' €</strong></span></div>':'')+
       '<div class="synth-metrics"><span>Payé <strong>'+fmt(g.paye)+' €</strong></span><span>Reste à payer <strong>'+fmt(g.rap)+' €</strong></span></div>'+
+      (dateEpuis?'<div class="synth-metrics" style="margin-top:4px;font-size:.72rem;color:var(--mu)">📅 <em>'+esc(dateEpuis)+'</em></div>':'')+
     '</div>';
   });
   document.getElementById('synthese-content').innerHTML=
@@ -380,6 +509,75 @@ function exportCSV(){
   a.href=URL.createObjectURL(new Blob(['\uFEFF'+lines.join(nl)],{type:'text/csv;charset=utf-8'}));
   a.download='export_'+t+'_'+new Date().toISOString().slice(0,10)+'.csv';
   a.click(); URL.revokeObjectURL(a.href);
+}
+
+
+// ════════════════════════════════════
+// ÉVOLUTION PLURIANNUELLE
+// ════════════════════════════════════
+function renderEvolMulti(prg,fnd){
+  var datasets=[], allMois=new Set();
+  var colors2025='#2563eb', colors2026='#16a34a';
+  [2025,2026].forEach(function(annee){
+    var budRows=BUDGET.filter(function(b){return parseInt(b.annee)===annee&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd);});
+    var totBud=budRows.reduce(function(s,r){return s+r.bud;},0);
+    var bv=Math.round(totBud*100)/100;
+    var monthly={};
+    CONSO.forEach(function(r){
+      if(parseInt(r.annee)!==annee||(!prg||r.p===prg)&&(!fnd||r.fo===fnd)){
+        if(r.tm==='Original'&&r.dtMois){
+          // Normaliser en mois relatif (1,2,...12)
+          var m=r.dtMois.split('-')[1];
+          monthly[m]=(monthly[m]||0)+r.m;
+        }
+      }
+    });
+    var mois=['01','02','03','04','05','06','07','08','09','10','11','12'];
+    var cumul=0;
+    var data=mois.map(function(m){
+      if(monthly[m]!=null){ cumul+=monthly[m]; cumul=Math.min(cumul,bv); return Math.round(cumul*100)/100; }
+      return null;
+    });
+    mois.forEach(function(m){allMois.add(m);});
+    datasets.push({
+      label:'Engagements '+annee+' (budget '+fmt(totBud)+' €)',
+      data:data,
+      borderColor:annee===2025?colors2025:colors2026,
+      backgroundColor:'transparent',
+      tension:.3,pointRadius:3,borderWidth:2,spanGaps:false
+    });
+    datasets.push({
+      label:'Budget '+annee,
+      data:mois.map(function(){return bv;}),
+      borderColor:annee===2025?colors2025:colors2026,
+      backgroundColor:'transparent',
+      borderDash:[6,4],tension:0,pointRadius:0,borderWidth:1.5
+    });
+  });
+  var labels=['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'];
+  if(_line) _line.destroy();
+  _line=new Chart(document.getElementById('chLine').getContext('2d'),{
+    type:'line',
+    data:{labels:labels,datasets:datasets},
+    options:{responsive:true,
+      plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.raw!=null?c.dataset.label+' : '+fmt(c.raw)+' €':null;}}}},
+      scales:{y:{ticks:{callback:function(v){return fmt(v)+' €';}}},x:{ticks:{maxRotation:0}}}
+    }
+  });
+}
+
+// ════════════════════════════════════
+// DRILL DEPUIS SYNTHÈSE
+// ════════════════════════════════════
+function drillFromSynthese(prog){
+  // Aller sur l'histogramme filtré sur ce programme
+  var annSel=document.getElementById('s-ann').value;
+  switchTab('h');
+  var hPrg=document.getElementById('h-prg');
+  var hAnn=document.getElementById('h-ann');
+  if(hPrg) hPrg.value=prog;
+  if(hAnn&&annSel) hAnn.value=annSel;
+  renderHisto();
 }
 
 </script>
@@ -510,6 +708,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <div class="tab" id="tab-f" onclick="switchTab('f')">🏆 Top fournisseurs</div>
     <div class="tab" id="tab-d" onclick="switchTab('d')">⏱ Délais</div>
     <div class="tab" id="tab-r" onclick="switchTab('r')">📊 Répartition</div>
+    <div class="tab" id="tab-doc" onclick="switchTab('doc')">📖 Documentation</div>
   </div>
 
   <!-- SYNTHÈSE -->
@@ -548,7 +747,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
   <!-- ÉVOLUTION -->
   <div id="vw-e" style="display:none">
     <div class="flt">
-      <div class="fg"><label>Année</label><select id="e-ann" ><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Année</label><select id="e-ann" ><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option><option value="multi">Comparaison 2025/2026</option></select></div>
       <div class="fg"><label>Programme</label><select id="e-prg" ><option value="">Tous</option></select></div>
       <div class="fg"><label>Fonds</label><select id="e-fnd" ><option value="">Tous</option></select></div>
     </div>
@@ -597,6 +796,82 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <div style="display:flex;gap:16px;flex-wrap:wrap">
       <div class="pnl" style="flex:1;min-width:280px"><div class="pnl-t">Par type de valeur</div><canvas id="chPie" style="max-height:260px"></canvas></div>
       <div class="pnl" style="flex:2;min-width:280px"><div class="pnl-t">Détail par programme</div><div class="tw" style="max-height:260px"><table><thead id="r-th"></thead><tbody id="r-tb"></tbody></table></div></div>
+    </div>
+  </div>
+
+  <!-- DOCUMENTATION -->
+  <div id="vw-doc" style="display:none">
+    <div style="max-width:860px;margin:0 auto">
+
+      <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">📂 Sources de données</div>
+        <table style="width:100%;font-size:.82rem;border-collapse:collapse">
+          <thead><tr style="background:#f7f8fb"><th style="padding:8px 10px;border-bottom:2px solid var(--bd)">Table Grist</th><th style="padding:8px 10px;border-bottom:2px solid var(--bd)">Fichier source</th><th style="padding:8px 10px;border-bottom:2px solid var(--bd)">Contenu</th></tr></thead>
+          <tbody>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5"><strong>Budget_2025 / Budget_2026</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">budget_complet_20XX.xlsx</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">Données budgétaires par Centre financier / Programme / Fonds. Dédoublonnage sur (Année, Programme, Fonds).</td></tr>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5"><strong>Conso_2025 / Conso_2026</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">conso_AE_20XX.xlsx</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">Détail des opérations SAP : type de valeur, type de montant, fournisseur, date comptable, montant.</td></tr>
+            <tr><td style="padding:6px 10px">Table1</td><td style="padding:6px 10px">Saisie Grist</td><td style="padding:6px 10px">Référentiel programmes : col. A = N° programme, col. B = Acronyme, col. C = Date de fin (timestamp Unix).</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">🔢 Indicateurs budgétaires</div>
+        <table style="width:100%;font-size:.82rem;border-collapse:collapse">
+          <thead><tr style="background:#f7f8fb"><th style="padding:8px 10px;border-bottom:2px solid var(--bd)">Indicateur</th><th style="padding:8px 10px;border-bottom:2px solid var(--bd)">Formule</th><th style="padding:8px 10px;border-bottom:2px solid var(--bd)">Source</th></tr></thead>
+          <tbody>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5"><strong>Budget AE N</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">Valeur directe</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">Colonne <em>Budget AE N</em></td></tr>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5"><strong>Conso AE N</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">Valeur directe SAP</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">Colonne <em>Conso AE N</em> = Payé CP + engagements résiduels</td></tr>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5"><strong>Taux de consommation</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">Conso AE N ÷ Budget AE N × 100</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">Vert ≥90%, Orange ≥50%, Rouge &lt;50%</td></tr>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5"><strong>Taux d'engagement</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">(CDa + RAR + OM + NF en attente) ÷ Budget AE N × 100</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">Colonnes correspondantes du fichier budget</td></tr>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5"><strong>Reste à engager</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">Budget AE N − CDa − RAR − OM − NF</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">Disponible pour de nouveaux engagements</td></tr>
+            <tr><td style="padding:6px 10px"><strong>Prévision finale</strong></td><td style="padding:6px 10px">MIN(Conso AE + CDa + RAR, Budget AE N)</td><td style="padding:6px 10px">Plafonnée au budget</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">📈 Courbe d'évolution</div>
+        <table style="width:100%;font-size:.82rem;border-collapse:collapse">
+          <thead><tr style="background:#f7f8fb"><th style="padding:8px 10px;border-bottom:2px solid var(--bd)">Courbe</th><th style="padding:8px 10px;border-bottom:2px solid var(--bd)">Calcul</th></tr></thead>
+          <tbody>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5"><strong style="color:#2563eb">Engagements cumulés</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">Cumul mensuel des montants <em>Type de montant = Original</em>, tous types de valeur confondus, hors Paiements et Comptabilis. Plafonné au budget à chaque mois.<br><small style="color:var(--mu)">Justification : les Réductions et Modifications compensent les Originaux — les inclure gonflerait le cumul artificiellement.</small></td></tr>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5"><strong style="color:#dc2626">Budget AE N</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">Ligne horizontale = valeur fixe du fichier budget.</td></tr>
+            <tr><td style="padding:6px 10px"><strong style="color:#d97706">Prévision</strong></td><td style="padding:6px 10px">MIN(dernier cumul + CDa + RAR, Budget AE N). Projetée jusqu'à la date de fin du programme (Table1) ou décembre si pas de date.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">📊 Répartition — Montants nets SAP</div>
+        <table style="width:100%;font-size:.82rem;border-collapse:collapse">
+          <thead><tr style="background:#f7f8fb"><th style="padding:8px 10px;border-bottom:2px solid var(--bd)">Catégorie</th><th style="padding:8px 10px;border-bottom:2px solid var(--bd)">Filtre <em>Texte type val.</em></th><th style="padding:8px 10px;border-bottom:2px solid var(--bd)">Description</th></tr></thead>
+          <tbody>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">💳 Paiements</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5"><code>Paiements</code></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">Décaissements effectifs vers les fournisseurs.</td></tr>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">📄 Factures en cours</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5"><code>Factures</code></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">Factures reçues, comptabilisées mais pas encore payées.</td></tr>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">🛒 Commandes en cours</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5"><code>Commandes d'achat</code></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">Solde résiduel des commandes ouvertes.</td></tr>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">📝 Pièces préenregistrées</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5"><code>Pièces préenregistrées</code></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5">Saisies en attente de validation comptable.</td></tr>
+            <tr><td style="padding:6px 10px">🔒 Réservations/Blocages</td><td style="padding:6px 10px"><code>Réservation de fonds</code> + <code>Blocage de fonds</code></td><td style="padding:6px 10px">Fonds immobilisés sur initiative interne.</td></tr>
+          </tbody>
+        </table>
+        <div style="margin-top:8px;font-size:.76rem;color:var(--mu);padding:8px 10px;background:#f7f8fb;border-radius:6px">
+          ℹ️ Montants nets = somme de tous les types de montant SAP (Original + Réduction + Modification…). Total ≈ Conso AE budget (écart possible : Prestations internes non incluses dans l'export).
+        </div>
+      </div>
+
+      <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">🏆 Top fournisseurs</div>
+        <p style="font-size:.82rem;line-height:1.6">Basé sur les <strong>Paiements positifs</strong> (montants réellement décaissés). Source : <em>Texte type val. = Paiements</em>, montants &gt; 0, colonne <em>Nom 1</em>.</p>
+      </div>
+
+      <div class="pnl">
+        <div class="pnl-t">⏱ Délais de liquidation</div>
+        <p style="font-size:.82rem;line-height:1.6">Délai = date Facture − date Commande d'achat d'origine.<br>
+        Liaison via <em>Numéro de la pièce précédente</em> de la Facture → <em>Numéro de pièce de référence</em> de la Commande.<br>
+        Code couleur : Vert ≤ 30j, Orange 31–90j, Rouge &gt; 90j.<br>
+        <small style="color:var(--mu)">Note : une commande avec plusieurs échéanciers génère plusieurs délais distincts.</small></p>
+      </div>
+
     </div>
   </div>
 </div>
@@ -687,6 +962,30 @@ window.renderFournisseurs = renderFournisseurs;
 window.renderDelais = renderDelais;
 window.renderRepartition = renderRepartition;
 window.exportCSV = exportCSV;
+
+// État des filtres partagés entre onglets
+var _filterState={ann:'',prg:'',fnd:''};
+
+function saveFilter(key, val){ _filterState[key]=val; }
+
+function applySharedFilters(tab){
+  // Synchroniser année/programme/fonds entre onglets
+  var map={
+    's':['s-ann'],
+    'h':['h-ann','h-prg','h-fnd'],
+    'e':['e-ann','e-prg','e-fnd'],
+    'x':['x-ann','x-prg','x-fnd'],
+    'f':['f-ann2','f-prg2','f-fnd2'],
+    'd':['d-ann','d-prg','d-fnd'],
+    'r':['r-ann','r-prg','r-fnd']
+  };
+  var ids=map[tab]||[];
+  var keys=['ann','prg','fnd'];
+  ids.forEach(function(id,i){
+    var el=document.getElementById(id); if(!el) return;
+    var k=keys[i]; if(k&&_filterState[k]!==undefined) el.value=_filterState[k];
+  });
+}
 
 function attachListeners(){
   var pairs=[
@@ -1007,12 +1306,13 @@ function fillFilters(){
 
 function switchTab(t){
   _currentTab=t;
-  ['s','h','e','x','f','d','r'].forEach(function(k){
+  ['s','h','e','x','f','d','r','doc'].forEach(function(k){
     var tab=document.getElementById('tab-'+k);
     var vw=document.getElementById('vw-'+k);
     if(tab) tab.classList.toggle('on',k===t);
     if(vw) vw.style.display=k===t?'block':'none';
   });
+  applySharedFilters(t);
   if(t==='s') renderSynthese();
   if(t==='e') renderEvol();
   if(t==='x') renderCross();
@@ -1035,6 +1335,7 @@ function fb(f){
 function renderHisto(){
   closeDrill();
   const f=gf(); _grp=f.grp;
+  _filterState.ann=f.ann; _filterState.prg=f.prg; _filterState.fnd=f.fnd;
   const rows=fb(f);
   const tB=rows.reduce((s,r)=>s+r.bud,0),tC=rows.reduce((s,r)=>s+r.conso,0),
         tN=rows.reduce((s,r)=>s+r.nconso,0),tP=rows.reduce((s,r)=>s+r.paye,0);
@@ -1125,6 +1426,8 @@ function renderEvol(){
   const ann=document.getElementById('e-ann').value;
   const prg=document.getElementById('e-prg').value;
   const fnd=document.getElementById('e-fnd').value;
+  _filterState.ann=ann; _filterState.prg=prg; _filterState.fnd=fnd;
+  if(ann==='multi'){ renderEvolMulti(prg,fnd); return; }
   const budRows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd));
   const totBud=budRows.reduce((s,r)=>s+r.bud,0);
   const totCDA=budRows.reduce((s,r)=>s+r.cda,0);
@@ -1226,6 +1529,34 @@ function renderSynthese(){
     var tauxEng=g.bud>0?engage/g.bud*100:0;
     var rae=Math.max(0,g.bud-engage);
     var prev=Math.min(g.conso+g.cda+g.rar,g.bud);
+    // Projection : rythme mensuel des 3 derniers mois depuis CONSO
+    var moisData={};
+    CONSO.forEach(function(r){
+      if(r.p!==prog||r.tm!=='Original') return;
+      if(ann&&parseInt(r.annee)!==parseInt(ann)) return;
+      if(r.dtMois) moisData[r.dtMois]=(moisData[r.dtMois]||0)+r.m;
+    });
+    var moisList=Object.keys(moisData).sort();
+    var rythme=0;
+    if(moisList.length>=2){
+      var derniers=moisList.slice(-3);
+      rythme=derniers.reduce(function(s,m){return s+moisData[m];},0)/derniers.length;
+    }
+    var dateEpuis='';
+    if(rythme>0&&g.bud>0){
+      var cumActuel=moisList.reduce(function(s,m){return s+moisData[m];},0);
+      var resteB=g.bud-Math.min(cumActuel,g.bud);
+      var moisManquants=Math.ceil(resteB/rythme);
+      if(moisManquants>0&&moisManquants<36&&moisList.length>0){
+        var dernierMoisStr=moisList[moisList.length-1];
+        var dy=parseInt(dernierMoisStr.split('-')[0]);
+        var dm=parseInt(dernierMoisStr.split('-')[1])-1+moisManquants;
+        var finProj=new Date(dy,dm,1);
+        dateEpuis='Épuisement ~'+String(finProj.getMonth()+1).padStart(2,'0')+'/'+finProj.getFullYear();
+      } else if(moisManquants<=0){
+        dateEpuis='Budget épuisé';
+      }
+    }
     var cl=taux>=90?'badge-ok':taux>=50?'badge-wn':'badge-er';
     var bc=taux>=90?'#16a34a':taux>=50?'#d97706':'#dc2626';
     var clE=tauxEng>=90?'c-ok':tauxEng>=50?'c-wn':'c-er';
@@ -1239,7 +1570,7 @@ function renderSynthese(){
       if(diff<4&&g.bud>0&&g.nconso/g.bud>0.05)
         alerts+='<div class="alert-item"><span>'+esc(info.nom||prog)+'</span><span>'+finTxt+' — '+(diff<0?'Dépassée':'Dans '+Math.round(diff)+' mois')+' — Non conso : '+fmt(g.nconso)+' €</span></div>';
     }
-    cards+='<div class="synth-card">'+
+    cards+='<div class="synth-card" style="cursor:pointer" onclick="drillFromSynthese('+JSON.stringify(prog)+')'+'">'+
       '<span class="synth-badge '+cl+'">'+pct(taux)+'</span>'+
       '<div class="prog-nom">'+esc(info.nom||prog)+'</div>'+
       '<div class="prog-num">'+esc(prog)+'</div>'+
@@ -1247,7 +1578,9 @@ function renderSynthese(){
       '<div class="synth-bar-wrap"><div class="synth-bar" style="width:'+Math.min(taux,100).toFixed(1)+'%;background:'+bc+'"></div></div>'+
       '<div class="synth-metrics"><span>Budget <strong>'+fmt(g.bud)+' €</strong></span><span>Conso <strong>'+fmt(g.conso)+' €</strong></span><span>Prévision <strong>'+fmt(prev)+' €</strong></span></div>'+
       '<div class="synth-metrics"><span>Engagé <strong class="'+clE+'">'+pct(tauxEng)+'</strong></span><span>Reste à engager <strong>'+fmt(rae)+' €</strong></span></div>'+
+      (g.om>0?'<div class="synth-metrics"><span>dont OM engagés <strong>'+fmt(g.om)+' €</strong></span></div>':'')+
       '<div class="synth-metrics"><span>Payé <strong>'+fmt(g.paye)+' €</strong></span><span>Reste à payer <strong>'+fmt(g.rap)+' €</strong></span></div>'+
+      (dateEpuis?'<div class="synth-metrics" style="margin-top:4px;font-size:.72rem;color:var(--mu)">📅 <em>'+esc(dateEpuis)+'</em></div>':'')+
     '</div>';
   });
   document.getElementById('synthese-content').innerHTML=
@@ -1391,6 +1724,75 @@ function exportCSV(){
   a.href=URL.createObjectURL(new Blob(['\uFEFF'+lines.join(nl)],{type:'text/csv;charset=utf-8'}));
   a.download='export_'+t+'_'+new Date().toISOString().slice(0,10)+'.csv';
   a.click(); URL.revokeObjectURL(a.href);
+}
+
+
+// ════════════════════════════════════
+// ÉVOLUTION PLURIANNUELLE
+// ════════════════════════════════════
+function renderEvolMulti(prg,fnd){
+  var datasets=[], allMois=new Set();
+  var colors2025='#2563eb', colors2026='#16a34a';
+  [2025,2026].forEach(function(annee){
+    var budRows=BUDGET.filter(function(b){return parseInt(b.annee)===annee&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd);});
+    var totBud=budRows.reduce(function(s,r){return s+r.bud;},0);
+    var bv=Math.round(totBud*100)/100;
+    var monthly={};
+    CONSO.forEach(function(r){
+      if(parseInt(r.annee)!==annee||(!prg||r.p===prg)&&(!fnd||r.fo===fnd)){
+        if(r.tm==='Original'&&r.dtMois){
+          // Normaliser en mois relatif (1,2,...12)
+          var m=r.dtMois.split('-')[1];
+          monthly[m]=(monthly[m]||0)+r.m;
+        }
+      }
+    });
+    var mois=['01','02','03','04','05','06','07','08','09','10','11','12'];
+    var cumul=0;
+    var data=mois.map(function(m){
+      if(monthly[m]!=null){ cumul+=monthly[m]; cumul=Math.min(cumul,bv); return Math.round(cumul*100)/100; }
+      return null;
+    });
+    mois.forEach(function(m){allMois.add(m);});
+    datasets.push({
+      label:'Engagements '+annee+' (budget '+fmt(totBud)+' €)',
+      data:data,
+      borderColor:annee===2025?colors2025:colors2026,
+      backgroundColor:'transparent',
+      tension:.3,pointRadius:3,borderWidth:2,spanGaps:false
+    });
+    datasets.push({
+      label:'Budget '+annee,
+      data:mois.map(function(){return bv;}),
+      borderColor:annee===2025?colors2025:colors2026,
+      backgroundColor:'transparent',
+      borderDash:[6,4],tension:0,pointRadius:0,borderWidth:1.5
+    });
+  });
+  var labels=['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'];
+  if(_line) _line.destroy();
+  _line=new Chart(document.getElementById('chLine').getContext('2d'),{
+    type:'line',
+    data:{labels:labels,datasets:datasets},
+    options:{responsive:true,
+      plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.raw!=null?c.dataset.label+' : '+fmt(c.raw)+' €':null;}}}},
+      scales:{y:{ticks:{callback:function(v){return fmt(v)+' €';}}},x:{ticks:{maxRotation:0}}}
+    }
+  });
+}
+
+// ════════════════════════════════════
+// DRILL DEPUIS SYNTHÈSE
+// ════════════════════════════════════
+function drillFromSynthese(prog){
+  // Aller sur l'histogramme filtré sur ce programme
+  var annSel=document.getElementById('s-ann').value;
+  switchTab('h');
+  var hPrg=document.getElementById('h-prg');
+  var hAnn=document.getElementById('h-ann');
+  if(hPrg) hPrg.value=prog;
+  if(hAnn&&annSel) hAnn.value=annSel;
+  renderHisto();
 }
 
 </script>
