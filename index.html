@@ -60,6 +60,26 @@ tbody tr:hover{background:var(--pl)}
 tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px solid var(--bd)}
 .rb{display:inline-block;padding:2px 8px;border-radius:12px;font-weight:600;font-size:.75rem}
 .r-ok{background:#dcfce7;color:var(--ok)}.r-wn{background:#fef9c3;color:var(--wn)}.r-er{background:#fee2e2;color:var(--er)}
+.synth-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;margin-bottom:20px}
+.synth-card{background:var(--s);border:1px solid var(--bd);border-radius:var(--r);padding:16px;position:relative;overflow:hidden}
+.synth-card .prog-nom{font-size:1rem;font-weight:700;margin-bottom:2px}
+.synth-card .prog-num{font-size:.75rem;color:var(--mu);margin-bottom:12px}
+.synth-card .prog-fin{font-size:.75rem;font-weight:600;margin-bottom:12px}
+.synth-card .prog-fin.urgent{color:var(--er)}
+.synth-card .prog-fin.proche{color:var(--wn)}
+.synth-card .prog-fin.ok{color:var(--ok)}
+.synth-bar-wrap{height:8px;background:#f0f1f5;border-radius:4px;margin-bottom:8px;overflow:hidden}
+.synth-bar{height:100%;border-radius:4px;transition:width .4s}
+.synth-metrics{display:flex;justify-content:space-between;font-size:.78rem}
+.synth-metrics span{color:var(--mu)}
+.synth-metrics strong{color:var(--tx)}
+.synth-badge{position:absolute;top:12px;right:12px;padding:3px 10px;border-radius:12px;font-size:.75rem;font-weight:700}
+.badge-ok{background:#dcfce7;color:var(--ok)}
+.badge-wn{background:#fef9c3;color:var(--wn)}
+.badge-er{background:#fee2e2;color:var(--er)}
+.alert-box{background:#fff7ed;border:1px solid #fed7aa;border-radius:var(--r);padding:14px 16px;margin-bottom:16px}
+.alert-box h3{font-size:.85rem;font-weight:700;color:var(--wn);margin-bottom:8px}
+.alert-item{font-size:.82rem;padding:4px 0;border-bottom:1px solid #fde8c8;display:flex;justify-content:space-between}
 #ld{display:none;position:fixed;inset:0;background:rgba(255,255,255,.88);align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:10px}
 #ld.on{display:flex}
 .sp{width:34px;height:34px;border:4px solid var(--bd);border-top-color:var(--pr);border-radius:50%;animation:sp .7s linear infinite}
@@ -112,13 +132,23 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     </div>
   </div>
   <div class="tabs">
-    <div class="tab on" id="tab-h" onclick="switchTab('h')">Histogramme</div>
+    <div class="tab on" id="tab-s" onclick="switchTab('s')">🏠 Synthèse</div>
+    <div class="tab" id="tab-h" onclick="switchTab('h')">Histogramme</div>
     <div class="tab" id="tab-e" onclick="switchTab('e')">Évolution</div>
     <div class="tab" id="tab-x" onclick="switchTab('x')">Tableau croisé</div>
+    <div class="tab" id="tab-f" onclick="switchTab('f')">Top fournisseurs</div>
+  </div>
+
+  <!-- SYNTHÈSE -->
+  <div id="vw-s">
+    <div class="flt">
+      <div class="fg"><label>Année</label><select id="s-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+    </div>
+    <div id="synthese-content"></div>
   </div>
 
   <!-- HISTOGRAMME -->
-  <div id="vw-h">
+  <div id="vw-h" style="display:none">
     <div class="flt">
       <div class="fg"><label>Année</label><select id="h-ann" ><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
       <div class="fg"><label>Programme</label><select id="h-prg" ><option value="">Tous</option></select></div>
@@ -162,6 +192,19 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="fg"><label>Fonds</label><select id="x-fnd" ><option value="">Tous</option></select></div>
     </div>
     <div class="tw"><table><thead id="x-th"></thead><tbody id="x-tb"></tbody></table></div>
+  </div>
+
+  <!-- TOP FOURNISSEURS -->
+  <div id="vw-f" style="display:none">
+    <div class="flt">
+      <div class="fg"><label>Année</label><select id="f-ann2"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Programme</label><select id="f-prg2"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label><select id="f-fnd2"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Nb fournisseurs</label>
+        <select id="f-top"><option value="10">Top 10</option><option value="20">Top 20</option><option value="50">Top 50</option></select>
+      </div>
+    </div>
+    <div class="tw"><table><thead id="f-th"></thead><tbody id="f-tb"></tbody></table></div>
   </div>
 </div>
 
@@ -215,6 +258,143 @@ async function showCols(){
   }
 }
 
+// ════════════════════════════════════════
+// SYNTHÈSE — tableau de bord par programme
+// ════════════════════════════════════════
+function renderSynthese(){
+  var ann=document.getElementById('s-ann').value;
+  var pi=window._PROG_INFO||{};
+  var today=new Date();
+
+  // Agréger BUDGET par programme (toutes années ou filtrée)
+  var byProg={};
+  BUDGET.forEach(function(b){
+    if(ann && parseInt(b.annee)!==parseInt(ann)) return;
+    var k=b.prog;
+    if(!byProg[k]) byProg[k]={bud:0,conso:0,nconso:0,cda:0,rar:0,paye:0,rap:0};
+    byProg[k].bud+=b.bud; byProg[k].conso+=b.conso; byProg[k].nconso+=b.nconso;
+    byProg[k].cda+=b.cda; byProg[k].rar+=b.rar; byProg[k].paye+=b.paye; byProg[k].rap+=b.rap;
+  });
+
+  // Alertes : programmes avec date de fin < 3 mois ET budget non consommé > 10%
+  var alerts=[];
+  var cards='';
+
+  Object.keys(byProg).sort().forEach(function(prog){
+    var g=byProg[prog];
+    var info=pi[prog]||{nom:'',dateFin:null};
+    var taux=g.bud>0?g.conso/g.bud*100:0;
+    var prev=Math.min(g.conso+g.cda+g.rar, g.bud);
+    var tauxPrev=g.bud>0?prev/g.bud*100:0;
+
+    // Couleur taux
+    var cl=taux>=90?'badge-ok':taux>=50?'badge-wn':'badge-er';
+    var barColor=taux>=90?'#16a34a':taux>=50?'#d97706':'#dc2626';
+
+    // Date de fin
+    var finTxt='', finCl='';
+    if(info.dateFin){
+      var parts=info.dateFin.split('-');
+      var finDate=new Date(parseInt(parts[0]),parseInt(parts[1])-1,28);
+      var diffMois=(finDate-today)/(1000*60*60*24*30);
+      finTxt='Fin : '+parts[1]+'/'+parts[0];
+      if(diffMois<0) finCl='urgent';
+      else if(diffMois<3) finCl='proche';
+      else finCl='ok';
+      // Alerte si proche ou dépassé et nconso > 10%
+      if(diffMois<3 && g.nconso/g.bud>0.1){
+        alerts.push({prog:prog,nom:info.nom||prog,fin:finTxt,nconso:g.nconso,diffMois:diffMois});
+      }
+    } else {
+      finTxt='Programme en cours';
+      finCl='ok';
+    }
+
+    cards+='<div class="synth-card">'+
+      '<span class="synth-badge '+cl+'">'+pct(taux)+'</span>'+
+      '<div class="prog-nom">'+(info.nom||prog)+'</div>'+
+      '<div class="prog-num">'+prog+'</div>'+
+      '<div class="prog-fin '+finCl+'">'+finTxt+'</div>'+
+      '<div class="synth-bar-wrap"><div class="synth-bar" style="width:'+Math.min(taux,100).toFixed(1)+'%;background:'+barColor+'"></div></div>'+
+      '<div class="synth-metrics">'+
+        '<span>Budget <strong>'+fmt(g.bud)+' €</strong></span>'+
+        '<span>Conso <strong>'+fmt(g.conso)+' €</strong></span>'+
+        '<span>Prévision <strong>'+fmt(prev)+' €</strong></span>'+
+      '</div>'+
+      '<div class="synth-metrics" style="margin-top:6px">'+
+        '<span>Payé <strong>'+fmt(g.paye)+' €</strong></span>'+
+        '<span>Reste à payer <strong>'+fmt(g.rap)+' €</strong></span>'+
+      '</div>'+
+    '</div>';
+  });
+
+  // Zone alertes
+  var alertHtml='';
+  if(alerts.length){
+    alertHtml='<div class="alert-box"><h3>⚠️ Alertes — Budget non consommé avec échéance proche</h3>'+
+      alerts.map(function(a){
+        var label=a.diffMois<0?'Dépassée':'Dans '+Math.round(a.diffMois)+' mois';
+        return '<div class="alert-item"><span>'+a.nom+' ('+a.prog+')</span>'+
+          '<span>'+a.fin+' — '+label+' — Non conso : '+fmt(a.nconso)+' €</span></div>';
+      }).join('')+'</div>';
+  }
+
+  document.getElementById('synthese-content').innerHTML=
+    alertHtml+'<div class="synth-grid">'+cards+'</div>';
+}
+
+// ════════════════════════════════════════
+// TOP FOURNISSEURS
+// ════════════════════════════════════════
+function renderFournisseurs(){
+  var ann=document.getElementById('f-ann2').value;
+  var prg=document.getElementById('f-prg2').value;
+  var fnd=document.getElementById('f-fnd2').value;
+  var top=parseInt(document.getElementById('f-top').value)||10;
+
+  // Agréger CONSO par fournisseur (montants positifs = Original)
+  var byFour={};
+  CONSO.forEach(function(r){
+    if(ann && parseInt(r.annee)!==parseInt(ann)) return;
+    if(prg && r.p!==prg) return;
+    if(fnd && r.fo!==fnd) return;
+    if(r.tm!=='Original') return;
+    var f=r.f||'Inconnu';
+    if(!byFour[f]) byFour[f]={montant:0,nb:0};
+    byFour[f].montant+=r.m;
+    byFour[f].nb++;
+  });
+
+  // Trier par montant décroissant
+  var sorted=Object.keys(byFour).map(function(f){
+    return{four:f,montant:byFour[f].montant,nb:byFour[f].nb};
+  }).sort(function(a,b){return b.montant-a.montant}).slice(0,top);
+
+  var total=sorted.reduce(function(s,r){return s+r.montant;},0);
+  var totalAll=Object.values(byFour).reduce(function(s,r){return s+r.montant;},0);
+
+  var th=document.getElementById('f-th');
+  var tb=document.getElementById('f-tb');
+  th.innerHTML='<tr><th>#</th><th>Fournisseur</th><th style="text-align:right">Montant engagé</th><th style="text-align:right">% du total</th><th style="text-align:right">Nb lignes</th></tr>';
+  tb.innerHTML=sorted.map(function(r,i){
+    var share=totalAll>0?r.montant/totalAll*100:0;
+    return'<tr>'+
+      '<td>'+(i+1)+'</td>'+
+      '<td>'+esc(r.four)+'</td>'+
+      '<td style="text-align:right">'+fmt(r.montant)+' €</td>'+
+      '<td style="text-align:right">'+share.toFixed(1)+' %</td>'+
+      '<td style="text-align:right">'+r.nb+'</td>'+
+    '</tr>';
+  }).join('')+
+  '<tr style="font-weight:700;background:#f7f8fb;border-top:2px solid var(--bd)">'+
+    '<td colspan="2">TOTAL Top '+top+'</td>'+
+    '<td style="text-align:right">'+fmt(total)+' €</td>'+
+    '<td style="text-align:right">'+(totalAll>0?total/totalAll*100:0).toFixed(1)+' %</td>'+
+    '<td></td>'+
+  '</tr>';
+}
+
+// ════════════════════════════════════════
 // Exposer les fonctions au scope global (nécessaire dans certains contextes iframe)
 // Relancer l'analyse avec les mêmes tables (après mise à jour des Excel dans Grist)
 async function refreshAnalyse(){
@@ -224,23 +404,34 @@ async function refreshAnalyse(){
   if(btn){ btn.textContent='🔄 Actualiser'; btn.disabled=false; }
 }
 window.refreshAnalyse = refreshAnalyse;
+window.renderSynthese = renderSynthese;
+window.renderFournisseurs = renderFournisseurs;
 window.showCols   = showCols;
 
-// Attacher les listeners des filtres via JS (plus fiable que onchange inline dans iframe)
-document.addEventListener('DOMContentLoaded', function(){
-  ['h-ann','h-prg','h-fnd','h-grp'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.addEventListener('change', renderHisto);
+// Attacher les listeners immédiatement (DOM déjà prêt dans Grist iframe)
+function attachFilterListeners(){
+  ['h-ann','h-prg','h-fnd','h-grp'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){ el.removeEventListener('change',renderHisto); el.addEventListener('change',renderHisto); }
   });
-  ['e-ann','e-prg','e-fnd'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.addEventListener('change', renderEvol);
+  ['e-ann','e-prg','e-fnd'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){ el.removeEventListener('change',renderEvol); el.addEventListener('change',renderEvol); }
   });
-  ['x-ann','x-prg','x-fnd'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.addEventListener('change', renderCross);
+  ['x-ann','x-prg','x-fnd'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){ el.removeEventListener('change',renderCross); el.addEventListener('change',renderCross); }
   });
-});
+  ['f-ann2','f-prg2','f-fnd2','f-top'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){ el.removeEventListener('change',renderFournisseurs); el.addEventListener('change',renderFournisseurs); }
+  });
+  var sAnn=document.getElementById('s-ann');
+  if(sAnn){ sAnn.removeEventListener('change',renderSynthese); sAnn.addEventListener('change',renderSynthese); }
+}
+// Attacher maintenant ET après DOMContentLoaded (double sécurité)
+attachFilterListeners();
+document.addEventListener('DOMContentLoaded', attachFilterListeners);
 window.lanceAnalyse = lanceAnalyse;
 window.retourCfg  = retourCfg;
 window.switchTab  = switchTab;
@@ -376,11 +567,12 @@ async function lanceAnalyse(){
     if(CONSO.length) console.log('[RESULT] C0:', JSON.stringify(CONSO[0]));
 
     fillFilters();
+    attachFilterListeners();
     hideLd();
     document.getElementById('cfg-screen').style.display='none';
     document.getElementById('dash').style.display='block';
     document.getElementById('dash-title').textContent='Analyse budgétaire'+(CF_LABEL?' — Centre financier '+CF_LABEL:'');
-    renderHisto();
+    switchTab('s');
   }catch(e){
     hideLd();
     document.getElementById('cfg-err').textContent='❌ '+e.message;
@@ -522,12 +714,12 @@ function hideLd(){document.getElementById('ld').classList.remove('on')}
 function fillFilters(){
   const progs=[...new Set(BUDGET.map(b=>b.prog))].sort();
   const fonds=[...new Set(BUDGET.map(b=>b.fonds))].sort();
-  ['h-prg','e-prg','x-prg'].forEach(id=>{
+  ['h-prg','e-prg','x-prg','f-prg2'].forEach(id=>{
     const s=document.getElementById(id);
     s.innerHTML='<option value="">Tous</option>';
     progs.forEach(p=>s.innerHTML+=`<option value="${esc(p)}">${esc(p)}</option>`);
   });
-  ['h-fnd','e-fnd','x-fnd'].forEach(id=>{
+  ['h-fnd','e-fnd','x-fnd','f-fnd2'].forEach(id=>{
     const s=document.getElementById(id);
     s.innerHTML='<option value="">Tous</option>';
     fonds.forEach(f=>s.innerHTML+=`<option value="${esc(f)}">${esc(f)}</option>`);
@@ -535,13 +727,18 @@ function fillFilters(){
 }
 
 function switchTab(t){
-  ['h','e','x'].forEach(k=>{
-    document.getElementById('tab-'+k).classList.toggle('on',k===t);
-    document.getElementById('vw-'+k).style.display=k===t?'block':'none';
+  ['s','h','e','x','f'].forEach(function(k){
+    var tab=document.getElementById('tab-'+k);
+    var vw=document.getElementById('vw-'+k);
+    if(tab) tab.classList.toggle('on',k===t);
+    if(vw) vw.style.display=k===t?'block':'none';
   });
+  if(t==='s') renderSynthese();
   if(t==='e') renderEvol();
   if(t==='x') renderCross();
+  if(t==='f') renderFournisseurs();
 }
+
 
 // ════════════════════════════════════════
 // HISTOGRAMME
@@ -724,8 +921,9 @@ function renderCross(){
   const prg=document.getElementById('x-prg').value;
   const fnd=document.getElementById('x-fnd').value;
   const rows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd));
+  var pi2=window._PROG_INFO||{};
   const cols=[
-    {k:'cf',l:'Centre fin.'},{k:'annee',l:'Année'},{k:'prog',l:'Programme'},{k:'fonds',l:'Fonds'},
+    {k:'cf',l:'Centre fin.'},{k:'annee',l:'Année'},{k:'prog',l:'Programme'},{k:'_nom',l:'Nom programme'},{k:'fonds',l:'Fonds'},
     {k:'bud',l:'Budget AE N',n:1},{k:'conso',l:'Conso AE N',n:1},{k:'nconso',l:'Non Conso',n:1},
     {k:'cda',l:'CDa engagées',n:1},{k:'rar',l:'Reste à réceptionner',n:1},
     {k:'paye',l:'Payé (CP)',n:1},{k:'rap',l:'Reste à payer',n:1},{k:'_pct',l:'Taux conso'},
@@ -734,8 +932,9 @@ function renderCross(){
   document.getElementById('x-tb').innerHTML=rows.map(r=>{
     const p=r.bud>0?r.conso/r.bud*100:0, cl=p>=90?'r-ok':p>=50?'r-wn':'r-er';
     return'<tr>'+cols.map(c=>{
-      if(c.k==='_pct') return`<td><span class="rb ${cl}">${pct(p)}</span></td>`;
-      return`<td style="${c.n?'text-align:right':''}">${c.n?fmt(r[c.k])+' €':esc(String(r[c.k]))}</td>`;
+      if(c.k==='_pct') return'<td><span class="rb '+cl+'">'+pct(p)+'</span></td>';
+      if(c.k==='_nom') return'<td>'+esc((pi2[r.prog]&&pi2[r.prog].nom)||'-')+'</td>';
+      return'<td style="'+(c.n?'text-align:right':'')+'">'+(c.n?fmt(r[c.k])+' €':esc(String(r[c.k])))+'</td>';
     }).join('')+'</tr>';
   }).join('');
 }
