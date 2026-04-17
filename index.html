@@ -759,29 +759,22 @@ grist.ready({
   requiredAccess: 'read table',
 });
 
-// Au démarrage : lister les tables et relancer auto si config mémorisée
-(async function init(){
+// Au démarrage : utiliser grist.onOptions pour être notifié quand Grist est prêt
+// puis lister les tables
+grist.onOptions(async function(options){
+  // Cette callback est appelée par Grist quand le widget est prêt
+  if(window._initDone) return;
+  window._initDone = true;
   showLd('Chargement des tables Grist…');
   try{
-    // Lire les tables via API REST (plus fiable que grist.docApi.listTables)
-    const apiBase = window.location.origin;
-    const docId = 'upva6djkondMM54q1VP5kJ';
-    const tblResp = await fetch(apiBase+'/api/docs/'+docId+'/tables');
-    let userTables = [];
-    if(tblResp.ok){
-      const tblData = await tblResp.json();
-      userTables = (tblData.tables||[]).map(t=>t.id).filter(t=>!t.startsWith('_'));
-    } else {
-      // Fallback : essayer grist.docApi
-      const tables = await grist.docApi.listTables();
-      userTables = tables.filter(t => !t.startsWith('_'));
-    }
-    console.log('[INIT] Tables trouvées:', userTables);
+    const tables = await grist.docApi.listTables();
+    const userTables = tables.filter(t => !t.startsWith('_'));
+    console.log('[INIT] Tables:', userTables);
     _tables = userTables;
 
-    ['sel-b25','sel-b26','sel-c25','sel-c26'].forEach(id=>{
+    ['sel-b25','sel-b26','sel-c25','sel-c26'].forEach(function(id){
       const sel=document.getElementById(id);
-      userTables.forEach(t=>{
+      userTables.forEach(function(t){
         const opt=document.createElement('option');
         opt.value=t; opt.textContent=t;
         sel.appendChild(opt);
@@ -789,20 +782,14 @@ grist.ready({
       sel.addEventListener('change', checkSelections);
     });
 
-    // Restaurer la config sauvegardée
-    let saved={};
-    try{ saved=JSON.parse(localStorage.getItem('budgetCfg')||'{}'); }catch(e){}
-
-    // Pré-sélection intelligente si pas de config sauvegardée
+    // Config sauvegardée ou pré-sélection auto
+    let saved = options && options.budgetCfg ? options.budgetCfg : {};
+    try{ if(!saved.b25) saved=JSON.parse(localStorage.getItem('budgetCfg')||'{}'); }catch(e){}
     if(!saved.b25){
-      const b25 = userTables.find(t=>t.toLowerCase().includes('budget') && t.includes('2025'));
-      const b26 = userTables.find(t=>t.toLowerCase().includes('budget') && t.includes('2026'));
-      const c25 = userTables.find(t=>t.toLowerCase().includes('conso') && t.includes('2025'));
-      const c26 = userTables.find(t=>t.toLowerCase().includes('conso') && t.includes('2026'));
-      if(b25) saved.b25=b25;
-      if(b26) saved.b26=b26;
-      if(c25) saved.c25=c25;
-      if(c26) saved.c26=c26;
+      saved.b25 = userTables.find(function(t){return t.toLowerCase().includes('budget')&&t.includes('2025');}) || '';
+      saved.b26 = userTables.find(function(t){return t.toLowerCase().includes('budget')&&t.includes('2026');}) || '';
+      saved.c25 = userTables.find(function(t){return t.toLowerCase().includes('conso')&&t.includes('2025');}) || '';
+      saved.c26 = userTables.find(function(t){return t.toLowerCase().includes('conso')&&t.includes('2026');}) || '';
     }
 
     if(saved.b25) document.getElementById('sel-b25').value=saved.b25;
@@ -811,7 +798,6 @@ grist.ready({
     if(saved.c26) document.getElementById('sel-c26').value=saved.c26;
     checkSelections();
 
-    // Relance automatique si toutes les tables sont configurées
     if(saved.b25 && saved.b26 && saved.c25 && saved.c26){
       await lanceAnalyse();
     } else {
@@ -819,10 +805,10 @@ grist.ready({
     }
   }catch(e){
     hideLd();
-    document.getElementById('cfg-err').textContent='❌ Impossible de lister les tables : '+e.message;
+    document.getElementById('cfg-err').textContent='❌ Erreur : '+e.message;
     console.error('[INIT ERROR]', e);
   }
-})();
+});
 
 function checkSelections(){
   const vals=['sel-b25','sel-b26','sel-c25','sel-c26'].map(id=>document.getElementById(id).value);
