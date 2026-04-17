@@ -345,6 +345,8 @@ function renderSynthese(){
 
 // ════════════════════════════════════════
 // TOP FOURNISSEURS
+// Basé sur les Paiements (montants réellement décaissés)
+// = ce que chaque fournisseur nous a coûté
 // ════════════════════════════════════════
 function renderFournisseurs(){
   var ann=document.getElementById('f-ann2').value;
@@ -352,13 +354,14 @@ function renderFournisseurs(){
   var fnd=document.getElementById('f-fnd2').value;
   var top=parseInt(document.getElementById('f-top').value)||10;
 
-  // Agréger CONSO par fournisseur (montants positifs = Original)
+  // Utiliser les Paiements positifs (inclus dans CONSO_ALL qui contient tous les types)
+  // CONSO exclut les Paiements -> on les ajoute via CONSO_PMT
   var byFour={};
-  CONSO.forEach(function(r){
+  (window.CONSO_PMT||[]).forEach(function(r){
     if(ann && parseInt(r.annee)!==parseInt(ann)) return;
     if(prg && r.p!==prg) return;
     if(fnd && r.fo!==fnd) return;
-    if(r.tm!=='Original') return;
+    if(r.m<=0) return;
     var f=r.f||'Inconnu';
     if(!byFour[f]) byFour[f]={montant:0,nb:0};
     byFour[f].montant+=r.m;
@@ -549,7 +552,7 @@ async function lanceAnalyse(){
     const rawC26 = await grist.docApi.fetchTable(tC26);
 
     setLd('Traitement…');
-    BUDGET=[]; CONSO=[]; CF_LABEL='';
+    BUDGET=[]; CONSO=[]; CF_LABEL=''; window.CONSO_PMT=[];
 
     // DIAGNOSTIC Centre financier
     console.log('[CF-B25] Centre_financier vals:', JSON.stringify((rawB25['Centre_financier']||[]).slice(0,5)));
@@ -647,6 +650,7 @@ function procConso(raw, annee){
     return new Array(n).fill('');
   };
 
+  const TV_PMT = ['Paiements'];  // stocker séparément pour Top Fournisseurs
   const TV_EXCL = ['Paiements','Comptabilis. coûts secondaires'];
   const tvs    = col('Texte_type_val_', 'Texte type val.');
   const fonds  = col('Fonds');
@@ -658,8 +662,24 @@ function procConso(raw, annee){
   const monts  = col('Montant_a_verifier_avec_le_budget_d_enga', "Montant à vérifier avec le budget d'enga");
   const tms    = col('Type_de_montant2', 'Type de montant.1');
 
+  if(!window.CONSO_PMT) window.CONSO_PMT=[];
   for(let i=0;i<n;i++){
     const tv = (tvs[i]||'').toString().trim();
+    // Collecter les Paiements séparément pour le Top Fournisseurs
+    if(tv==='Paiements'){
+      const fond_p=(fonds[i]||'').toString().trim();
+      const prog_p=(progs[i]||'').toString().trim()||'Non Applicable';
+      if(fond_p){
+        window.CONSO_PMT.push({
+          annee, tv,
+          f:(fours[i]||'').toString().trim(),
+          m:N(monts[i]),
+          p:(!prog_p||prog_p==='NA')?'Non Applicable':prog_p,
+          fo:fond_p,
+        });
+      }
+      continue;
+    }
     if(!tv || TV_EXCL.includes(tv)) continue;
     const fond = (fonds[i]||'').toString().trim();
     if(!fond) continue;
