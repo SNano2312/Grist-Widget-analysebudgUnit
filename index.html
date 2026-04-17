@@ -853,15 +853,18 @@ grist.ready({
   onEditOptions: retourCfg,
 });
 
-// Au démarrage : lister les tables et relancer auto si config mémorisée
+// Au démarrage : lister les tables et relancer auto si config sauvegardée
 (async function init(){
   showLd('Chargement des tables Grist…');
   try{
     const tables = await grist.docApi.listTables();
-    _tables = tables;
+    // Filtrer les tables internes Grist (commençant par _)
+    const userTables = tables.filter(t => !t.startsWith('_'));
+    _tables = userTables;
+
     ['sel-b25','sel-b26','sel-c25','sel-c26'].forEach(id=>{
       const sel=document.getElementById(id);
-      tables.forEach(t=>{
+      userTables.forEach(t=>{
         const opt=document.createElement('option');
         opt.value=t; opt.textContent=t;
         sel.appendChild(opt);
@@ -869,9 +872,28 @@ grist.ready({
       sel.addEventListener('change', checkSelections);
     });
 
-    // Restaurer la config sauvegardée
+    // Restaurer la config depuis les options Grist (plus fiable que localStorage)
     let saved={};
-    try{ saved=JSON.parse(localStorage.getItem('budgetCfg')||'{}'); }catch(e){}
+    try{
+      const opts = await grist.widgetApi.getOptions();
+      if(opts && opts.budgetCfg) saved = opts.budgetCfg;
+    }catch(e){
+      // Fallback localStorage
+      try{ saved=JSON.parse(localStorage.getItem('budgetCfg')||'{}'); }catch(e2){}
+    }
+
+    // Pré-sélection intelligente si pas de config sauvegardée
+    if(!saved.b25){
+      const b25 = userTables.find(t=>t.toLowerCase().includes('budget') && t.includes('2025'));
+      const b26 = userTables.find(t=>t.toLowerCase().includes('budget') && t.includes('2026'));
+      const c25 = userTables.find(t=>t.toLowerCase().includes('conso') && t.includes('2025'));
+      const c26 = userTables.find(t=>t.toLowerCase().includes('conso') && t.includes('2026'));
+      if(b25) saved.b25=b25;
+      if(b26) saved.b26=b26;
+      if(c25) saved.c25=c25;
+      if(c26) saved.c26=c26;
+    }
+
     if(saved.b25) document.getElementById('sel-b25').value=saved.b25;
     if(saved.b26) document.getElementById('sel-b26').value=saved.b26;
     if(saved.c25) document.getElementById('sel-c25').value=saved.c25;
@@ -887,6 +909,7 @@ grist.ready({
   }catch(e){
     hideLd();
     document.getElementById('cfg-err').textContent='❌ Impossible de lister les tables : '+e.message;
+    console.error('[INIT ERROR]', e);
   }
 })();
 
@@ -910,7 +933,11 @@ async function lanceAnalyse(){
   const tC26=document.getElementById('sel-c26').value;
 
   // Mémoriser la config
-  try{localStorage.setItem('budgetCfg',JSON.stringify({b25:tB25,b26:tB26,c25:tC25,c26:tC26}));}catch(e){}
+    // Sauvegarder config dans les options Grist (persiste sur tous les postes)
+    const cfg={b25:tB25,b26:tB26,c25:tC25,c26:tC26};
+    try{ await grist.widgetApi.setOptions({budgetCfg:cfg}); }catch(e){
+      try{ localStorage.setItem('budgetCfg',JSON.stringify(cfg)); }catch(e2){}
+    }
 
   showLd('Lecture des données…');
   try{
