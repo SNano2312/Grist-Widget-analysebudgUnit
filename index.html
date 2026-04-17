@@ -850,7 +850,6 @@ document.addEventListener('DOMContentLoaded', function(){
 // ════════════════════════════════════════
 grist.ready({
   requiredAccess: 'read table',
-  onEditOptions: retourCfg,
 });
 
 // Au démarrage : lister les tables et relancer auto si config sauvegardée
@@ -872,15 +871,9 @@ grist.ready({
       sel.addEventListener('change', checkSelections);
     });
 
-    // Restaurer la config depuis les options Grist (plus fiable que localStorage)
+    // Restaurer la config sauvegardée
     let saved={};
-    try{
-      const opts = await grist.widgetApi.getOptions();
-      if(opts && opts.budgetCfg) saved = opts.budgetCfg;
-    }catch(e){
-      // Fallback localStorage
-      try{ saved=JSON.parse(localStorage.getItem('budgetCfg')||'{}'); }catch(e2){}
-    }
+    try{ saved=JSON.parse(localStorage.getItem('budgetCfg')||'{}'); }catch(e){}
 
     // Pré-sélection intelligente si pas de config sauvegardée
     if(!saved.b25){
@@ -933,11 +926,7 @@ async function lanceAnalyse(){
   const tC26=document.getElementById('sel-c26').value;
 
   // Mémoriser la config
-    // Sauvegarder config dans les options Grist (persiste sur tous les postes)
-    const cfg={b25:tB25,b26:tB26,c25:tC25,c26:tC26};
-    try{ await grist.widgetApi.setOptions({budgetCfg:cfg}); }catch(e){
-      try{ localStorage.setItem('budgetCfg',JSON.stringify(cfg)); }catch(e2){}
-    }
+    try{ localStorage.setItem('budgetCfg',JSON.stringify({b25:tB25,b26:tB26,c25:tC25,c26:tC26})); }catch(e){}
 
   showLd('Lecture des données…');
   try{
