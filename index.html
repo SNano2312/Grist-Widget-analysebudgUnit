@@ -60,6 +60,26 @@ tbody tr:hover{background:var(--pl)}
 tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px solid var(--bd)}
 .rb{display:inline-block;padding:2px 8px;border-radius:12px;font-weight:600;font-size:.75rem}
 .r-ok{background:#dcfce7;color:var(--ok)}.r-wn{background:#fef9c3;color:var(--wn)}.r-er{background:#fee2e2;color:var(--er)}
+.synth-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;margin-bottom:20px}
+.synth-card{background:var(--s);border:1px solid var(--bd);border-radius:var(--r);padding:16px;position:relative;overflow:hidden}
+.synth-card .prog-nom{font-size:1rem;font-weight:700;margin-bottom:2px}
+.synth-card .prog-num{font-size:.75rem;color:var(--mu);margin-bottom:12px}
+.synth-card .prog-fin{font-size:.75rem;font-weight:600;margin-bottom:12px}
+.synth-card .prog-fin.urgent{color:var(--er)}
+.synth-card .prog-fin.proche{color:var(--wn)}
+.synth-card .prog-fin.ok{color:var(--ok)}
+.synth-bar-wrap{height:8px;background:#f0f1f5;border-radius:4px;margin-bottom:8px;overflow:hidden}
+.synth-bar{height:100%;border-radius:4px;transition:width .4s}
+.synth-metrics{display:flex;justify-content:space-between;font-size:.78rem}
+.synth-metrics span{color:var(--mu)}
+.synth-metrics strong{color:var(--tx)}
+.synth-badge{position:absolute;top:12px;right:12px;padding:3px 10px;border-radius:12px;font-size:.75rem;font-weight:700}
+.badge-ok{background:#dcfce7;color:var(--ok)}
+.badge-wn{background:#fef9c3;color:var(--wn)}
+.badge-er{background:#fee2e2;color:var(--er)}
+.alert-box{background:#fff7ed;border:1px solid #fed7aa;border-radius:var(--r);padding:14px 16px;margin-bottom:16px}
+.alert-box h3{font-size:.85rem;font-weight:700;color:var(--wn);margin-bottom:8px}
+.alert-item{font-size:.82rem;padding:4px 0;border-bottom:1px solid #fde8c8;display:flex;justify-content:space-between}
 #ld{display:none;position:fixed;inset:0;background:rgba(255,255,255,.88);align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:10px}
 #ld.on{display:flex}
 .sp{width:34px;height:34px;border:4px solid var(--bd);border-top-color:var(--pr);border-radius:50%;animation:sp .7s linear infinite}
@@ -108,17 +128,30 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <h1 id="dash-title">Analyse budgétaire</h1>
     <div style="display:flex;gap:8px">
       <button class="btn" style="background:var(--pr);color:#fff;border-color:var(--pr)" onclick="refreshAnalyse()">🔄 Actualiser</button>
+      <button class="btn" id="btn-export-csv" onclick="exportCSV()" style="display:none">⬇️ Export CSV</button>
       <button class="btn" onclick="retourCfg()">↩ Changer les sources</button>
     </div>
   </div>
   <div class="tabs">
-    <div class="tab on" id="tab-h" onclick="switchTab('h')">Histogramme</div>
+    <div class="tab on" id="tab-s" onclick="switchTab('s')">🏠 Synthèse</div>
+    <div class="tab" id="tab-h" onclick="switchTab('h')">Histogramme</div>
     <div class="tab" id="tab-e" onclick="switchTab('e')">Évolution</div>
     <div class="tab" id="tab-x" onclick="switchTab('x')">Tableau croisé</div>
+    <div class="tab" id="tab-f" onclick="switchTab('f')">Top fournisseurs</div>
+    <div class="tab" id="tab-d" onclick="switchTab('d')">⏱ Délais</div>
+    <div class="tab" id="tab-r" onclick="switchTab('r')">📊 Répartition</div>
+  </div>
+
+  <!-- SYNTHÈSE -->
+  <div id="vw-s">
+    <div class="flt">
+      <div class="fg"><label>Année</label><select id="s-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+    </div>
+    <div id="synthese-content"></div>
   </div>
 
   <!-- HISTOGRAMME -->
-  <div id="vw-h">
+  <div id="vw-h" style="display:none">
     <div class="flt">
       <div class="fg"><label>Année</label><select id="h-ann" ><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
       <div class="fg"><label>Programme</label><select id="h-prg" ><option value="">Tous</option></select></div>
@@ -162,6 +195,44 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="fg"><label>Fonds</label><select id="x-fnd" ><option value="">Tous</option></select></div>
     </div>
     <div class="tw"><table><thead id="x-th"></thead><tbody id="x-tb"></tbody></table></div>
+  </div>
+
+  <!-- TOP FOURNISSEURS -->
+  <div id="vw-f" style="display:none">
+    <div class="flt">
+      <div class="fg"><label>Année</label><select id="f-ann2"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Programme</label><select id="f-prg2"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label><select id="f-fnd2"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Nb fournisseurs</label>
+        <select id="f-top"><option value="10">Top 10</option><option value="20">Top 20</option><option value="50">Top 50</option></select>
+      </div>
+    </div>
+    <div class="tw"><table><thead id="f-th"></thead><tbody id="f-tb"></tbody></table></div>
+  </div>
+
+  <!-- DÉLAIS DE LIQUIDATION -->
+  <div id="vw-d" style="display:none">
+    <div class="flt">
+      <div class="fg"><label>Année</label><select id="d-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Programme</label><select id="d-prg"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label><select id="d-fnd"><option value="">Tous</option></select></div>
+    </div>
+    <div class="ks" id="delai-kpis"></div>
+    <div class="tw" style="max-height:500px"><table><thead id="d-th"></thead><tbody id="d-tb"></tbody></table></div>
+  </div>
+
+
+  <!-- RÉPARTITION PAR TYPE -->
+  <div id="vw-r" style="display:none">
+    <div class="flt">
+      <div class="fg"><label>Année</label><select id="r-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Programme</label><select id="r-prg"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label><select id="r-fnd"><option value="">Tous</option></select></div>
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div class="pnl" style="flex:1;min-width:300px"><div class="pnl-t">Par type de valeur</div><canvas id="chPie" style="max-height:280px"></canvas></div>
+      <div class="pnl" style="flex:2;min-width:300px"><div class="pnl-t">Détail par type et programme</div><div class="tw" style="max-height:300px"><table><thead id="r-th"></thead><tbody id="r-tb"></tbody></table></div></div>
+    </div>
   </div>
 </div>
 
@@ -215,6 +286,408 @@ async function showCols(){
   }
 }
 
+// ════════════════════════════════════════
+// SYNTHÈSE — tableau de bord par programme
+// ════════════════════════════════════════
+function renderSynthese(){
+  var ann=document.getElementById('s-ann').value;
+  var pi=window._PROG_INFO||{};
+  var today=new Date();
+
+  // Agréger BUDGET par programme (toutes années ou filtrée)
+  var byProg={};
+  BUDGET.forEach(function(b){
+    if(ann && parseInt(b.annee)!==parseInt(ann)) return;
+    var k=b.prog;
+    if(!byProg[k]) byProg[k]={bud:0,conso:0,nconso:0,cda:0,rar:0,paye:0,rap:0};
+    byProg[k].bud+=b.bud; byProg[k].conso+=b.conso; byProg[k].nconso+=b.nconso;
+    byProg[k].cda+=b.cda; byProg[k].rar+=b.rar; byProg[k].paye+=b.paye; byProg[k].rap+=b.rap;
+  });
+
+  // Alertes : programmes avec date de fin < 3 mois ET budget non consommé > 10%
+  var alerts=[];
+  var cards='';
+
+  Object.keys(byProg).sort().forEach(function(prog){
+    var g=byProg[prog];
+    var info=pi[prog]||{nom:'',dateFin:null};
+    var taux=g.bud>0?g.conso/g.bud*100:0;
+    var prev=Math.min(g.conso+g.cda+g.rar, g.bud);
+    var engage=g.cda+g.rar+g.om+g.nf;
+    var tauxEng=g.bud>0?engage/g.bud*100:0;
+    var rae=Math.max(0,g.bud-engage);
+
+    // Couleur taux conso
+    var cl=taux>=90?'badge-ok':taux>=50?'badge-wn':'badge-er';
+    var barColor=taux>=90?'#16a34a':taux>=50?'#d97706':'#dc2626';
+    // Couleur taux engagement
+    var clEng=tauxEng>=90?'c-ok':tauxEng>=50?'c-wn':'c-er';
+
+    // Date de fin
+    var finTxt='', finCl='';
+    if(info.dateFin){
+      var parts=info.dateFin.split('-');
+      var finDate=new Date(parseInt(parts[0]),parseInt(parts[1])-1,28);
+      var diffMois=(finDate-today)/(1000*60*60*24*30);
+      finTxt='Fin : '+parts[1]+'/'+parts[0];
+      if(diffMois<0) finCl='urgent';
+      else if(diffMois<3) finCl='proche';
+      else finCl='ok';
+      // Alerte si proche ou dépassé et nconso > 10%
+      if(diffMois<4 && g.nconso/g.bud>0.05){
+        alerts.push({prog:prog,nom:info.nom||prog,fin:finTxt,nconso:g.nconso,diffMois:diffMois});
+      }
+    } else {
+      finTxt='Programme en cours';
+      finCl='ok';
+    }
+
+    cards+='<div class="synth-card">'+
+      '<span class="synth-badge '+cl+'">'+pct(taux)+'</span>'+
+      '<div class="prog-nom">'+(info.nom||prog)+'</div>'+
+      '<div class="prog-num">'+prog+'</div>'+
+      '<div class="prog-fin '+finCl+'">'+finTxt+'</div>'+
+      '<div class="synth-bar-wrap"><div class="synth-bar" style="width:'+Math.min(taux,100).toFixed(1)+'%;background:'+barColor+'"></div></div>'+
+      '<div class="synth-metrics">'+
+        '<span>Budget <strong>'+fmt(g.bud)+' €</strong></span>'+
+        '<span>Conso <strong>'+fmt(g.conso)+' €</strong></span>'+
+        '<span>Prévision <strong>'+fmt(prev)+' €</strong></span>'+
+      '</div>'+
+      '<div class="synth-metrics" style="margin-top:5px">'+
+        '<span>Engagé (CDa+RAR+OM) <strong class="'+clEng+'">'+pct(tauxEng)+'</strong></span>'+
+        '<span>Reste à engager <strong>'+fmt(rae)+' €</strong></span>'+
+      '</div>'+
+      '<div class="synth-metrics" style="margin-top:5px">'+
+        '<span>Payé <strong>'+fmt(g.paye)+' €</strong></span>'+
+        '<span>Reste à payer <strong>'+fmt(g.rap)+' €</strong></span>'+
+      '</div>'+
+    '</div>';
+  });
+
+  // Zone alertes
+  var alertHtml='';
+  if(alerts.length){
+    alertHtml='<div class="alert-box"><h3>⚠️ Alertes — Budget non consommé avec échéance proche</h3>'+
+      alerts.map(function(a){
+        var label=a.diffMois<0?'Dépassée':'Dans '+Math.round(a.diffMois)+' mois';
+        return '<div class="alert-item"><span>'+a.nom+' ('+a.prog+')</span>'+
+          '<span>'+a.fin+' — '+label+' — Non conso : '+fmt(a.nconso)+' €</span></div>';
+      }).join('')+'</div>';
+  }
+
+  document.getElementById('synthese-content').innerHTML=
+    alertHtml+'<div class="synth-grid">'+cards+'</div>';
+}
+
+// ════════════════════════════════════════
+// TOP FOURNISSEURS
+// Basé sur les Paiements (montants réellement décaissés)
+// = ce que chaque fournisseur nous a coûté
+// ════════════════════════════════════════
+function renderFournisseurs(){
+  var ann=document.getElementById('f-ann2').value;
+  var prg=document.getElementById('f-prg2').value;
+  var fnd=document.getElementById('f-fnd2').value;
+  var top=parseInt(document.getElementById('f-top').value)||10;
+
+  // Utiliser les Paiements positifs (inclus dans CONSO_ALL qui contient tous les types)
+  // CONSO exclut les Paiements -> on les ajoute via CONSO_PMT
+  var byFour={};
+  (window.CONSO_PMT||[]).forEach(function(r){
+    if(ann && parseInt(r.annee)!==parseInt(ann)) return;
+    if(prg && r.p!==prg) return;
+    if(fnd && r.fo!==fnd) return;
+    if(r.m<=0) return;
+    var f=r.f||'Inconnu';
+    if(!byFour[f]) byFour[f]={montant:0,nb:0};
+    byFour[f].montant+=r.m;
+    byFour[f].nb++;
+  });
+
+  // Trier par montant décroissant
+  var sorted=Object.keys(byFour).map(function(f){
+    return{four:f,montant:byFour[f].montant,nb:byFour[f].nb};
+  }).sort(function(a,b){return b.montant-a.montant}).slice(0,top);
+
+  var total=sorted.reduce(function(s,r){return s+r.montant;},0);
+  var totalAll=Object.values(byFour).reduce(function(s,r){return s+r.montant;},0);
+
+  var th=document.getElementById('f-th');
+  var tb=document.getElementById('f-tb');
+  th.innerHTML='<tr><th>#</th><th>Fournisseur</th><th style="text-align:right">Montant engagé</th><th style="text-align:right">% du total</th><th style="text-align:right">Nb lignes</th></tr>';
+  tb.innerHTML=sorted.map(function(r,i){
+    var share=totalAll>0?r.montant/totalAll*100:0;
+    return'<tr>'+
+      '<td>'+(i+1)+'</td>'+
+      '<td>'+esc(r.four)+'</td>'+
+      '<td style="text-align:right">'+fmt(r.montant)+' €</td>'+
+      '<td style="text-align:right">'+share.toFixed(1)+' %</td>'+
+      '<td style="text-align:right">'+r.nb+'</td>'+
+    '</tr>';
+  }).join('')+
+  '<tr style="font-weight:700;background:#f7f8fb;border-top:2px solid var(--bd)">'+
+    '<td colspan="2">TOTAL Top '+top+'</td>'+
+    '<td style="text-align:right">'+fmt(total)+' €</td>'+
+    '<td style="text-align:right">'+(totalAll>0?total/totalAll*100:0).toFixed(1)+' %</td>'+
+    '<td></td>'+
+  '</tr>';
+}
+
+// ════════════════════════════════════════
+// DÉLAIS DE LIQUIDATION
+// Calcul : date facture - date commande par N° pièce précédente
+// ════════════════════════════════════════
+function renderDelais(){
+  var ann=document.getElementById('d-ann').value;
+  var prg=document.getElementById('d-prg').value;
+  var fnd=document.getElementById('d-fnd').value;
+
+  // Construire map : N° commande -> {date, prog, fonds, fournisseur}
+  var cmdMap={};
+  CONSO.forEach(function(r){
+    if(r.tv!=="Commandes d'achat") return;
+    if(!r.cmd) return;
+    if(!cmdMap[r.cmd]) cmdMap[r.cmd]={dt:r.dt,p:r.p,fo:r.fo,f:r.f,annee:r.annee};
+  });
+
+  // Trouver les factures et calculer le délai
+  var rows=[];
+  CONSO.forEach(function(r){
+    if(r.tv!=='Factures') return;
+    if(ann && parseInt(r.annee)!==parseInt(ann)) return;
+    if(prg && r.p!==prg) return;
+    if(fnd && r.fo!==fnd) return;
+    if(!r.piecePrec) return;
+    var cmd=cmdMap[r.piecePrec];
+    if(!cmd) return;
+    // Calculer délai en jours
+    function parseDate(s){
+      if(!s) return null;
+      var p=s.split('/');
+      if(p.length===3) return new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));
+      return new Date(s);
+    }
+    var dCmd=parseDate(cmd.dt);
+    var dFac=parseDate(r.dt);
+    if(!dCmd||!dFac) return;
+    var delai=Math.round((dFac-dCmd)/(1000*60*60*24));
+    if(delai<0) return;
+    rows.push({
+      annee:r.annee, prog:r.p, fonds:r.fo,
+      fournisseur:r.f||cmd.f,
+      dateCmd:cmd.dt, dateFac:r.dt,
+      delai:delai, montant:r.m
+    });
+  });
+
+  // KPIs
+  var total=rows.length;
+  var moy=total?Math.round(rows.reduce(function(s,r){return s+r.delai;},0)/total):0;
+  var med=0;
+  if(total){
+    var sorted=[...rows].sort(function(a,b){return a.delai-b.delai;});
+    med=sorted[Math.floor(total/2)].delai;
+  }
+  var inf30=rows.filter(function(r){return r.delai<=30;}).length;
+  var sup90=rows.filter(function(r){return r.delai>90;}).length;
+
+  document.getElementById('delai-kpis').innerHTML=
+    '<div class="kpi"><div class="kl">Délai moyen</div><div class="kv">'+moy+' jours</div></div>'+
+    '<div class="kpi"><div class="kl">Délai médian</div><div class="kv">'+med+' jours</div></div>'+
+    '<div class="kpi"><div class="kl">≤ 30 jours</div><div class="kv c-ok">'+inf30+'</div></div>'+
+    '<div class="kpi"><div class="kl">> 90 jours</div><div class="kv c-er">'+sup90+'</div></div>'+
+    '<div class="kpi"><div class="kl">Nb factures analysées</div><div class="kv">'+total+'</div></div>';
+
+  // Tableau trié par délai décroissant
+  var sorted2=[...rows].sort(function(a,b){return b.delai-a.delai;});
+  document.getElementById('d-th').innerHTML=
+    '<tr><th>Année</th><th>Programme</th><th>Fonds</th><th>Fournisseur</th>'+
+    '<th>Date commande</th><th>Date facture</th>'+
+    '<th style="text-align:right">Délai (j)</th>'+
+    '<th style="text-align:right">Montant (€)</th></tr>';
+  document.getElementById('d-tb').innerHTML=sorted2.map(function(r){
+    var cl=r.delai>90?'c-er':r.delai>30?'c-wn':'c-ok';
+    return'<tr>'+
+      '<td>'+r.annee+'</td><td>'+esc(r.prog)+'</td><td>'+esc(r.fonds)+'</td>'+
+      '<td>'+esc(r.fournisseur)+'</td>'+
+      '<td>'+r.dateCmd+'</td><td>'+r.dateFac+'</td>'+
+      '<td style="text-align:right;font-weight:700" class="'+cl+'">'+r.delai+'</td>'+
+      '<td style="text-align:right">'+fmt(r.montant)+' €</td>'+
+    '</tr>';
+  }).join('');
+}
+
+// ════════════════════════════════════════
+// EXPORT CSV
+// ════════════════════════════════════════
+function exportCSV(){
+  var t=_currentTab;
+  var rows=[], headers=[];
+  if(t==='x'){
+    // TCD
+    headers=['Centre fin.','Année','Programme','Nom programme','Fonds',
+             'Budget AE N','Conso AE N','Non Conso','CDa engagées',
+             'Reste à réceptionner','Payé CP','Reste à payer','Taux conso'];
+    var pi=window._PROG_INFO||{};
+    var ann=document.getElementById('x-ann').value;
+    var prg=document.getElementById('x-prg').value;
+    var fnd=document.getElementById('x-fnd').value;
+    BUDGET.filter(function(b){
+      return(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd);
+    }).forEach(function(b){
+      var p=b.bud>0?b.conso/b.bud*100:0;
+      rows.push([b.cf,b.annee,b.prog,(pi[b.prog]&&pi[b.prog].nom)||'',b.fonds,
+        b.bud,b.conso,b.nconso,b.cda,b.rar,b.paye,b.rap,p.toFixed(1)+'%']);
+    });
+  } else if(t==='f'){
+    // Top fournisseurs
+    headers=['Fournisseur','Montant payé (€)','Nb lignes'];
+    var byF={};
+    (window.CONSO_PMT||[]).forEach(function(r){if(r.m>0){
+      if(!byF[r.f]) byF[r.f]={m:0,n:0};
+      byF[r.f].m+=r.m; byF[r.f].n++;
+    }});
+    Object.keys(byF).sort(function(a,b){return byF[b].m-byF[a].m;}).forEach(function(f){
+      rows.push([f,byF[f].m.toFixed(2),byF[f].n]);
+    });
+  } else if(t==='d'){
+    // Délais
+    headers=['Année','Programme','Fonds','Fournisseur','Date commande','Date facture','Délai (j)','Montant (€)'];
+    var cmdMap={};
+    CONSO.forEach(function(r){if(r.tv==="Commandes d'achat"&&r.cmd) cmdMap[r.cmd]={dt:r.dt,p:r.p,fo:r.fo,f:r.f,annee:r.annee};});
+    CONSO.forEach(function(r){
+      if(r.tv!=='Factures'||!r.piecePrec) return;
+      var cmd=cmdMap[r.piecePrec]; if(!cmd) return;
+      function pd(s){var p=(s||'').split('/');return p.length===3?new Date(+p[2],+p[1]-1,+p[0]):new Date(s);}
+      var d=Math.round((pd(r.dt)-pd(cmd.dt))/(864e5));
+      if(d>=0) rows.push([r.annee,r.p,r.fo,r.f,cmd.dt,r.dt,d,r.m.toFixed(2)]);
+    });
+  }
+  if(!rows.length) return;
+  var csv=[headers.join(';')].concat(rows.map(function(r){return r.join(';');})).join('\n');
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download='export_budget_'+_currentTab+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ════════════════════════════════════════
+// RÉPARTITION PAR TYPE DE VALEUR
+// Montants NETS (tous types de montant SAP confondus)
+// incluant les Paiements pour cohérence avec Conso AE budget
+// Règle : somme de tous les montants hors "Comptabilis. coûts secondaires"
+// Total ≈ Conso AE du fichier budget
+// ════════════════════════════════════════
+var _pie=null;
+
+// Catégories regroupées pour lisibilité
+var TV_CATS={
+  'Paiements':              {label:'💳 Paiements (décaissés)',     color:'#2563eb'},
+  'Factures':               {label:'📄 Factures en cours',         color:'#16a34a'},
+  "Commandes d'achat":      {label:'🛒 Commandes en cours',        color:'#d97706'},
+  'Pièces préenregistrées': {label:'📝 Pièces préenregistrées',    color:'#7c3aed'},
+  '_ress':                  {label:'🔒 Réservations / Blocages',   color:'#0891b2'},
+};
+var TV_RESS=['Réservation de fonds','Blocage de fonds'];
+
+function renderRepartition(){
+  var ann=document.getElementById('r-ann').value;
+  var prg=document.getElementById('r-prg').value;
+  var fnd=document.getElementById('r-fnd').value;
+
+  // Sources : CONSO (hors Paiements) + CONSO_PMT (Paiements)
+  var allRows=CONSO.concat(window.CONSO_PMT||[]);
+
+  // Agréger par catégorie (montant NET = tous types de montant SAP)
+  var byCat={}, byProgCat={};
+  allRows.forEach(function(r){
+    if(ann&&parseInt(r.annee)!==parseInt(ann)) return;
+    if(prg&&r.p!==prg) return;
+    if(fnd&&r.fo!==fnd) return;
+    // Déterminer la catégorie
+    var cat;
+    if(TV_RESS.indexOf(r.tv)>=0) cat='_ress';
+    else if(TV_CATS[r.tv]) cat=r.tv;
+    else return; // ignorer Comptabilis. et inconnu
+    byCat[cat]=(byCat[cat]||0)+r.m;
+    var key=r.p+'||'+cat;
+    byProgCat[key]=(byProgCat[key]||0)+r.m;
+  });
+
+  // Construire les séries dans l'ordre des catégories
+  var catKeys=Object.keys(TV_CATS).filter(function(k){return byCat[k]!=null;});
+  var labels=catKeys.map(function(k){return TV_CATS[k].label;});
+  var vals=catKeys.map(function(k){return Math.round((byCat[k]||0)*100)/100;});
+  var colors=catKeys.map(function(k){return TV_CATS[k].color;});
+  // N'afficher que les valeurs > 0 dans le camembert
+  var pieIdx=catKeys.map(function(k,i){return vals[i]>0?i:-1;}).filter(function(i){return i>=0;});
+  var pieLabels=pieIdx.map(function(i){return labels[i];});
+  var pieVals=pieIdx.map(function(i){return vals[i];});
+  var pieColors=pieIdx.map(function(i){return colors[i];});
+
+  if(_pie) _pie.destroy();
+  _pie=new Chart(document.getElementById('chPie').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:pieLabels,datasets:[{data:pieVals,backgroundColor:pieColors,borderWidth:2}]},
+    options:{responsive:true,plugins:{legend:{position:'bottom'},
+      tooltip:{callbacks:{label:function(c){return c.label+' : '+fmt(c.raw)+' €';}}}}}
+  });
+
+  // Tableau détail par programme
+  var pi=window._PROG_INFO||{};
+  var totalAll=vals.reduce(function(s,v){return s+v;},0);
+
+  document.getElementById('r-th').innerHTML='<tr><th>Programme</th><th>Nom</th>'+
+    catKeys.map(function(k){return'<th style="text-align:right;font-size:.75rem">'+TV_CATS[k].label+'</th>';}).join('')+
+    '<th style="text-align:right">Total net</th>'+
+    '<th style="text-align:right">Conso AE budget</th></tr>';
+
+  var progs=[...new Set(BUDGET.map(function(b){
+    if(ann&&parseInt(b.annee)!==parseInt(ann)) return null;
+    if(prg&&b.prog!==prg) return null;
+    if(fnd&&b.fonds!==fnd) return null;
+    return b.prog;
+  }).filter(Boolean))].sort();
+
+  // Conso AE par programme depuis BUDGET
+  var consoByProg={};
+  BUDGET.forEach(function(b){
+    if(ann&&parseInt(b.annee)!==parseInt(ann)) return;
+    if(prg&&b.prog!==prg) return;
+    if(fnd&&b.fonds!==fnd) return;
+    consoByProg[b.prog]=(consoByProg[b.prog]||0)+b.conso;
+  });
+
+  document.getElementById('r-tb').innerHTML=progs.map(function(p){
+    var row_total=0;
+    var cells=catKeys.map(function(k){
+      var v=(byProgCat[p+'||'+k]||0);
+      row_total+=v;
+      var cl=v<0?'c-er':'';
+      return'<td style="text-align:right" class="'+cl+'">'+(v!==0?fmt(v)+' €':'-')+'</td>';
+    });
+    var conso=consoByProg[p]||0;
+    return'<tr><td>'+esc(p)+'</td><td>'+esc((pi[p]&&pi[p].nom)||'-')+'</td>'+
+      cells.join('')+
+      '<td style="text-align:right;font-weight:700">'+fmt(row_total)+' €</td>'+
+      '<td style="text-align:right;color:var(--mu)">'+fmt(conso)+' €</td>'+
+    '</tr>';
+  }).join('')+
+  '<tr style="font-weight:700;background:#f7f8fb;border-top:2px solid var(--bd)">'+
+    '<td colspan="2">TOTAL</td>'+
+    catKeys.map(function(k){return'<td style="text-align:right">'+fmt(byCat[k]||0)+' €</td>';}).join('')+
+    '<td style="text-align:right">'+fmt(totalAll)+' €</td>'+
+    '<td style="text-align:right;color:var(--mu)">'+fmt(Object.values(consoByProg).reduce(function(s,v){return s+v;},0))+' €</td>'+
+  '</tr>';
+
+  // Note de bas de page
+  document.getElementById('r-tb').innerHTML+=
+    '<tr><td colspan="'+(catKeys.length+4)+'" style="font-size:.72rem;color:var(--mu);padding:8px 10px">'+
+    'ℹ️ Montants nets SAP (tous types de montant confondus). '+
+    'Total net ≈ Conso AE budget (écart possible : Prestations internes non incluses dans l'export).</td></tr>';
+}
+
+// ════════════════════════════════════════
 // Exposer les fonctions au scope global (nécessaire dans certains contextes iframe)
 // Relancer l'analyse avec les mêmes tables (après mise à jour des Excel dans Grist)
 async function refreshAnalyse(){
@@ -224,23 +697,45 @@ async function refreshAnalyse(){
   if(btn){ btn.textContent='🔄 Actualiser'; btn.disabled=false; }
 }
 window.refreshAnalyse = refreshAnalyse;
+window.renderSynthese = renderSynthese;
+window.renderFournisseurs = renderFournisseurs;
+window.renderDelais = renderDelais;
+window.renderRepartition = renderRepartition;
+window.exportCSV = exportCSV;
 window.showCols   = showCols;
 
-// Attacher les listeners des filtres via JS (plus fiable que onchange inline dans iframe)
-document.addEventListener('DOMContentLoaded', function(){
-  ['h-ann','h-prg','h-fnd','h-grp'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.addEventListener('change', renderHisto);
+// Attacher les listeners immédiatement (DOM déjà prêt dans Grist iframe)
+function attachFilterListeners(){
+  ['h-ann','h-prg','h-fnd','h-grp'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){ el.removeEventListener('change',renderHisto); el.addEventListener('change',renderHisto); }
   });
-  ['e-ann','e-prg','e-fnd'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.addEventListener('change', renderEvol);
+  ['e-ann','e-prg','e-fnd'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){ el.removeEventListener('change',renderEvol); el.addEventListener('change',renderEvol); }
   });
-  ['x-ann','x-prg','x-fnd'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.addEventListener('change', renderCross);
+  ['x-ann','x-prg','x-fnd'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){ el.removeEventListener('change',renderCross); el.addEventListener('change',renderCross); }
   });
-});
+  ['f-ann2','f-prg2','f-fnd2','f-top'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){ el.removeEventListener('change',renderFournisseurs); el.addEventListener('change',renderFournisseurs); }
+  });
+  ['d-ann','d-prg','d-fnd'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){ el.removeEventListener('change',renderDelais); el.addEventListener('change',renderDelais); }
+  });
+  ['r-ann','r-prg','r-fnd'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){ el.removeEventListener('change',renderRepartition); el.addEventListener('change',renderRepartition); }
+  });
+  var sAnn=document.getElementById('s-ann');
+  if(sAnn){ sAnn.removeEventListener('change',renderSynthese); sAnn.addEventListener('change',renderSynthese); }
+}
+// Attacher maintenant ET après DOMContentLoaded (double sécurité)
+attachFilterListeners();
+document.addEventListener('DOMContentLoaded', attachFilterListeners);
 window.lanceAnalyse = lanceAnalyse;
 window.retourCfg  = retourCfg;
 window.switchTab  = switchTab;
@@ -322,10 +817,32 @@ async function lanceAnalyse(){
   const tC26=document.getElementById('sel-c26').value;
 
   // Mémoriser la config
-  try{localStorage.setItem('budgetCfg',JSON.stringify({b25:tB25,b26:tB26,c25:tC25,c26:tC26}));}catch(e){}
+    try{ localStorage.setItem('budgetCfg',JSON.stringify({b25:tB25,b26:tB26,c25:tC25,c26:tC26})); }catch(e){}
 
   showLd('Lecture des données…');
   try{
+    setLd('Lecture référentiel programmes…');
+    let rawTable1 = {};
+    try{ rawTable1 = await grist.docApi.fetchTable('Table1'); }catch(e){}
+    // Construire la map : N°prog -> {nom, dateFin (YYYY-MM ou null)}
+    const PROG_INFO = {};
+    if(rawTable1['A']){
+      const nA=rawTable1['A'].length;
+      for(let i=0;i<nA;i++){
+        const num=(rawTable1['A'][i]||'').toString().trim();
+        const nom=(rawTable1['B'][i]||'').toString().trim();
+        const ts =rawTable1['C'][i];
+        let dateFin=null;
+        if(ts && typeof ts==='number' && ts>0){
+          const d=new Date(ts*1000);
+          dateFin=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+        }
+        if(num) PROG_INFO[num]={nom, dateFin};
+      }
+    }
+    window._PROG_INFO=PROG_INFO;
+    console.log('[PROG_INFO]', JSON.stringify(PROG_INFO));
+
     setLd('Lecture Budget 2025…');
     const rawB25 = await grist.docApi.fetchTable(tB25);
     setLd('Lecture Budget 2026…');
@@ -336,7 +853,7 @@ async function lanceAnalyse(){
     const rawC26 = await grist.docApi.fetchTable(tC26);
 
     setLd('Traitement…');
-    BUDGET=[]; CONSO=[]; CF_LABEL='';
+    BUDGET=[]; CONSO=[]; CF_LABEL=''; window.CONSO_PMT=[];
 
     // DIAGNOSTIC Centre financier
     console.log('[CF-B25] Centre_financier vals:', JSON.stringify((rawB25['Centre_financier']||[]).slice(0,5)));
@@ -354,11 +871,12 @@ async function lanceAnalyse(){
     if(CONSO.length) console.log('[RESULT] C0:', JSON.stringify(CONSO[0]));
 
     fillFilters();
+    attachFilterListeners();
     hideLd();
     document.getElementById('cfg-screen').style.display='none';
     document.getElementById('dash').style.display='block';
     document.getElementById('dash-title').textContent='Analyse budgétaire'+(CF_LABEL?' — Centre financier '+CF_LABEL:'');
-    renderHisto();
+    switchTab('s');
   }catch(e){
     hideLd();
     document.getElementById('cfg-err').textContent='❌ '+e.message;
@@ -433,6 +951,7 @@ function procConso(raw, annee){
     return new Array(n).fill('');
   };
 
+  const TV_PMT = ['Paiements'];  // stocker séparément pour Top Fournisseurs
   const TV_EXCL = ['Paiements','Comptabilis. coûts secondaires'];
   const tvs    = col('Texte_type_val_', 'Texte type val.');
   const fonds  = col('Fonds');
@@ -444,8 +963,24 @@ function procConso(raw, annee){
   const monts  = col('Montant_a_verifier_avec_le_budget_d_enga', "Montant à vérifier avec le budget d'enga");
   const tms    = col('Type_de_montant2', 'Type de montant.1');
 
+  if(!window.CONSO_PMT) window.CONSO_PMT=[];
   for(let i=0;i<n;i++){
     const tv = (tvs[i]||'').toString().trim();
+    // Collecter les Paiements séparément pour le Top Fournisseurs
+    if(tv==='Paiements'){
+      const fond_p=(fonds[i]||'').toString().trim();
+      const prog_p=(progs[i]||'').toString().trim()||'Non Applicable';
+      if(fond_p){
+        window.CONSO_PMT.push({
+          annee, tv,
+          f:(fours[i]||'').toString().trim(),
+          m:N(monts[i]),
+          p:(!prog_p||prog_p==='NA')?'Non Applicable':prog_p,
+          fo:fond_p,
+        });
+      }
+      continue;
+    }
     if(!tv || TV_EXCL.includes(tv)) continue;
     const fond = (fonds[i]||'').toString().trim();
     if(!fond) continue;
@@ -472,11 +1007,14 @@ function procConso(raw, annee){
       }
     }
 
+    // Stocker aussi la pièce précédente (pour relier facture -> commande)
+    const piecePrec = col('Numero_de_la_piece_precedente','Numéro de la pièce précédente');
     CONSO.push({
       annee, tv,
       cf: CF_LABEL,
       f:(fours[i]||'').toString().trim(),
       cmd:(cmds[i]||'').toString().trim(),
+      piecePrec:(piecePrec[i]!=null?String(piecePrec[i]).trim():''),
       d:(desigs[i]||'').toString().trim(),
       dt, dtMois,
       m:N(monts[i]),
@@ -500,26 +1038,39 @@ function hideLd(){document.getElementById('ld').classList.remove('on')}
 function fillFilters(){
   const progs=[...new Set(BUDGET.map(b=>b.prog))].sort();
   const fonds=[...new Set(BUDGET.map(b=>b.fonds))].sort();
-  ['h-prg','e-prg','x-prg'].forEach(id=>{
+  ['h-prg','e-prg','x-prg','f-prg2','d-prg','r-prg'].forEach(id=>{
     const s=document.getElementById(id);
     s.innerHTML='<option value="">Tous</option>';
     progs.forEach(p=>s.innerHTML+=`<option value="${esc(p)}">${esc(p)}</option>`);
   });
-  ['h-fnd','e-fnd','x-fnd'].forEach(id=>{
+  ['h-fnd','e-fnd','x-fnd','f-fnd2','d-fnd','r-fnd'].forEach(id=>{
     const s=document.getElementById(id);
     s.innerHTML='<option value="">Tous</option>';
     fonds.forEach(f=>s.innerHTML+=`<option value="${esc(f)}">${esc(f)}</option>`);
   });
 }
 
+var _currentTab='s';
 function switchTab(t){
-  ['h','e','x'].forEach(k=>{
-    document.getElementById('tab-'+k).classList.toggle('on',k===t);
-    document.getElementById('vw-'+k).style.display=k===t?'block':'none';
+  _currentTab=t;
+  ['s','h','e','x','f','d','r'].forEach(function(k){
+    var tab=document.getElementById('tab-'+k);
+    var vw=document.getElementById('vw-'+k);
+    if(tab) tab.classList.toggle('on',k===t);
+    if(vw) vw.style.display=k===t?'block':'none';
   });
+  // Bouton export visible sur les onglets tabulaires
+  var btnExp=document.getElementById('btn-export-csv');
+  if(btnExp) btnExp.style.display=['x','f','d'].includes(t)?'inline-block':'none';
+  if(t==='s') renderSynthese();
+  if(t==='d') renderDelais();
+  if(t==='r') renderRepartition();
   if(t==='e') renderEvol();
   if(t==='x') renderCross();
+  if(t==='f') renderFournisseurs();
 }
+
+
 
 // ════════════════════════════════════════
 // HISTOGRAMME
@@ -631,10 +1182,13 @@ function renderEvol(){
   const totRAR=budRows.reduce((s,r)=>s+r.rar,0);
   // Commandes d'achat Original uniquement = engagements formels ne dépassant pas le budget
   // Normaliser l'apostrophe (droite ou typographique) pour la comparaison
-  const normTV = s => (s||'').replace(/[\u2018\u2019\u201a\u201b']/g,"'");
+  // Type de montant = Original uniquement (tous types de valeur)
+  // Cumul plafonné au budget pour rester cohérent
   const consoRows=CONSO.filter(r=>
-    (!ann||parseInt(r.annee)===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&
-    normTV(r.tv)==="Commandes d'achat"&&r.tm==='Original'
+    (!ann||parseInt(r.annee)===parseInt(ann))&&
+    (!prg||r.p===prg)&&
+    (!fnd||r.fo===fnd)&&
+    r.tm==='Original'
   );
   const monthly={};
   for(const r of consoRows){
@@ -643,15 +1197,27 @@ function renderEvol(){
   }
   const sortedMois=Object.keys(monthly).sort();
   if(!sortedMois.length){if(_line)_line.destroy();return}
+  // Cumul plafonné au budget à chaque mois
+  const budVal=Math.round(totBud*100)/100;
   let cumul=0;
-  const cumulArr=sortedMois.map(m=>{cumul+=monthly[m];return Math.round(cumul*100)/100});
+  const cumulArr=sortedMois.map(m=>{
+    cumul+=monthly[m];
+    return Math.min(Math.round(cumul*100)/100, budVal);
+  });
   const lastCumul=cumulArr[cumulArr.length-1]||0;
   // Prévision = dernier cumul + engagements restants, plafonnée au budget
-  const budVal=Math.round(totBud*100)/100;
   const prevBrut=Math.round((lastCumul+totCDA+totRAR)*100)/100;
   const prevision=Math.min(prevBrut, budVal);
+  // moisFin = date de fin du programme si disponible, sinon décembre de la dernière année
   const derniereAnnee=Math.max(...sortedMois.map(m=>parseInt(m)));
-  const moisFin=`${derniereAnnee}-12`;
+  let moisFin=derniereAnnee+'-12'; // défaut
+  var progInfo=window._PROG_INFO||{};
+  if(prg && prg!=='' && progInfo[prg] && progInfo[prg].dateFin){
+    moisFin=progInfo[prg].dateFin;
+  } else {
+    var dates=Object.values(progInfo).map(function(p){return p.dateFin;}).filter(Boolean);
+    if(dates.length){ var maxD=dates.sort().pop(); if(maxD>derniereAnnee+'-12') moisFin=maxD; }
+  }
   const dernierMois=sortedMois[sortedMois.length-1];
   const labels=[...sortedMois];
   const dCumul=[...cumulArr];
@@ -687,8 +1253,9 @@ function renderCross(){
   const prg=document.getElementById('x-prg').value;
   const fnd=document.getElementById('x-fnd').value;
   const rows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd));
+  var pi2=window._PROG_INFO||{};
   const cols=[
-    {k:'cf',l:'Centre fin.'},{k:'annee',l:'Année'},{k:'prog',l:'Programme'},{k:'fonds',l:'Fonds'},
+    {k:'cf',l:'Centre fin.'},{k:'annee',l:'Année'},{k:'prog',l:'Programme'},{k:'_nom',l:'Nom programme'},{k:'fonds',l:'Fonds'},
     {k:'bud',l:'Budget AE N',n:1},{k:'conso',l:'Conso AE N',n:1},{k:'nconso',l:'Non Conso',n:1},
     {k:'cda',l:'CDa engagées',n:1},{k:'rar',l:'Reste à réceptionner',n:1},
     {k:'paye',l:'Payé (CP)',n:1},{k:'rap',l:'Reste à payer',n:1},{k:'_pct',l:'Taux conso'},
@@ -697,8 +1264,9 @@ function renderCross(){
   document.getElementById('x-tb').innerHTML=rows.map(r=>{
     const p=r.bud>0?r.conso/r.bud*100:0, cl=p>=90?'r-ok':p>=50?'r-wn':'r-er';
     return'<tr>'+cols.map(c=>{
-      if(c.k==='_pct') return`<td><span class="rb ${cl}">${pct(p)}</span></td>`;
-      return`<td style="${c.n?'text-align:right':''}">${c.n?fmt(r[c.k])+' €':esc(String(r[c.k]))}</td>`;
+      if(c.k==='_pct') return'<td><span class="rb '+cl+'">'+pct(p)+'</span></td>';
+      if(c.k==='_nom') return'<td>'+esc((pi2[r.prog]&&pi2[r.prog].nom)||'-')+'</td>';
+      return'<td style="'+(c.n?'text-align:right':'')+'">'+(c.n?fmt(r[c.k])+' €':esc(String(r[c.k])))+'</td>';
     }).join('')+'</tr>';
   }).join('');
 }
