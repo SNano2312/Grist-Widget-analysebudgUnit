@@ -606,47 +606,144 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
 
   <!-- DOCUMENTATION -->
   <div id="vw-doc" style="display:none">
-    <div style="max-width:860px;margin:0 auto">
+    <div style="max-width:900px;margin:0 auto">
+
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">📂 Sources de données</div>
-        <table style="width:100%;font-size:.82rem;border-collapse:collapse;table-layout:fixed">
-          <thead><tr style="background:#f7f8fb"><th style="padding:8px 10px;border-bottom:2px solid var(--bd)">Table Grist</th><th style="padding:8px 10px;border-bottom:2px solid var(--bd)">Fichier source</th><th style="padding:8px 10px;border-bottom:2px solid var(--bd)">Contenu</th></tr></thead>
+        <table style="width:100%;font-size:.82rem;border-collapse:collapse">
+          <thead><tr style="background:#f7f8fb">
+            <th style="padding:8px 10px;border-bottom:2px solid var(--bd);white-space:normal;word-wrap:break-word">Table Grist</th>
+            <th style="padding:8px 10px;border-bottom:2px solid var(--bd);white-space:normal;word-wrap:break-word">Fichier source</th>
+            <th style="padding:8px 10px;border-bottom:2px solid var(--bd);white-space:normal;word-wrap:break-word">Contenu</th>
+          </tr></thead>
           <tbody>
-            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Budget_20XX</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">budget_complet_20XX.xlsx</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Données budgétaires par CF/Programme/Fonds. Dédoublonnage sur (Année, Programme, Fonds).</td></tr>
-            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Conso_20XX</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">conso_AE_20XX.xlsx</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Détail des opérations SAP : type de valeur, type de montant, fournisseur, date, montant.</td></tr>
-            <tr><td style="padding:6px 10px;white-space:normal;word-wrap:break-word">Table1</td><td style="padding:6px 10px;white-space:normal;word-wrap:break-word">Saisie Grist</td><td style="padding:6px 10px;white-space:normal;word-wrap:break-word">Col. A = N° programme &bull; Col. B = Acronyme &bull; Col. C = Date de fin (timestamp Unix).</td></tr>
+            <tr>
+              <td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Budget_2025<br>Budget_2026</strong></td>
+              <td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">budget_complet_20XX.xlsx</td>
+              <td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Données budgétaires par Centre financier / Programme / Fonds. Dédoublonnage sur le triplet (Année, Programme, Fonds) pour éviter les doublons SAP.</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Conso_2025<br>Conso_2026</strong></td>
+              <td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">conso_AE_20XX.xlsx</td>
+              <td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Détail ligne à ligne des opérations SAP : type de valeur (Commandes d'achat, Factures…), type de montant (Original, Réduction…), fournisseur, date comptable, montant.</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 10px;white-space:normal;word-wrap:break-word"><strong>Table1</strong></td>
+              <td style="padding:6px 10px;white-space:normal;word-wrap:break-word">Saisie manuelle Grist</td>
+              <td style="padding:6px 10px;white-space:normal;word-wrap:break-word">Référentiel des programmes : Col. A = N° programme &bull; Col. B = Acronyme &bull; Col. C = Date de fin (timestamp Unix, ex : 1788134400 = 31/08/2026).</td>
+            </tr>
           </tbody>
         </table>
       </div>
+
       <div class="pnl" style="margin-bottom:16px">
-        <div class="pnl-t">🔢 Indicateurs budgétaires</div>
-        <table style="width:100%;font-size:.82rem;border-collapse:collapse;table-layout:fixed">
-          <thead><tr style="background:#f7f8fb"><th style="padding:8px 10px;border-bottom:2px solid var(--bd)">Indicateur</th><th style="padding:8px 10px;border-bottom:2px solid var(--bd)">Formule</th><th style="padding:8px 10px;border-bottom:2px solid var(--bd)">Source</th></tr></thead>
+        <div class="pnl-t">🔢 Indicateurs budgétaires — Onglets Synthèse et Tableau croisé</div>
+        <table style="width:100%;font-size:.82rem;border-collapse:collapse">
+          <thead><tr style="background:#f7f8fb">
+            <th style="padding:8px 10px;border-bottom:2px solid var(--bd);white-space:normal;word-wrap:break-word">Indicateur</th>
+            <th style="padding:8px 10px;border-bottom:2px solid var(--bd);white-space:normal;word-wrap:break-word">Formule</th>
+            <th style="padding:8px 10px;border-bottom:2px solid var(--bd);white-space:normal;word-wrap:break-word">Remarque</th>
+          </tr></thead>
           <tbody>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Budget AE N</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Valeur directe SAP</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Colonne <em>Budget AE N</em> du fichier budget</td></tr>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Conso AE N</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Valeur directe SAP</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">= Payé CP + engagements résiduels. Valeur officielle SAP, ne pas tenter de la recalculer depuis le détail conso.</td></tr>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Non consommé</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Budget AE N &minus; Conso AE N</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Colonne <em>Non Conso AE N</em></td></tr>
             <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Taux de consommation</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Conso AE N &divide; Budget AE N &times; 100</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Vert &ge;90% &bull; Orange &ge;50% &bull; Rouge &lt;50%</td></tr>
-            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Taux d'engagement</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">(CDa + RAR + OM + NF) &divide; Budget AE N &times; 100</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Colonnes correspondantes du fichier budget</td></tr>
-            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Reste à engager</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Budget AE N &minus; CDa &minus; RAR &minus; OM &minus; NF</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Disponible pour nouveaux engagements</td></tr>
-            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Prévision finale</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">MIN(Conso AE + CDa + RAR, Budget AE N)</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Plafonnée au budget</td></tr>
-            <tr><td style="padding:6px 10px;white-space:normal;word-wrap:break-word"><strong>Projection épuisement</strong></td><td style="padding:6px 10px;white-space:normal;word-wrap:break-word">Rythme mensuel moyen (3 derniers mois) &rarr; estimation date épuisement</td><td style="padding:6px 10px;white-space:normal;word-wrap:break-word">Courbe d'évolution, type montant Original</td></tr>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Taux d'engagement</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">MIN((CDa + RAR + OM + NF) &divide; Budget AE N &times; 100, 100%)</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Plafonné à 100% — des engagements peuvent dépasser le budget quand celui-ci est révisé à la baisse après les engagements initiaux.</td></tr>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Reste à engager</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">MAX(0, Budget AE N &minus; CDa &minus; RAR &minus; OM &minus; NF)</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Montant disponible pour de nouveaux engagements. Affiché à 0 si les engagements dépassent le budget.</td></tr>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Prévision finale</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">MIN(Conso AE N + CDa + RAR, Budget AE N)</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Estimation de l'atterrissage, plafonnée au budget.</td></tr>
+            <tr><td style="padding:6px 10px;white-space:normal;word-wrap:break-word"><strong>Projection épuisement</strong></td><td style="padding:6px 10px;white-space:normal;word-wrap:break-word">Rythme mensuel moyen des 3 derniers mois &rarr; estimation du mois d'épuisement du budget</td><td style="padding:6px 10px;white-space:normal;word-wrap:break-word">Basée sur les Commandes d'achat Original cumulées. Affiché sur chaque carte de la Synthèse.</td></tr>
           </tbody>
         </table>
       </div>
+
       <div class="pnl" style="margin-bottom:16px">
-        <div class="pnl-t">📈 Courbe d'évolution</div>
-        <p style="font-size:.82rem;line-height:1.7"><strong style="color:#2563eb">Engagements cumulés</strong> : cumul mensuel <em>Type de montant = Original</em>, tous types de valeur, plafonné au budget à chaque mois.<br><strong style="color:#d97706">Prévision</strong> : MIN(dernier cumul + CDa + RAR, Budget). Projetée jusqu'à la date de fin (Table1) ou décembre si pas de date.<br><strong>Comparaison pluriannuelle</strong> : option "Comparaison 2025/2026" &rarr; courbes superposées par mois calendaire.</p>
+        <div class="pnl-t">📈 Courbe d'évolution — Règles de calcul</div>
+        <table style="width:100%;font-size:.82rem;border-collapse:collapse">
+          <thead><tr style="background:#f7f8fb">
+            <th style="padding:8px 10px;border-bottom:2px solid var(--bd);white-space:normal;word-wrap:break-word">Courbe</th>
+            <th style="padding:8px 10px;border-bottom:2px solid var(--bd);white-space:normal;word-wrap:break-word">Calcul</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong style="color:#2563eb">Commandes engagées (cumulées)</strong></td>
+              <td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Cumul mensuel des montants dont <em>Texte type val. = "Commandes d'achat"</em> ET <em>Type de montant = "Original"</em>. Plafonné au budget à chaque mois.<br>
+              <small style="color:var(--mu)">Justification : filtrer uniquement les Commandes d'achat Original évite les re-engagements sur Factures et Pièces préenregistrées qui gonflent artificiellement le cumul. Les Réductions et Modifications compensant les Originaux sont exclues.</small></td>
+            </tr>
+            <tr>
+              <td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong style="color:#dc2626">Budget AE N</strong></td>
+              <td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Ligne horizontale fixe = Budget AE N filtré.</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong style="color:#d97706">Prévision</strong></td>
+              <td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">MIN(dernier cumul + CDa engagées + Reste à réceptionner, Budget AE N). Projetée jusqu'à la date de fin du programme (Table1, Col. C) ou décembre de la dernière année visible si pas de date.</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 10px;white-space:normal;word-wrap:break-word"><strong>Comparaison 2025/2026</strong></td>
+              <td style="padding:6px 10px;white-space:normal;word-wrap:break-word">Option "Comparaison 2025/2026" dans le filtre Année. Courbes superposées par mois calendaire (Jan–Déc), une couleur par année. Seules les opérations dont la date comptable appartient à l'année concernée sont incluses.</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
+
       <div class="pnl" style="margin-bottom:16px">
-        <div class="pnl-t">📊 Répartition &mdash; Montants nets SAP</div>
-        <p style="font-size:.82rem;line-height:1.7"><strong>💳 Paiements</strong> : décaissements effectifs &bull; <strong>📄 Factures en cours</strong> : comptabilisées non payées &bull; <strong>🛒 Commandes en cours</strong> : solde résiduel ouvert &bull; <strong>🔒 Réservations/Blocages</strong> : fonds immobilisés.<br>Montants nets = somme de tous les types de montant SAP. Total &asymp; Conso AE budget.</p>
+        <div class="pnl-t">📊 Répartition — Montants nets SAP</div>
+        <table style="width:100%;font-size:.82rem;border-collapse:collapse">
+          <thead><tr style="background:#f7f8fb">
+            <th style="padding:8px 10px;border-bottom:2px solid var(--bd);white-space:normal;word-wrap:break-word">Catégorie</th>
+            <th style="padding:8px 10px;border-bottom:2px solid var(--bd);white-space:normal;word-wrap:break-word">Filtre sur <em>Texte type val.</em></th>
+            <th style="padding:8px 10px;border-bottom:2px solid var(--bd);white-space:normal;word-wrap:break-word">Description</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>💳 Paiements</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><code>Paiements</code></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Décaissements effectifs vers les fournisseurs.</td></tr>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>📄 Factures en cours</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><code>Factures</code></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Factures reçues, comptabilisées mais non encore payées.</td></tr>
+            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>🛒 Commandes en cours</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><code>Commandes d'achat</code></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Solde résiduel des commandes ouvertes (non encore livrées ou facturées).</td></tr>
+            <tr><td style="padding:6px 10px;white-space:normal;word-wrap:break-word"><strong>📝 Pièces préenregistrées</strong></td><td style="padding:6px 10px;white-space:normal;word-wrap:break-word"><code>Pièces préenregistrées</code></td><td style="padding:6px 10px;white-space:normal;word-wrap:break-word">Saisies en attente de validation comptable (notes de frais, etc.).</td></tr>
+          </tbody>
+        </table>
+        <div style="margin-top:8px;font-size:.78rem;color:var(--mu);padding:8px 10px;background:#f7f8fb;border-radius:6px">
+          ℹ️ Montants nets SAP = somme de tous les types de montant (Original + Réduction + Modification…) par type de valeur. Total affiché ≈ Conso AE du fichier budget (écart possible : Prestations internes non incluses dans l'export de détail).
+        </div>
       </div>
+
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">🏆 Top fournisseurs</div>
-        <p style="font-size:.82rem;line-height:1.7">Paiements positifs par fournisseur (<em>Texte type val. = Paiements</em>, montants &gt; 0, colonne <em>Nom 1</em>).</p>
+        <p style="font-size:.82rem;line-height:1.7">
+          Basé sur les <strong>Paiements positifs</strong> (montants réellement décaissés).<br>
+          Source : <em>Texte type val. = "Paiements"</em>, montants &gt; 0, colonne <em>Nom 1</em> = nom du fournisseur.<br>
+          Filtrable par Année / Programme / Fonds. Choix du nombre de fournisseurs à afficher (Top 10, 20 ou 50).<br>
+          Export CSV disponible via le bouton ⬇️ Export CSV.
+        </p>
       </div>
-      <div class="pnl">
+
+      <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">⏱ Délais de liquidation</div>
-        <p style="font-size:.82rem;line-height:1.7">Délai = date Facture &minus; date Commande via <em>Numéro de la pièce précédente</em>. Vert &le;30j &bull; Orange 31&ndash;90j &bull; Rouge &gt;90j.</p>
+        <p style="font-size:.82rem;line-height:1.7">
+          Délai = date de la Facture &minus; date de la Commande d'achat d'origine.<br>
+          Liaison via le champ <em>Numéro de la pièce précédente</em> de la Facture qui référence le <em>Numéro de pièce de référence</em> de la Commande d'achat.<br>
+          Code couleur : Vert &le;30j &bull; Orange 31–90j &bull; Rouge &gt;90j.<br>
+          <small style="color:var(--mu)">Note : une commande avec plusieurs échéanciers génère plusieurs délais distincts. Export CSV disponible.</small>
+        </p>
       </div>
+
+      <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">🔗 Hyperliens N° Commande (Drill-down Histogramme)</div>
+        <p style="font-size:.82rem;line-height:1.7">
+          Dans le drill-down de l'Histogramme, chaque N° de commande est un lien cliquable qui ouvre directement la commande dans <strong>SIFAC+</strong>.<br>
+          Format de l'URL générée :<br>
+          <code style="font-size:.75rem;background:#f7f8fb;padding:2px 6px;border-radius:4px;display:block;margin-top:4px;word-break:break-all">https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&amp;/C_PurchaseOrderTP(PurchaseOrder='<strong>&lt;N°&gt;</strong>',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)</code>
+        </p>
+      </div>
+
+      <div class="pnl">
+        <div class="pnl-t">🔍 Drill-down Histogramme</div>
+        <p style="font-size:.82rem;line-height:1.7">
+          Cliquer sur une barre de l'histogramme affiche le détail des lignes de consommation correspondantes (toutes opérations hors Paiements et Comptabilis. coûts secondaires).<br>
+          Le tableau est triable par colonne. Les colonnes affichées sont : Année, Date, Type de valeur, N° Commande (lien SIFAC+), Fournisseur, Désignation, Programme, Fonds, Type de montant, Montant.<br>
+          <em>Cliquer sur une carte de la Synthèse</em> bascule directement sur l'Histogramme filtré sur ce programme.
+        </p>
+      </div>
+
     </div>
   </div>
 </div>
