@@ -1331,6 +1331,7 @@ function renderEvol(){
       // Sinon certains programmes sont sans date de fin → garder décembre
     }
   }
+  console.log('[EVOL] prg='+JSON.stringify(prg)+' moisFin='+moisFin+' dernierMois='+dernierMois+' _piE='+JSON.stringify(window._PROG_INFO));
   const dernierMois=sortedMois[sortedMois.length-1];
   const labels=[...sortedMois];
   const dCumul=[...cumulArr];
