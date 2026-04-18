@@ -962,10 +962,24 @@ async function lanceAnalyse(){
           const num=(rawT1['A'][i]||'').toString().trim();
           const nom=(rawT1['B'][i]||'').toString().trim();
           const ts=rawT1['C'][i];
+          if(i===0) console.log('[TABLE1] C[0] raw='+JSON.stringify(ts)+' type='+typeof ts+' keys='+JSON.stringify(Object.keys(rawT1)));
           let dateFin=null;
-          if(ts&&typeof ts==='number'&&ts>0){
-            const d=new Date(ts*1000);
-            dateFin=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+          if(ts!==null&&ts!==undefined&&ts!==''){
+            if(typeof ts==='number'&&ts>0){
+              // Timestamp Unix (secondes)
+              const d=new Date(ts*1000);
+              dateFin=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+            } else if(typeof ts==='string'){
+              // Format DD/MM/YYYY
+              const m1=ts.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+              if(m1) dateFin=m1[3]+'-'+m1[2].padStart(2,'0');
+              // Format YYYY-MM-DD
+              const m2=ts.match(/^(\d{4})-(\d{2})/);
+              if(m2) dateFin=m2[1]+'-'+m2[2];
+              // Format YYYY-MM-DDTHH:MM:SS (ISO)
+              const m3=ts.match(/^(\d{4})-(\d{2})-(\d{2})/);
+              if(m3) dateFin=m3[1]+'-'+m3[2];
+            }
           }
           if(num) window._PROG_INFO[num]={nom,dateFin};
         }
