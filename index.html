@@ -1165,7 +1165,15 @@ function renderDrill(rows,sc,sd){
   const tot=s.reduce((t,r)=>t+r.m,0);
   document.getElementById('dr-cnt').textContent=s.length+' ligne(s)';
   document.getElementById('dr-th').innerHTML='<tr>'+cols.map(c=>`<th onclick="sortD('${c.k}')">${c.l}${sc===c.k?(sd===1?' ▲':' ▼'):''}</th>`).join('')+'</tr>';
-  document.getElementById('dr-tb').innerHTML=s.map(r=>`<tr>${cols.map(c=>`<td style="${c.n?'text-align:right':''}">${c.n?fmt(r[c.k]):esc(r[c.k]||'-')}</td>`).join('')}</tr>`).join('');
+  const sapBase="https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&/C_PurchaseOrderTP(PurchaseOrder='";
+  const sapSuffix="',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)";
+  document.getElementById('dr-tb').innerHTML=s.map(r=>`<tr>${cols.map(c=>{
+    if(c.k==='cmd'&&r.cmd&&r.cmd!=='-'){
+      const url=sapBase+encodeURIComponent(r.cmd)+sapSuffix;
+      return`<td><a href="${url}" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">${esc(r.cmd)}</a></td>`;
+    }
+    return`<td style="${c.n?'text-align:right':''}">${c.n?fmt(r[c.k]):esc(r[c.k]||'-')}</td>`;
+  }).join('')}</tr>`).join('');
   document.getElementById('dr-tf').innerHTML='<tr>'+cols.map((c,i)=>i===cols.length-1?`<td style="text-align:right">${fmt(tot)} €</td>`:i===0?'<td>TOTAL</td>':'<td></td>').join('')+'</tr>';
 }
 function sortD(col){if(_dSC===col)_dSD*=-1;else{_dSC=col;_dSD=1;}renderDrill(_dRows,_dSC,_dSD);}
