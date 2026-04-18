@@ -1465,7 +1465,10 @@ function renderEvolMulti(prg,fnd){
       if(parseInt(r.annee)!==annee) return;
       if(prg&&r.p!==prg) return;
       if(fnd&&r.fo!==fnd) return;
+      if(r.tv.replace(/’/g,"'").indexOf("Commandes d'achat")<0) return;
       if(r.tm!=='Original'||!r.dtMois) return;
+      // Ne prendre que les dtMois dont l'année correspond à l'année en cours
+      if(parseInt(r.dtMois.split('-')[0])!==annee) return;
       var m=r.dtMois.split('-')[1];
       monthly[m]=(monthly[m]||0)+r.m;
     });
