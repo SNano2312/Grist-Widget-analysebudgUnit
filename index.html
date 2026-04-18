@@ -1313,25 +1313,8 @@ function renderEvol(){
   var _piE=window._PROG_INFO||{};
   var moisFin=String(derniereAnnee)+'-12';
   if(prg&&_piE[prg]&&_piE[prg].dateFin){
-    // Programme spécifique sélectionné : utiliser sa date de fin
     moisFin=_piE[prg].dateFin;
-  } else if(!prg){
-    // Tous programmes : déterminer les programmes visibles après filtrage budget
-    var progsVisibles=[...new Set(budRows.map(function(b){return b.prog;}))];
-    if(progsVisibles.length===1&&_piE[progsVisibles[0]]&&_piE[progsVisibles[0]].dateFin){
-      // Un seul programme visible : utiliser sa date de fin
-      moisFin=_piE[progsVisibles[0]].dateFin;
-    } else if(progsVisibles.length>1){
-      // Plusieurs programmes : prendre la date de fin la plus tardive parmi ceux qui en ont une
-      var datesFinVisibles=progsVisibles.map(function(p){return _piE[p]&&_piE[p].dateFin;}).filter(Boolean);
-      if(datesFinVisibles.length===progsVisibles.length){
-        // Tous les programmes ont une date de fin : prendre la plus tardive
-        moisFin=datesFinVisibles.sort().pop();
-      }
-      // Sinon certains programmes sont sans date de fin → garder décembre
-    }
   }
-  console.log('[EVOL] prg='+JSON.stringify(prg)+' moisFin='+moisFin+' dernierMois='+dernierMois+' _piE='+JSON.stringify(window._PROG_INFO));
   const dernierMois=sortedMois[sortedMois.length-1];
   const labels=[...sortedMois];
   const dCumul=[...cumulArr];
