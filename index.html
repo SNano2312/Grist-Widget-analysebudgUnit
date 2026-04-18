@@ -594,20 +594,7 @@ window.refreshAnalyse = refreshAnalyse;
 window.showCols   = showCols;
 
 // Attacher les listeners des filtres via JS (plus fiable que onchange inline dans iframe)
-document.addEventListener('DOMContentLoaded', function(){
-  ['h-ann','h-prg','h-fnd','h-grp'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.addEventListener('change', renderHisto);
-  });
-  ['e-ann','e-prg','e-fnd'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.addEventListener('change', renderEvol);
-  });
-  ['x-ann','x-prg','x-fnd'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.addEventListener('change', renderCross);
-  });
-});
+// listeners gérés par attachListeners()
 window.lanceAnalyse = lanceAnalyse;
 window.retourCfg  = retourCfg;
 window.switchTab  = switchTab;
@@ -642,12 +629,13 @@ window.renderHisto= renderHisto;
 window.renderEvol = renderEvol;
 window.renderCross= renderCross;
 
-document.addEventListener('DOMContentLoaded', function(){
+// Exécution immédiate (DOMContentLoaded déjà passé dans iframe Grist)
+(function(){
   const b = document.getElementById('btn-debug-inner');
   if(b) b.addEventListener('click', showCols);
   const ba = document.getElementById('btn-analyse');
   if(ba) ba.addEventListener('click', lanceAnalyse);
-});
+})();
 
 // ════════════════════════════════════════
 // INIT GRIST
