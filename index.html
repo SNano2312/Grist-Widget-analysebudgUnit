@@ -39,7 +39,7 @@ function renderSynthese(){
       if(diff<4&&g.bud>0&&g.nconso/g.bud>0.05)
         alerts+='<div class="alert-item"><span>'+esc(info.nom||prog)+'</span><span>'+finTxt+' — '+(diff<0?'Dépassée':'Dans '+Math.round(diff)+' mois')+' — Non conso : '+fmt(g.nconso)+' €</span></div>';
     }
-    cards+='<div class="synth-card" style="cursor:pointer" onclick="drillFromSynthese(this.dataset.prog)" data-prog="'+esc(prog)+'">'+
+    cards+='<div class="synth-card" style="cursor:pointer" data-prog="'+esc(prog)+'">'+
       '<span class="synth-badge '+cl+'">'+pct(taux)+'</span>'+
       '<div class="prog-nom">'+esc(info.nom||prog)+'</div>'+
       '<div class="prog-num">'+esc(prog)+'</div>'+
@@ -53,6 +53,10 @@ function renderSynthese(){
   document.getElementById('synthese-content').innerHTML=
     (alerts?'<div class="alert-box"><h3>⚠️ Alertes — Échéance proche avec budget non consommé</h3>'+alerts+'</div>':'')+
     '<div class="synth-grid">'+cards+'</div>';
+  // Attacher les listeners après rendu DOM
+  document.querySelectorAll('#synthese-content .synth-card').forEach(function(el){
+    el.addEventListener('click',function(){drillFromSynthese(this.getAttribute('data-prog'));});
+  });
 }
 
 // ════════════════════════════════════
@@ -242,6 +246,10 @@ function renderSynthese(){
   document.getElementById('synthese-content').innerHTML=
     (alerts?'<div class="alert-box"><h3>⚠️ Alertes — Échéance proche avec budget non consommé</h3>'+alerts+'</div>':'')+
     '<div class="synth-grid">'+cards+'</div>';
+  // Attacher les listeners après rendu DOM
+  document.querySelectorAll('#synthese-content .synth-card').forEach(function(el){
+    el.addEventListener('click',function(){drillFromSynthese(this.getAttribute('data-prog'));});
+  });
 }
 
 // ════════════════════════════════════
@@ -949,12 +957,17 @@ async function lanceAnalyse(){
     document.getElementById('dash-title').textContent='Analyse budgétaire'+(CF_LABEL?' — Centre financier '+CF_LABEL:'');
     // Charger NACRES si configuré
     window.NACRES_DATA=[];
+    console.log('[NACRES-LOAD] tNacres='+JSON.stringify(tNacres));
     if(tNacres){
       try{
         setLd('Lecture table NACRES…');
         const rawN=await grist.docApi.fetchTable(tNacres);
+        console.log('[NACRES-LOAD] rawN keys='+JSON.stringify(Object.keys(rawN).slice(0,5))+' n='+(rawN[Object.keys(rawN)[0]]||[]).length);
         procNacres(rawN);
-      }catch(e){console.log('NACRES:',e.message);}
+        console.log('[NACRES-LOAD] NACRES_DATA='+window.NACRES_DATA.length);
+      }catch(e){console.log('[NACRES-LOAD] erreur:',e.message);}
+    } else {
+      console.log('[NACRES-LOAD] aucune table NACRES configurée - vérifiez sel-nacres');
     }
     fillNacresFilters();
     switchTab('s');
@@ -1385,6 +1398,10 @@ function renderSynthese(){
   document.getElementById('synthese-content').innerHTML=
     (alerts?'<div class="alert-box"><h3>⚠️ Alertes — Échéance proche avec budget non consommé</h3>'+alerts+'</div>':'')+
     '<div class="synth-grid">'+cards+'</div>';
+  // Attacher les listeners après rendu DOM
+  document.querySelectorAll('#synthese-content .synth-card').forEach(function(el){
+    el.addEventListener('click',function(){drillFromSynthese(this.getAttribute('data-prog'));});
+  });
 }
 
 // ════════════════════════════════════
