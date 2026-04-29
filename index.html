@@ -397,14 +397,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .cfg-row{display:flex;flex-direction:column;gap:4px;margin-bottom:14px}
 .cfg-row label{font-size:.72rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.04em}
 .cfg-row select{padding:8px 10px;border:1px solid var(--bd);border-radius:6px;background:#fff;font-size:.85rem}
-    <div class="cfg-row">
-      <label>Table Programmes (optionnel)</label>
-      <select id="sel-t1"><option value="">-- Pas de table programmes --</option></select>
-    </div>
-    <div class="cfg-row">
-      <label>Table Postes commande / NACRES (optionnel)</label>
-      <select id="sel-nacres"><option value="">-- Pas de table NACRES --</option></select>
-    </div>
 #cfg-err{color:var(--er);font-size:.82rem;margin:10px 0}
 #btn-analyse{width:100%;padding:12px;background:var(--pr);color:#fff;border:none;border-radius:var(--r);font-size:.95rem;font-weight:600;cursor:pointer;margin-top:6px}
 #btn-analyse:hover{background:#1d4ed8}
@@ -864,6 +856,22 @@ grist.ready({
       sel.addEventListener('change', checkSelections);
     });
 
+    // Peupler sel-t1 et sel-nacres avec les tables disponibles
+    ['sel-t1','sel-nacres'].forEach(function(selId){
+      var selEl=document.getElementById(selId); if(!selEl) return;
+      tables.forEach(function(t){
+        var opt=document.createElement('option');
+        opt.value=t; opt.textContent=t;
+        selEl.appendChild(opt);
+      });
+    });
+
+    // Auto-détecter Table1 et table NACRES par leur nom
+    var autoT1=tables.find(function(t){return /table1|programme/i.test(t);});
+    var autoNacres=tables.find(function(t){return /nacre|commande|poste/i.test(t);});
+    if(autoT1) document.getElementById('sel-t1').value=autoT1;
+    if(autoNacres) document.getElementById('sel-nacres').value=autoNacres;
+
     // Restaurer la config sauvegardée
     let saved={};
     try{ saved=JSON.parse(localStorage.getItem('budgetCfg')||'{}'); }catch(e){}
@@ -871,6 +879,8 @@ grist.ready({
     if(saved.b26) document.getElementById('sel-b26').value=saved.b26;
     if(saved.c25) document.getElementById('sel-c25').value=saved.c25;
     if(saved.c26) document.getElementById('sel-c26').value=saved.c26;
+    if(saved.t1)     { document.getElementById('sel-t1').value=saved.t1; }
+    if(saved.nacres) { document.getElementById('sel-nacres').value=saved.nacres; }
     checkSelections();
 
     // Relance automatique si toutes les tables sont configurées
@@ -903,9 +913,11 @@ async function lanceAnalyse(){
   const tB26=document.getElementById('sel-b26').value;
   const tC25=document.getElementById('sel-c25').value;
   const tC26=document.getElementById('sel-c26').value;
+  const tT1=document.getElementById('sel-t1').value;
+  const tNacres=document.getElementById('sel-nacres').value;
 
   // Mémoriser la config
-  try{localStorage.setItem('budgetCfg',JSON.stringify({b25:tB25,b26:tB26,c25:tC25,c26:tC26}));}catch(e){}
+  try{localStorage.setItem('budgetCfg',JSON.stringify({b25:tB25,b26:tB26,c25:tC25,c26:tC26,t1:tT1,nacres:tNacres}));}catch(e){}
 
   showLd('Lecture des données…');
   try{
