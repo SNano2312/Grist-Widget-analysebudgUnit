@@ -559,7 +559,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
   <!-- ÉVOLUTION -->
   <div id="vw-e" style="display:none">
     <div class="flt">
-      <div class="fg"><label>Année</label><select id="e-ann" ><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Année</label><select id="e-ann" ><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option><option value="multi">Comparaison 2025/2026</option></select></div>
       <div class="fg"><label>Programme</label><select id="e-prg" ><option value="">Tous</option></select></div>
       <div class="fg"><label>Fonds</label><select id="e-fnd" ><option value="">Tous</option></select></div>
     </div>
@@ -821,6 +821,8 @@ window.sortD      = sortD;
 window.renderHisto= renderHisto;
 window.renderEvol = renderEvol;
 window.renderNacres = renderNacres;
+window.renderEvolMulti = renderEvolMulti;
+window.drillFromSynthese = drillFromSynthese;
 window.procNacres = procNacres;
 window.fillNacresFilters = fillNacresFilters;
 window.renderCross= renderCross;
@@ -924,7 +926,7 @@ async function lanceAnalyse(){
     setLd('Lecture référentiel programmes…');
     window._PROG_INFO={};
     try{
-      const rawT1=await grist.docApi.fetchTable('Table1');
+      const rawT1=await grist.docApi.fetchTable(tT1||'Table1');
       if(rawT1['A']){
         const nT=rawT1['A'].length;
         for(let i=0;i<nT;i++){
@@ -932,9 +934,16 @@ async function lanceAnalyse(){
           const nom=(rawT1['B'][i]||'').toString().trim();
           const ts=rawT1['C'][i];
           let dateFin=null;
-          if(ts&&typeof ts==='number'&&ts>0){
-            const d=new Date(ts*1000);
-            dateFin=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+          if(ts!==null&&ts!==undefined&&ts!==''){
+            if(typeof ts==='number'&&ts>0){
+              const d=new Date(ts*1000);
+              dateFin=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+            } else if(typeof ts==='string'){
+              const m1=ts.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+              if(m1) dateFin=m1[3]+'-'+m1[2].padStart(2,'0');
+              const m2=ts.match(/^(\d{4})-(\d{2})/);
+              if(m2) dateFin=m2[1]+'-'+m2[2];
+            }
           }
           if(num) window._PROG_INFO[num]={nom,dateFin};
         }
@@ -972,6 +981,17 @@ async function lanceAnalyse(){
     document.getElementById('cfg-screen').style.display='none';
     document.getElementById('dash').style.display='block';
     document.getElementById('dash-title').textContent='Analyse budgétaire'+(CF_LABEL?' — Centre financier '+CF_LABEL:'');
+    // Charger NACRES si configuré
+    window.NACRES_DATA=[];
+    if(tNacres){
+      try{
+        setLd('Lecture table NACRES…');
+        const rawN=await grist.docApi.fetchTable(tNacres);
+        procNacres(rawN);
+        console.log('[NACRES]',window.NACRES_DATA.length,'lignes chargées');
+      }catch(e){console.log('NACRES erreur:',e.message);}
+    }
+    fillNacresFilters();
     switchTab('s');
   }catch(e){
     hideLd();
@@ -1259,6 +1279,7 @@ function renderEvol(){
   const ann=document.getElementById('e-ann').value;
   const prg=document.getElementById('e-prg').value;
   const fnd=document.getElementById('e-fnd').value;
+  if(ann==='multi'){renderEvolMulti(prg,fnd);return;}
   const budRows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd));
   const totBud=budRows.reduce((s,r)=>s+r.bud,0);
   const totCDA=budRows.reduce((s,r)=>s+r.cda,0);
@@ -1731,6 +1752,59 @@ function renderNacres(){
     '<td style="text-align:right">'+pctMar.toFixed(1)+' %</td>'+
     '<td style="text-align:right">'+fmt(totHors)+' €</td>'+
     '<td style="text-align:right">'+fmt(totRest)+' €</td></tr>';
+}
+
+
+// ════════════════════════════════════
+// ÉVOLUTION PLURIANNUELLE
+// ════════════════════════════════════
+function renderEvolMulti(prg,fnd){
+  var datasets=[];
+  var cols2=[['#2563eb','#93c5fd'],['#16a34a','#86efac']];
+  [2025,2026].forEach(function(annee,ai){
+    var budRows=BUDGET.filter(function(b){return parseInt(b.annee)===annee&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd);});
+    var totBud=budRows.reduce(function(s,r){return s+r.bud;},0);
+    var bv=Math.round(totBud*100)/100;
+    var monthly={};
+    CONSO.forEach(function(r){
+      if(parseInt(r.annee)!==annee) return;
+      if(prg&&r.p!==prg) return;
+      if(fnd&&r.fo!==fnd) return;
+      if(r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")<0) return;
+      if(r.tm!=='Original'||!r.dtMois) return;
+      if(parseInt(r.dtMois.split('-')[0])!==annee) return;
+      var m=r.dtMois.split('-')[1];
+      monthly[m]=(monthly[m]||0)+r.m;
+    });
+    var mois=['01','02','03','04','05','06','07','08','09','10','11','12'];
+    var cumul=0;
+    var data=mois.map(function(m){
+      if(monthly[m]!=null){cumul+=monthly[m];cumul=Math.min(Math.round(cumul*100)/100,bv);return cumul;}
+      return null;
+    });
+    datasets.push({label:'Engagements '+annee+' ('+fmt(totBud)+' \u20ac)',data:data,borderColor:cols2[ai][0],backgroundColor:'transparent',tension:.3,pointRadius:3,borderWidth:2,spanGaps:false});
+    if(bv>0) datasets.push({label:'Budget '+annee,data:mois.map(function(){return bv;}),borderColor:cols2[ai][0],backgroundColor:'transparent',borderDash:[6,4],tension:0,pointRadius:0,borderWidth:1.5});
+  });
+  var labels=['Jan','F\u00e9v','Mar','Avr','Mai','Juin','Juil','Ao\u00fb','Sep','Oct','Nov','D\u00e9c'];
+  if(_line) _line.destroy();
+  _line=new Chart(document.getElementById('chLine').getContext('2d'),{
+    type:'line',
+    data:{labels:labels,datasets:datasets},
+    options:{responsive:true,plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.raw!=null?c.dataset.label+' : '+fmt(c.raw)+' \u20ac':null;}}}},scales:{y:{ticks:{callback:function(v){return fmt(v)+' \u20ac';}}}}}
+  });
+}
+
+// ════════════════════════════════════
+// DRILL DEPUIS SYNTHÈSE
+// ════════════════════════════════════
+function drillFromSynthese(prog){
+  var ann=document.getElementById('s-ann').value;
+  switchTab('h');
+  var hPrg=document.getElementById('h-prg');
+  var hAnn=document.getElementById('h-ann');
+  if(hPrg) hPrg.value=prog;
+  if(hAnn&&ann) hAnn.value=ann;
+  renderHisto();
 }
 
 </script>
