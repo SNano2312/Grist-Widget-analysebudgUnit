@@ -1554,9 +1554,7 @@ function exportCSV(){
 // ════════════════════════════════════
 function procNacres(raw){
   window.NACRES_DATA=[];
-  console.log('[NACRES] Colonnes disponibles:', JSON.stringify(Object.keys(raw)));
   const n=(raw[Object.keys(raw)[0]]||[]).length;
-  console.log('[NACRES] Nb lignes:', n);
   const col=function(){
     var names=Array.prototype.slice.call(arguments);
     for(var j=0;j<names.length;j++){
@@ -1566,21 +1564,21 @@ function procNacres(raw){
     }
     return new Array(n).fill('');
   };
-  // Colonnes de la table postes de commande
-  var nacres   = col('Grpe_de_marchandises','Grpe de marchandises');
-  var cmds     = col('Commande_d_achat',"Commande d'achat");
-  var statuts  = col('Nom_de_statut_du_document_d_achat',"Nom de statut du document d'achat");
-  var dates    = col('Date_de_la_commande_d_achat',"Date de la commande d'achat");
-  var types    = col('Type_de_document_d_achat',"Type de document d'achat");
+  // Colonnes de la table postes de commande (noms Grist exacts)
+  var nacres   = col('Grpe_de_marchandises');
+  var cmds     = col('Commande_d_achat');
+  var statuts  = col('Nom_de_statut_du_document_d_achat');
+  var dates    = col('Date_de_la_commande_d_achat');
+  var types    = col('Type_de_document_d_achat');
   var fours    = col('Fournisseur');
   var postes   = col('Poste');
-  var desigs   = col('Designation','Désignation');
-  var vals     = col('Valeur_nette_repartie','Valeur nette répartie');
-  var rests    = col('Valeur_restante_a_facturer','Valeur restante à facturer');
+  var desigs   = col('Designation');
+  var vals     = col('Valeur_nette_repartie');
+  var rests    = col('Valeur_restante_a_facturer');
   var fonds    = col('Fonds');
-  var progs    = col('Element_d_OTP',"Élément d'OTP");
-  var cdc      = col('Centre_de_couts','Centre de coûts');
-  var contrats = col('Contrat_cadre','Contrat-cadre');
+  var progs    = col('Element_d_OTP');
+  var cdc      = col('Centre_de_couts');
+  var contrats = col('Contrat_cadre');
 
   for(var i=0;i<n;i++){
     var nacreVal=(nacres[i]||'').toString().trim();
