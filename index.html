@@ -39,7 +39,7 @@ function renderSynthese(){
       if(diff<4&&g.bud>0&&g.nconso/g.bud>0.05)
         alerts+='<div class="alert-item"><span>'+esc(info.nom||prog)+'</span><span>'+finTxt+' — '+(diff<0?'Dépassée':'Dans '+Math.round(diff)+' mois')+' — Non conso : '+fmt(g.nconso)+' €</span></div>';
     }
-    cards+='<div class="synth-card" style="cursor:pointer" onclick="drillFromSynthese(\''+prog.replace(/\'/g,"\\\'")+'\')">'+
+    cards+='<div class="synth-card" style="cursor:pointer" onclick="drillFromSynthese(\''+prog.replace(/\'/g,"\\\'")+'\'">'+
       '<span class="synth-badge '+cl+'">'+pct(taux)+'</span>'+
       '<div class="prog-nom">'+esc(info.nom||prog)+'</div>'+
       '<div class="prog-num">'+esc(prog)+'</div>'+
@@ -228,7 +228,7 @@ function renderSynthese(){
       if(diff<4&&g.bud>0&&g.nconso/g.bud>0.05)
         alerts+='<div class="alert-item"><span>'+esc(info.nom||prog)+'</span><span>'+finTxt+' — '+(diff<0?'Dépassée':'Dans '+Math.round(diff)+' mois')+' — Non conso : '+fmt(g.nconso)+' €</span></div>';
     }
-    cards+='<div class="synth-card" style="cursor:pointer" onclick="drillFromSynthese(\''+prog.replace(/\'/g,"\\\'")+'\')">'+
+    cards+='<div class="synth-card">'+
       '<span class="synth-badge '+cl+'">'+pct(taux)+'</span>'+
       '<div class="prog-nom">'+esc(info.nom||prog)+'</div>'+
       '<div class="prog-num">'+esc(prog)+'</div>'+
@@ -615,20 +615,8 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <div class="flt">
       <div class="fg"><label>Programme</label><select id="n-prg"><option value="">Tous</option></select></div>
       <div class="fg"><label>Fonds</label><select id="n-fnd"><option value="">Tous</option></select></div>
-      <div class="fg"><label>Type</label>
-        <select id="n-type">
-          <option value="">Tous</option>
-          <option value="marche">Sur marché uniquement</option>
-          <option value="hors">Hors marché uniquement</option>
-        </select>
-      </div>
-      <div class="fg"><label>Vue</label>
-        <select id="n-vue">
-          <option value="nacres">Par code NACRES</option>
-          <option value="four">Par fournisseur</option>
-          <option value="detail">Détail lignes</option>
-        </select>
-      </div>
+      <div class="fg"><label>Type</label><select id="n-type"><option value="">Tous</option><option value="marche">Sur marché</option><option value="hors">Hors marché</option></select></div>
+      <div class="fg"><label>Vue</label><select id="n-vue"><option value="nacres">Par code NACRES</option><option value="four">Par fournisseur</option><option value="detail">Détail lignes</option></select></div>
     </div>
     <div class="ks" id="nacres-kpis"></div>
     <div id="nacres-chart-wrap" class="pnl" style="margin-bottom:16px"><canvas id="chNacres" style="max-height:320px"></canvas></div>
@@ -640,40 +628,18 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <div style="max-width:900px;margin:0 auto">
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">📂 Sources de données</div>
-        <table style="width:100%;font-size:.82rem;border-collapse:collapse">
-          <thead><tr style="background:#f7f8fb">
-            <th style="padding:8px 10px;border-bottom:2px solid var(--bd);white-space:normal;word-wrap:break-word">Table Grist</th>
-            <th style="padding:8px 10px;border-bottom:2px solid var(--bd);white-space:normal;word-wrap:break-word">Fichier source</th>
-            <th style="padding:8px 10px;border-bottom:2px solid var(--bd);white-space:normal;word-wrap:break-word">Contenu</th>
-          </tr></thead>
-          <tbody>
-            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Budget_2025 / Budget_2026</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">budget_complet_20XX.xlsx</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Données budgétaires par CF/Programme/Fonds. Dédoublonnage sur (Année, Programme, Fonds).</td></tr>
-            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Conso_2025 / Conso_2026</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">conso_AE_20XX.xlsx</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Détail ligne à ligne des opérations SAP : type de valeur, type de montant, fournisseur, date, montant.</td></tr>
-            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Table1</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Saisie Grist</td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Référentiel programmes : Col. A = N° programme &bull; Col. B = Acronyme &bull; Col. C = Date de fin (timestamp Unix ou texte DD/MM/YYYY).</td></tr>
-            <tr><td style="padding:6px 10px;white-space:normal;word-wrap:break-word"><strong>Table NACRES</strong></td><td style="padding:6px 10px;white-space:normal;word-wrap:break-word">Postes_de_commande_d_achat.xlsx</td><td style="padding:6px 10px;white-space:normal;word-wrap:break-word">Postes de commande d'achat SAP. Col. A = Code NACRES &bull; Col. E = Type de document (OSMA=sur marché, OSBC=hors marché, CA=carte achat) &bull; Col. I = Valeur nette répartie &bull; Col. S = Fonds.</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="pnl" style="margin-bottom:16px">
-        <div class="pnl-t">🧪 Onglet NACRES — Règles de calcul</div>
-        <table style="width:100%;font-size:.82rem;border-collapse:collapse">
-          <thead><tr style="background:#f7f8fb">
-            <th style="padding:8px 10px;border-bottom:2px solid var(--bd);white-space:normal;word-wrap:break-word">Indicateur</th>
-            <th style="padding:8px 10px;border-bottom:2px solid var(--bd);white-space:normal;word-wrap:break-word">Calcul</th>
-          </tr></thead>
-          <tbody>
-            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Montant total engagé</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Somme de la <em>Valeur nette répartie</em> (Col. I) pour toutes les lignes filtrées.</td></tr>
-            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Sur marché</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Type de document commence par <code>OSMA</code>.</td></tr>
-            <tr><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word"><strong>Hors marché</strong></td><td style="padding:6px 10px;border-bottom:1px solid #f0f1f5;white-space:normal;word-wrap:break-word">Type de document ne commence pas par <code>OSMA</code>.</td></tr>
-            <tr><td style="padding:6px 10px;white-space:normal;word-wrap:break-word"><strong>Reste à facturer</strong></td><td style="padding:6px 10px;white-space:normal;word-wrap:break-word">Somme de la <em>Valeur restante à facturer</em> (Col. M). Représente les dépenses engagées non encore facturées.</td></tr>
-          </tbody>
-        </table>
+        <p style="font-size:.82rem;line-height:1.7">
+          <strong>Budget_2025 / Budget_2026</strong> : budget_complet_20XX.xlsx — données budgétaires par CF/Programme/Fonds.<br>
+          <strong>Conso_2025 / Conso_2026</strong> : conso_AE_20XX.xlsx — opérations SAP ligne à ligne.<br>
+          <strong>Table Programmes</strong> : Col. A = N° programme &bull; Col. B = Acronyme &bull; Col. C = Date de fin.<br>
+          <strong>Table NACRES</strong> : postes de commande d'achat SAP. Col. A = Code NACRES &bull; Col. E = Type document (OSMA=marché) &bull; Col. I = Valeur nette &bull; Col. S = Fonds.
+        </p>
       </div>
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">🔢 Indicateurs budgétaires</div>
         <p style="font-size:.82rem;line-height:1.7">
           <strong>Taux de consommation</strong> : Conso AE N &divide; Budget AE N &times; 100 — Vert &ge;90% &bull; Orange &ge;50% &bull; Rouge &lt;50%<br>
-          <strong>Taux d'engagement</strong> : MIN((CDa + RAR + OM + NF) &divide; Budget AE N &times; 100, 100%)<br>
+          <strong>Taux d'engagement</strong> : MIN((CDa+RAR+OM+NF) &divide; Budget AE N &times; 100, 100%) — plafonné car le budget peut être révisé à la baisse<br>
           <strong>Reste à engager</strong> : MAX(0, Budget AE N &minus; CDa &minus; RAR &minus; OM &minus; NF)<br>
           <strong>Prévision finale</strong> : MIN(Conso AE + CDa + RAR, Budget AE N)
         </p>
@@ -681,30 +647,32 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">📈 Courbe d'évolution</div>
         <p style="font-size:.82rem;line-height:1.7">
-          <strong style="color:#2563eb">Commandes engagées</strong> : cumul mensuel <em>Commandes d'achat + Type montant Original</em>, plafonné au budget.<br>
-          <strong style="color:#d97706">Prévision</strong> : MIN(dernier cumul + CDa + RAR, Budget). Projetée jusqu'à la date de fin du programme ou décembre si pas de date.<br>
-          <strong>Comparaison 2025/2026</strong> : courbes superposées par mois calendaire (Jan–Déc), filtrées sur l'année de la date comptable.
+          <strong style="color:#2563eb">Commandes engagées</strong> : cumul mensuel <em>Commandes d'achat + Type montant Original</em>, plafonné au budget. Seules les opérations dont la date comptable appartient à l'année filtrée sont incluses.<br>
+          <strong style="color:#d97706">Prévision</strong> : MIN(dernier cumul + CDa + RAR, Budget). Projetée jusqu'à la date de fin du programme (Table Programmes, Col. C) ou décembre si pas de date.<br>
+          <strong>Comparaison 2025/2026</strong> : courbes superposées par mois calendaire Jan–Déc.
         </p>
       </div>
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">📊 Répartition — Montants nets SAP</div>
         <p style="font-size:.82rem;line-height:1.7">
-          Montants nets = somme de tous les types de montant (Original + Réduction…) par type de valeur.<br>
+          Montants nets = somme de tous les types de montant SAP par type de valeur.<br>
           <strong>💳 Paiements</strong> : décaissements &bull; <strong>📄 Factures en cours</strong> &bull; <strong>🛒 Commandes en cours</strong> &bull; <strong>📝 Pièces préenregistrées</strong><br>
-          Total &asymp; Conso AE budget (écart : Prestations internes non incluses dans l'export).
+          Total &asymp; Conso AE budget (écart : Prestations internes).
         </p>
       </div>
       <div class="pnl" style="margin-bottom:16px">
-        <div class="pnl-t">🏆 Top fournisseurs &amp; ⏱ Délais</div>
+        <div class="pnl-t">🧪 Onglet NACRES</div>
         <p style="font-size:.82rem;line-height:1.7">
-          <strong>Top fournisseurs</strong> : Paiements positifs par fournisseur (<em>Texte type val. = "Paiements"</em>, montants &gt; 0, colonne <em>Nom 1</em>).<br>
-          <strong>Délais</strong> : date Facture &minus; date Commande via <em>Numéro de la pièce précédente</em>. Vert &le;30j &bull; Orange 31–90j &bull; Rouge &gt;90j.
+          <strong>Sur marché</strong> : type document commence par <code>OSMA</code><br>
+          <strong>Hors marché</strong> : tous les autres types (OSBC, CA, CAMA...)<br>
+          <strong>Valeur nette répartie</strong> : montant engagé par poste de commande<br>
+          <strong>Reste à facturer</strong> : part non encore facturée
         </p>
       </div>
       <div class="pnl">
         <div class="pnl-t">🔗 Hyperliens N° Commande</div>
         <p style="font-size:.82rem;line-height:1.7">
-          Dans le drill-down Histogramme et l'onglet NACRES, chaque N° de commande est un lien cliquable vers <strong>SIFAC+</strong>.<br>
+          Dans le drill-down Histogramme et l'onglet NACRES, chaque N° de commande est un lien vers <strong>SIFAC+</strong> :<br>
           <code style="font-size:.75rem;background:#f7f8fb;padding:2px 6px;border-radius:4px;display:block;margin-top:4px;word-break:break-all">https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&amp;/C_PurchaseOrderTP(PurchaseOrder='&lt;N°&gt;',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)</code>
         </p>
       </div>
@@ -826,10 +794,10 @@ window.sortD      = sortD;
 window.renderHisto= renderHisto;
 window.renderEvol = renderEvol;
 window.renderNacres = renderNacres;
-window.renderEvolMulti = renderEvolMulti;
-window.drillFromSynthese = drillFromSynthese;
 window.procNacres = procNacres;
 window.fillNacresFilters = fillNacresFilters;
+window.renderEvolMulti = renderEvolMulti;
+window.drillFromSynthese = drillFromSynthese;
 window.renderCross= renderCross;
 
 document.addEventListener('DOMContentLoaded', function(){
@@ -862,8 +830,7 @@ grist.ready({
       });
       sel.addEventListener('change', checkSelections);
     });
-
-    // Peupler sel-t1 et sel-nacres avec les tables disponibles
+    // Peupler sel-t1 et sel-nacres
     ['sel-t1','sel-nacres'].forEach(function(selId){
       var selEl=document.getElementById(selId); if(!selEl) return;
       tables.forEach(function(t){
@@ -873,12 +840,6 @@ grist.ready({
       });
     });
 
-    // Auto-détecter Table1 et table NACRES par leur nom
-    var autoT1=tables.find(function(t){return /table1|programme/i.test(t);});
-    var autoNacres=tables.find(function(t){return /nacre|commande|poste/i.test(t);});
-    if(autoT1) document.getElementById('sel-t1').value=autoT1;
-    if(autoNacres) document.getElementById('sel-nacres').value=autoNacres;
-
     // Restaurer la config sauvegardée
     let saved={};
     try{ saved=JSON.parse(localStorage.getItem('budgetCfg')||'{}'); }catch(e){}
@@ -886,8 +847,8 @@ grist.ready({
     if(saved.b26) document.getElementById('sel-b26').value=saved.b26;
     if(saved.c25) document.getElementById('sel-c25').value=saved.c25;
     if(saved.c26) document.getElementById('sel-c26').value=saved.c26;
-    if(saved.t1)     { document.getElementById('sel-t1').value=saved.t1; }
-    if(saved.nacres) { document.getElementById('sel-nacres').value=saved.nacres; }
+    if(saved.t1)     document.getElementById('sel-t1').value=saved.t1;
+    if(saved.nacres) document.getElementById('sel-nacres').value=saved.nacres;
     checkSelections();
 
     // Relance automatique si toutes les tables sont configurées
@@ -920,10 +881,10 @@ async function lanceAnalyse(){
   const tB26=document.getElementById('sel-b26').value;
   const tC25=document.getElementById('sel-c25').value;
   const tC26=document.getElementById('sel-c26').value;
-  const tT1=document.getElementById('sel-t1').value;
-  const tNacres=document.getElementById('sel-nacres').value;
 
   // Mémoriser la config
+  const tT1=document.getElementById('sel-t1').value;
+  const tNacres=document.getElementById('sel-nacres').value;
   try{localStorage.setItem('budgetCfg',JSON.stringify({b25:tB25,b26:tB26,c25:tC25,c26:tC26,t1:tT1,nacres:tNacres}));}catch(e){}
 
   showLd('Lecture des données…');
@@ -993,8 +954,7 @@ async function lanceAnalyse(){
         setLd('Lecture table NACRES…');
         const rawN=await grist.docApi.fetchTable(tNacres);
         procNacres(rawN);
-        console.log('[NACRES]',window.NACRES_DATA.length,'lignes chargées');
-      }catch(e){console.log('NACRES erreur:',e.message);}
+      }catch(e){console.log('NACRES:',e.message);}
     }
     fillNacresFilters();
     switchTab('s');
@@ -1275,7 +1235,15 @@ function renderDrill(rows,sc,sd){
   const tot=s.reduce((t,r)=>t+r.m,0);
   document.getElementById('dr-cnt').textContent=s.length+' ligne(s)';
   document.getElementById('dr-th').innerHTML='<tr>'+cols.map(c=>`<th onclick="sortD('${c.k}')">${c.l}${sc===c.k?(sd===1?' ▲':' ▼'):''}</th>`).join('')+'</tr>';
-  document.getElementById('dr-tb').innerHTML=s.map(r=>`<tr>${cols.map(c=>`<td style="${c.n?'text-align:right':''}">${c.n?fmt(r[c.k]):esc(r[c.k]||'-')}</td>`).join('')}</tr>`).join('');
+  const sapBase="https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&/C_PurchaseOrderTP(PurchaseOrder='";
+  const sapSuf="',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)";
+  document.getElementById('dr-tb').innerHTML=s.map(r=>`<tr>${cols.map(c=>{
+    if(c.k==='cmd'&&r.cmd&&r.cmd!=='-'){
+      const url=sapBase+encodeURIComponent(r.cmd)+sapSuf;
+      return`<td><a href="${url}" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">${esc(r.cmd)}</a></td>`;
+    }
+    return`<td style="${c.n?'text-align:right':''}">${c.n?fmt(r[c.k]):esc(r[c.k]||'-')}</td>`;
+  }).join('')}</tr>`).join('');
   document.getElementById('dr-tf').innerHTML='<tr>'+cols.map((c,i)=>i===cols.length-1?`<td style="text-align:right">${fmt(tot)} €</td>`:i===0?'<td>TOTAL</td>':'<td></td>').join('')+'</tr>';
 }
 function sortD(col){if(_dSC===col)_dSD*=-1;else{_dSC=col;_dSD=1;}renderDrill(_dRows,_dSC,_dSD);}
@@ -1402,7 +1370,7 @@ function renderSynthese(){
       if(diff<4&&g.bud>0&&g.nconso/g.bud>0.05)
         alerts+='<div class="alert-item"><span>'+esc(info.nom||prog)+'</span><span>'+finTxt+' — '+(diff<0?'Dépassée':'Dans '+Math.round(diff)+' mois')+' — Non conso : '+fmt(g.nconso)+' €</span></div>';
     }
-    cards+='<div class="synth-card" style="cursor:pointer" onclick="drillFromSynthese(\''+prog.replace(/\'/g,"\\\'")+'\')">'+
+    cards+='<div class="synth-card">'+
       '<span class="synth-badge '+cl+'">'+pct(taux)+'</span>'+
       '<div class="prog-nom">'+esc(info.nom||prog)+'</div>'+
       '<div class="prog-num">'+esc(prog)+'</div>'+
@@ -1558,85 +1526,105 @@ function exportCSV(){
 
 
 // ════════════════════════════════════
-// NACRES — Traitement des données
+// DRILL DEPUIS SYNTHÈSE
+// ════════════════════════════════════
+function drillFromSynthese(prog){
+  var ann=document.getElementById('s-ann').value;
+  switchTab('h');
+  var hPrg=document.getElementById('h-prg');
+  var hAnn=document.getElementById('h-ann');
+  if(hPrg) hPrg.value=prog;
+  if(hAnn&&ann) hAnn.value=ann;
+  renderHisto();
+}
+
+// ════════════════════════════════════
+// ÉVOLUTION PLURIANNUELLE
+// ════════════════════════════════════
+function renderEvolMulti(prg,fnd){
+  var datasets=[];
+  var cols2=[['#2563eb'],['#16a34a']];
+  [2025,2026].forEach(function(annee,ai){
+    var budRows=BUDGET.filter(function(b){return parseInt(b.annee)===annee&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd);});
+    var totBud=budRows.reduce(function(s,r){return s+r.bud;},0);
+    var bv=Math.round(totBud*100)/100;
+    var monthly={};
+    CONSO.forEach(function(r){
+      if(parseInt(r.annee)!==annee||(!prg||r.p===prg)&&(!fnd||r.fo===fnd)){
+        if(r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0&&r.tm==='Original'&&r.dtMois){
+          if(parseInt(r.dtMois.split('-')[0])!==annee) return;
+          var m=r.dtMois.split('-')[1];
+          monthly[m]=(monthly[m]||0)+r.m;
+        }
+      }
+    });
+    var mois=['01','02','03','04','05','06','07','08','09','10','11','12'];
+    var cumul=0;
+    var data=mois.map(function(m){
+      if(monthly[m]!=null){cumul+=monthly[m];cumul=Math.min(Math.round(cumul*100)/100,bv);return cumul;}
+      return null;
+    });
+    datasets.push({label:'Engagements '+annee+' ('+fmt(totBud)+' \u20ac)',data:data,borderColor:cols2[ai][0],backgroundColor:'transparent',tension:.3,pointRadius:3,borderWidth:2,spanGaps:false});
+    if(bv>0) datasets.push({label:'Budget '+annee,data:mois.map(function(){return bv;}),borderColor:cols2[ai][0],backgroundColor:'transparent',borderDash:[6,4],tension:0,pointRadius:0,borderWidth:1.5});
+  });
+  var labels=['Jan','F\u00e9v','Mar','Avr','Mai','Juin','Juil','Ao\u00fb','Sep','Oct','Nov','D\u00e9c'];
+  if(_line) _line.destroy();
+  _line=new Chart(document.getElementById('chLine').getContext('2d'),{
+    type:'line',data:{labels:labels,datasets:datasets},
+    options:{responsive:true,plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.raw!=null?c.dataset.label+' : '+fmt(c.raw)+' \u20ac':null;}}}},scales:{y:{ticks:{callback:function(v){return fmt(v)+' \u20ac';}}}}}
+  });
+}
+
+// ════════════════════════════════════
+// NACRES — Traitement
 // ════════════════════════════════════
 function procNacres(raw){
   window.NACRES_DATA=[];
-  const n=(raw[Object.keys(raw)[0]]||[]).length;
-  const col=function(){
+  var n=(raw[Object.keys(raw)[0]]||[]).length;
+  var col=function(){
     var names=Array.prototype.slice.call(arguments);
     for(var j=0;j<names.length;j++){
       if(raw[names[j]]!==undefined) return raw[names[j]];
-      var k=Object.keys(raw).find(function(k){return k.toLowerCase()===names[j].toLowerCase();});
+      var k=Object.keys(raw).find(function(k2){return k2.toLowerCase()===names[j].toLowerCase();});
       if(k) return raw[k];
     }
     return new Array(n).fill('');
   };
-  // Colonnes de la table postes de commande (noms Grist exacts)
-  var nacres   = col('Grpe_de_marchandises');
-  var cmds     = col('Commande_d_achat');
-  var statuts  = col('Nom_de_statut_du_document_d_achat');
-  var dates    = col('Date_de_la_commande_d_achat');
-  var types    = col('Type_de_document_d_achat');
-  var fours    = col('Fournisseur');
-  var postes   = col('Poste');
-  var desigs   = col('Designation');
-  var vals     = col('Valeur_nette_repartie');
-  var rests    = col('Valeur_restante_a_facturer');
-  var fonds    = col('Fonds');
-  var progs    = col('Element_d_OTP');
-  var cdc      = col('Centre_de_couts');
-  var contrats = col('Contrat_cadre');
-
+  var nacres=col('Grpe_de_marchandises');
+  var cmds=col('Commande_d_achat');
+  var dates=col('Date_de_la_commande_d_achat');
+  var types=col('Type_de_document_d_achat');
+  var fours=col('Fournisseur');
+  var desigs=col('Designation');
+  var vals=col('Valeur_nette_repartie');
+  var rests=col('Valeur_restante_a_facturer');
+  var fonds=col('Fonds');
+  var progs=col('Element_d_OTP');
   for(var i=0;i<n;i++){
     var nacreVal=(nacres[i]||'').toString().trim();
     var typeDoc=(types[i]||'').toString().trim();
     var fond=(fonds[i]||'').toString().trim();
     var valNum=parseFloat(vals[i])||0;
     var restNum=parseFloat(rests[i])||0;
-    // Extraire le code NACRES seul (avant l'espace)
     var nacreCode=nacreVal.split(' ')[0]||nacreVal;
-    // Extraire la description NACRES
-    var nacreDesc=nacreVal.replace(nacreCode,'').replace(/^\s*\(?/,'').replace(/\)?\s*$/,'').trim();
-    // Determiner si sur marche
-    var surMarche=typeDoc.toUpperCase().startsWith('OSMA');
-    // Extraire N° programme depuis Element d'OTP (ex: "R1322_07319J-C13W87319...")
+    var nacreDesc=nacreVal.replace(nacreCode,'').replace(/^\s*\(?\s*/,'').replace(/\s*\)?\s*$/,'').trim();
+    var surMarche=typeDoc.toUpperCase().indexOf('OSMA')===0;
     var elemOtp=(progs[i]||'').toString().trim();
     var progMatch=elemOtp.match(/^([A-Z0-9_]+)/);
     var prog=progMatch?progMatch[1]:'';
-    // Date
-    var rawDate=dates[i];
-    var dateStr='';
+    var rawDate=dates[i],dateStr='';
     if(rawDate&&typeof rawDate==='number'&&rawDate>0){
-      var d=new Date(rawDate*1000); 
+      var d=new Date(rawDate*1000);
       dateStr=String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
-    } else if(rawDate&&typeof rawDate==='string'){ dateStr=rawDate; }
-    else if(rawDate&&typeof rawDate==='object'&&rawDate.toISOString){
-      var d2=new Date(rawDate); 
-      dateStr=String(d2.getDate()).padStart(2,'0')+'/'+String(d2.getMonth()+1).padStart(2,'0')+'/'+d2.getFullYear();
-    }
-    window.NACRES_DATA.push({
-      nacreCode, nacreDesc, nacreVal,
-      cmd:(cmds[i]||'').toString().trim(),
-      statut:(statuts[i]||'').toString().trim(),
-      date:dateStr,
-      typeDoc, surMarche,
-      four:(fours[i]||'').toString().trim(),
-      poste:(postes[i]||'').toString().trim(),
-      desig:(desigs[i]||'').toString().trim(),
-      val:valNum, rest:restNum,
-      fond, prog, elemOtp,
-      cdc:(cdc[i]||'').toString().trim(),
-      contrat:(contrats[i]||'').toString().trim(),
-    });
+    } else if(rawDate&&typeof rawDate==='string') dateStr=rawDate;
+    window.NACRES_DATA.push({nacreCode,nacreDesc,nacreVal,cmd:(cmds[i]||'').toString().trim(),date:dateStr,typeDoc,surMarche,four:(fours[i]||'').toString().trim(),desig:(desigs[i]||'').toString().trim(),val:valNum,rest:restNum,fond,prog});
   }
 }
 
 function fillNacresFilters(){
   var progs=[...new Set((window.NACRES_DATA||[]).map(function(r){return r.prog;}).filter(Boolean))].sort();
   var fonds=[...new Set((window.NACRES_DATA||[]).map(function(r){return r.fond;}).filter(Boolean))].sort();
-  var selP=document.getElementById('n-prg');
-  var selF=document.getElementById('n-fnd');
+  var selP=document.getElementById('n-prg'),selF=document.getElementById('n-fnd');
   if(!selP||!selF) return;
   selP.innerHTML='<option value="">Tous</option>';
   progs.forEach(function(p){selP.innerHTML+='<option value="'+esc(p)+'">'+esc(p)+'</option>';});
@@ -1653,7 +1641,6 @@ function renderNacres(){
   var fnd=document.getElementById('n-fnd').value;
   var typeF=document.getElementById('n-type').value;
   var vue=document.getElementById('n-vue').value;
-
   var data=(window.NACRES_DATA||[]).filter(function(r){
     if(prg&&r.prog!==prg) return false;
     if(fnd&&r.fond!==fnd) return false;
@@ -1661,158 +1648,55 @@ function renderNacres(){
     if(typeF==='hors'&&r.surMarche) return false;
     return true;
   });
-
-  // KPIs
   var totVal=data.reduce(function(s,r){return s+r.val;},0);
   var totMar=data.filter(function(r){return r.surMarche;}).reduce(function(s,r){return s+r.val;},0);
   var totHors=data.filter(function(r){return !r.surMarche;}).reduce(function(s,r){return s+r.val;},0);
   var totRest=data.reduce(function(s,r){return s+r.rest;},0);
   var pctMar=totVal>0?totMar/totVal*100:0;
   document.getElementById('nacres-kpis').innerHTML=
-    '<div class="kpi"><div class="kl">Total engagé</div><div class="kv">'+fmt(totVal)+' €</div></div>'+
-    '<div class="kpi"><div class="kl">Sur marché</div><div class="kv c-ok">'+fmt(totMar)+' € ('+pctMar.toFixed(1)+'%)</div></div>'+
-    '<div class="kpi"><div class="kl">Hors marché</div><div class="kv c-wn">'+fmt(totHors)+' €</div></div>'+
-    '<div class="kpi"><div class="kl">Reste à facturer</div><div class="kv">'+fmt(totRest)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">Total engagé</div><div class="kv">'+fmt(totVal)+' \u20ac</div></div>'+
+    '<div class="kpi"><div class="kl">Sur march\u00e9</div><div class="kv c-ok">'+fmt(totMar)+' \u20ac ('+pctMar.toFixed(1)+'%)</div></div>'+
+    '<div class="kpi"><div class="kl">Hors march\u00e9</div><div class="kv c-wn">'+fmt(totHors)+' \u20ac</div></div>'+
+    '<div class="kpi"><div class="kl">Reste \u00e0 facturer</div><div class="kv">'+fmt(totRest)+' \u20ac</div></div>'+
     '<div class="kpi"><div class="kl">Nb lignes</div><div class="kv">'+data.length+'</div></div>';
-
   var sapBase="https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&/C_PurchaseOrderTP(PurchaseOrder='";
   var sapSuf="',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)";
-
   if(vue==='detail'){
-    // Vue détail : toutes les lignes
     document.getElementById('nacres-chart-wrap').style.display='none';
-    document.getElementById('nacres-th').innerHTML=
-      '<tr><th>Code NACRES</th><th>Désignation NACRES</th><th>N° Commande</th>'+
-      '<th>Fournisseur</th><th>Désignation poste</th><th>Date</th>'+
-      '<th>Type</th><th style="text-align:right">Valeur nette</th>'+
-      '<th style="text-align:right">Reste à facturer</th><th>Fonds</th></tr>';
-    var sorted=[...data].sort(function(a,b){return b.val-a.val;});
-    document.getElementById('nacres-tb').innerHTML=sorted.map(function(r){
+    document.getElementById('nacres-th').innerHTML='<tr><th>Code NACRES</th><th>Description</th><th>N\u00b0 Commande</th><th>Fournisseur</th><th>D\u00e9signation</th><th>Date</th><th>Type</th><th style="text-align:right">Valeur nette</th><th style="text-align:right">Reste fact.</th><th>Fonds</th></tr>';
+    document.getElementById('nacres-tb').innerHTML=[...data].sort(function(a,b){return b.val-a.val;}).map(function(r){
       var clT=r.surMarche?'c-ok':'c-wn';
       var cmdLink=r.cmd?'<a href="'+sapBase+encodeURIComponent(r.cmd)+sapSuf+'" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">'+esc(r.cmd)+'</a>':'-';
-      return'<tr><td>'+esc(r.nacreCode)+'</td><td>'+esc(r.nacreDesc)+'</td>'+
-        '<td>'+cmdLink+'</td>'+
-        '<td>'+esc(r.four)+'</td><td>'+esc(r.desig)+'</td><td>'+esc(r.date)+'</td>'+
-        '<td class="'+clT+'">'+esc(r.typeDoc.split(' ')[0])+'</td>'+
-        '<td style="text-align:right">'+fmt(r.val)+' €</td>'+
-        '<td style="text-align:right">'+fmt(r.rest)+' €</td>'+
-        '<td>'+esc(r.fond)+'</td></tr>';
+      return'<tr><td>'+esc(r.nacreCode)+'</td><td>'+esc(r.nacreDesc)+'</td><td>'+cmdLink+'</td><td>'+esc(r.four)+'</td><td>'+esc(r.desig)+'</td><td>'+esc(r.date)+'</td><td class="'+clT+'">'+esc(r.typeDoc.split(' ')[0])+'</td><td style="text-align:right">'+fmt(r.val)+' \u20ac</td><td style="text-align:right">'+fmt(r.rest)+' \u20ac</td><td>'+esc(r.fond)+'</td></tr>';
     }).join('');
-    document.getElementById('nacres-tf').innerHTML=
-      '<tr><td colspan="7">TOTAL ('+sorted.length+' lignes)</td>'+
-      '<td style="text-align:right">'+fmt(totVal)+' €</td>'+
-      '<td style="text-align:right">'+fmt(totRest)+' €</td><td></td></tr>';
+    document.getElementById('nacres-tf').innerHTML='<tr><td colspan="7">TOTAL</td><td style="text-align:right">'+fmt(totVal)+' \u20ac</td><td style="text-align:right">'+fmt(totRest)+' \u20ac</td><td></td></tr>';
     return;
   }
-
   document.getElementById('nacres-chart-wrap').style.display='';
-  var grouped={}, groupedMar={}, groupedHors={}, groupedRest={};
-
+  var grouped={},groupedMar={},groupedHors={},groupedRest={};
   data.forEach(function(r){
-    var k = vue==='four' ? (r.four||'Inconnu') : (r.nacreCode+(r.nacreDesc?' ('+r.nacreDesc+')':''));
+    var k=vue==='four'?(r.four||'Inconnu'):(r.nacreCode+(r.nacreDesc?' ('+r.nacreDesc+')':''));
     grouped[k]=(grouped[k]||0)+r.val;
     groupedRest[k]=(groupedRest[k]||0)+r.rest;
     if(r.surMarche) groupedMar[k]=(groupedMar[k]||0)+r.val;
     else groupedHors[k]=(groupedHors[k]||0)+r.val;
   });
-
   var keys=Object.keys(grouped).sort(function(a,b){return grouped[b]-grouped[a];}).slice(0,20);
-
   if(_chNacres) _chNacres.destroy();
   _chNacres=new Chart(document.getElementById('chNacres').getContext('2d'),{
     type:'bar',
     data:{labels:keys,datasets:[
-      {label:'Sur marché',data:keys.map(function(k){return Math.round((groupedMar[k]||0)*100)/100;}),backgroundColor:'#16a34a'},
-      {label:'Hors marché',data:keys.map(function(k){return Math.round((groupedHors[k]||0)*100)/100;}),backgroundColor:'#d97706'},
+      {label:'Sur march\u00e9',data:keys.map(function(k){return Math.round((groupedMar[k]||0)*100)/100;}),backgroundColor:'#16a34a'},
+      {label:'Hors march\u00e9',data:keys.map(function(k){return Math.round((groupedHors[k]||0)*100)/100;}),backgroundColor:'#d97706'},
     ]},
-    options:{responsive:true,indexAxis:'y',
-      plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.dataset.label+' : '+fmt(c.raw)+' €';}}}},
-      scales:{x:{stacked:true,ticks:{callback:function(v){return fmt(v)+' €';}}},y:{stacked:true,ticks:{font:{size:10}}}},
-    }
+    options:{responsive:true,indexAxis:'y',plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.dataset.label+' : '+fmt(c.raw)+' \u20ac';}}}},scales:{x:{stacked:true,ticks:{callback:function(v){return fmt(v)+' \u20ac';}}},y:{stacked:true,ticks:{font:{size:10}}}}}
   });
-
-  // Tableau
-  document.getElementById('nacres-th').innerHTML=
-    '<tr><th>'+(vue==='four'?'Fournisseur':'Code NACRES')+'</th>'+
-    '<th style="text-align:right">Total engagé</th>'+
-    '<th style="text-align:right">Sur marché</th>'+
-    '<th style="text-align:right">% marché</th>'+
-    '<th style="text-align:right">Hors marché</th>'+
-    '<th style="text-align:right">Reste à facturer</th></tr>';
-
+  document.getElementById('nacres-th').innerHTML='<tr><th>'+(vue==='four'?'Fournisseur':'Code NACRES')+'</th><th style="text-align:right">Total engag\u00e9</th><th style="text-align:right">Sur march\u00e9</th><th style="text-align:right">% march\u00e9</th><th style="text-align:right">Hors march\u00e9</th><th style="text-align:right">Reste \u00e0 facturer</th></tr>';
   document.getElementById('nacres-tb').innerHTML=keys.map(function(k){
-    var tot=grouped[k]||0;
-    var mar=groupedMar[k]||0;
-    var hors=groupedHors[k]||0;
-    var rest=groupedRest[k]||0;
-    var pct2=tot>0?mar/tot*100:0;
-    return'<tr><td>'+esc(k)+'</td>'+
-      '<td style="text-align:right;font-weight:600">'+fmt(tot)+' €</td>'+
-      '<td style="text-align:right;color:var(--ok)">'+fmt(mar)+' €</td>'+
-      '<td style="text-align:right">'+pct2.toFixed(1)+' %</td>'+
-      '<td style="text-align:right;color:var(--wn)">'+fmt(hors)+' €</td>'+
-      '<td style="text-align:right">'+fmt(rest)+' €</td></tr>';
+    var tot=grouped[k]||0,mar=groupedMar[k]||0,hors=groupedHors[k]||0,rest=groupedRest[k]||0;
+    return'<tr><td>'+esc(k)+'</td><td style="text-align:right;font-weight:600">'+fmt(tot)+' \u20ac</td><td style="text-align:right;color:var(--ok)">'+fmt(mar)+' \u20ac</td><td style="text-align:right">'+(tot>0?mar/tot*100:0).toFixed(1)+' %</td><td style="text-align:right;color:var(--wn)">'+fmt(hors)+' \u20ac</td><td style="text-align:right">'+fmt(rest)+' \u20ac</td></tr>';
   }).join('');
-  document.getElementById('nacres-tf').innerHTML=
-    '<tr><td>TOTAL ('+keys.length+(keys.length<Object.keys(grouped).length?' premiers sur '+Object.keys(grouped).length:'')+')</td>'+
-    '<td style="text-align:right">'+fmt(totVal)+' €</td>'+
-    '<td style="text-align:right">'+fmt(totMar)+' €</td>'+
-    '<td style="text-align:right">'+pctMar.toFixed(1)+' %</td>'+
-    '<td style="text-align:right">'+fmt(totHors)+' €</td>'+
-    '<td style="text-align:right">'+fmt(totRest)+' €</td></tr>';
-}
-
-
-// ════════════════════════════════════
-// ÉVOLUTION PLURIANNUELLE
-// ════════════════════════════════════
-function renderEvolMulti(prg,fnd){
-  var datasets=[];
-  var cols2=[['#2563eb','#93c5fd'],['#16a34a','#86efac']];
-  [2025,2026].forEach(function(annee,ai){
-    var budRows=BUDGET.filter(function(b){return parseInt(b.annee)===annee&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd);});
-    var totBud=budRows.reduce(function(s,r){return s+r.bud;},0);
-    var bv=Math.round(totBud*100)/100;
-    var monthly={};
-    CONSO.forEach(function(r){
-      if(parseInt(r.annee)!==annee) return;
-      if(prg&&r.p!==prg) return;
-      if(fnd&&r.fo!==fnd) return;
-      if(r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")<0) return;
-      if(r.tm!=='Original'||!r.dtMois) return;
-      if(parseInt(r.dtMois.split('-')[0])!==annee) return;
-      var m=r.dtMois.split('-')[1];
-      monthly[m]=(monthly[m]||0)+r.m;
-    });
-    var mois=['01','02','03','04','05','06','07','08','09','10','11','12'];
-    var cumul=0;
-    var data=mois.map(function(m){
-      if(monthly[m]!=null){cumul+=monthly[m];cumul=Math.min(Math.round(cumul*100)/100,bv);return cumul;}
-      return null;
-    });
-    datasets.push({label:'Engagements '+annee+' ('+fmt(totBud)+' \u20ac)',data:data,borderColor:cols2[ai][0],backgroundColor:'transparent',tension:.3,pointRadius:3,borderWidth:2,spanGaps:false});
-    if(bv>0) datasets.push({label:'Budget '+annee,data:mois.map(function(){return bv;}),borderColor:cols2[ai][0],backgroundColor:'transparent',borderDash:[6,4],tension:0,pointRadius:0,borderWidth:1.5});
-  });
-  var labels=['Jan','F\u00e9v','Mar','Avr','Mai','Juin','Juil','Ao\u00fb','Sep','Oct','Nov','D\u00e9c'];
-  if(_line) _line.destroy();
-  _line=new Chart(document.getElementById('chLine').getContext('2d'),{
-    type:'line',
-    data:{labels:labels,datasets:datasets},
-    options:{responsive:true,plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.raw!=null?c.dataset.label+' : '+fmt(c.raw)+' \u20ac':null;}}}},scales:{y:{ticks:{callback:function(v){return fmt(v)+' \u20ac';}}}}}
-  });
-}
-
-// ════════════════════════════════════
-// DRILL DEPUIS SYNTHÈSE
-// ════════════════════════════════════
-function drillFromSynthese(prog){
-  var ann=document.getElementById('s-ann').value;
-  switchTab('h');
-  var hPrg=document.getElementById('h-prg');
-  var hAnn=document.getElementById('h-ann');
-  if(hPrg) hPrg.value=prog;
-  if(hAnn&&ann) hAnn.value=ann;
-  renderHisto();
+  document.getElementById('nacres-tf').innerHTML='<tr><td>TOTAL</td><td style="text-align:right">'+fmt(totVal)+' \u20ac</td><td style="text-align:right">'+fmt(totMar)+' \u20ac</td><td style="text-align:right">'+pctMar.toFixed(1)+' %</td><td style="text-align:right">'+fmt(totHors)+' \u20ac</td><td style="text-align:right">'+fmt(totRest)+' \u20ac</td></tr>';
 }
 
 </script>
