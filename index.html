@@ -39,7 +39,7 @@ function renderSynthese(){
       if(diff<4&&g.bud>0&&g.nconso/g.bud>0.05)
         alerts+='<div class="alert-item"><span>'+esc(info.nom||prog)+'</span><span>'+finTxt+' — '+(diff<0?'Dépassée':'Dans '+Math.round(diff)+' mois')+' — Non conso : '+fmt(g.nconso)+' €</span></div>';
     }
-    cards+='<div class="synth-card">'+
+    cards+='<div class="synth-card" style="cursor:pointer" onclick="drillFromSynthese(\''+prog.replace(/\'/g,"\\\'")+'\')">'+
       '<span class="synth-badge '+cl+'">'+pct(taux)+'</span>'+
       '<div class="prog-nom">'+esc(info.nom||prog)+'</div>'+
       '<div class="prog-num">'+esc(prog)+'</div>'+
@@ -228,7 +228,7 @@ function renderSynthese(){
       if(diff<4&&g.bud>0&&g.nconso/g.bud>0.05)
         alerts+='<div class="alert-item"><span>'+esc(info.nom||prog)+'</span><span>'+finTxt+' — '+(diff<0?'Dépassée':'Dans '+Math.round(diff)+' mois')+' — Non conso : '+fmt(g.nconso)+' €</span></div>';
     }
-    cards+='<div class="synth-card">'+
+    cards+='<div class="synth-card" style="cursor:pointer" onclick="drillFromSynthese(\''+prog.replace(/\'/g,"\\\'")+'\')">'+
       '<span class="synth-badge '+cl+'">'+pct(taux)+'</span>'+
       '<div class="prog-nom">'+esc(info.nom||prog)+'</div>'+
       '<div class="prog-num">'+esc(prog)+'</div>'+
@@ -1394,7 +1394,7 @@ function renderSynthese(){
       if(diff<4&&g.bud>0&&g.nconso/g.bud>0.05)
         alerts+='<div class="alert-item"><span>'+esc(info.nom||prog)+'</span><span>'+finTxt+' — '+(diff<0?'Dépassée':'Dans '+Math.round(diff)+' mois')+' — Non conso : '+fmt(g.nconso)+' €</span></div>';
     }
-    cards+='<div class="synth-card">'+
+    cards+='<div class="synth-card" style="cursor:pointer" onclick="drillFromSynthese(\''+prog.replace(/\'/g,"\\\'")+'\')">'+
       '<span class="synth-badge '+cl+'">'+pct(taux)+'</span>'+
       '<div class="prog-nom">'+esc(info.nom||prog)+'</div>'+
       '<div class="prog-num">'+esc(prog)+'</div>'+
@@ -1554,7 +1554,9 @@ function exportCSV(){
 // ════════════════════════════════════
 function procNacres(raw){
   window.NACRES_DATA=[];
+  console.log('[NACRES] Colonnes disponibles:', JSON.stringify(Object.keys(raw)));
   const n=(raw[Object.keys(raw)[0]]||[]).length;
+  console.log('[NACRES] Nb lignes:', n);
   const col=function(){
     var names=Array.prototype.slice.call(arguments);
     for(var j=0;j<names.length;j++){
