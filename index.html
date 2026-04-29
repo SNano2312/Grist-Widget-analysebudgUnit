@@ -39,7 +39,7 @@ function renderSynthese(){
       if(diff<4&&g.bud>0&&g.nconso/g.bud>0.05)
         alerts+='<div class="alert-item"><span>'+esc(info.nom||prog)+'</span><span>'+finTxt+' — '+(diff<0?'Dépassée':'Dans '+Math.round(diff)+' mois')+' — Non conso : '+fmt(g.nconso)+' €</span></div>';
     }
-    cards+='<div class="synth-card" style="cursor:pointer" onclick="drillFromSynthese(\''+prog.replace(/\'/g,"\\\'")+'\'">'+
+    cards+='<div class="synth-card" style="cursor:pointer" onclick="drillFromSynthese(this.dataset.prog)" data-prog="'+esc(prog)+'">'+
       '<span class="synth-badge '+cl+'">'+pct(taux)+'</span>'+
       '<div class="prog-nom">'+esc(info.nom||prog)+'</div>'+
       '<div class="prog-num">'+esc(prog)+'</div>'+
@@ -1262,9 +1262,10 @@ function renderEvol(){
   const totRAR=budRows.reduce((s,r)=>s+r.rar,0);
   // Commandes d'achat Original uniquement = engagements formels ne dépassant pas le budget
   // Normaliser l'apostrophe (droite ou typographique) pour la comparaison
+  // Commandes d'achat Original uniquement (évite les gonflements dus aux Factures/Pièces)
   const consoRows=CONSO.filter(r=>
     (!ann||parseInt(r.annee)===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&
-    r.tm==='Original'
+    r.tv.replace(/’/g,"'").indexOf("Commandes d'achat")>=0&&r.tm==='Original'
   );
   const monthly={};
   for(const r of consoRows){
@@ -1528,7 +1529,8 @@ function exportCSV(){
 // ════════════════════════════════════
 // DRILL DEPUIS SYNTHÈSE
 // ════════════════════════════════════
-function drillFromSynthese(prog){
+function drillFromSynthese(el){
+  var prog=typeof el==='string'?el:(el&&el.dataset?el.dataset.prog:el);
   var ann=document.getElementById('s-ann').value;
   switchTab('h');
   var hPrg=document.getElementById('h-prg');
@@ -1641,6 +1643,8 @@ function renderNacres(){
   var fnd=document.getElementById('n-fnd').value;
   var typeF=document.getElementById('n-type').value;
   var vue=document.getElementById('n-vue').value;
+  console.log('[NACRES-RENDER] total='+( window.NACRES_DATA||[]).length+' prg='+prg+' fnd='+fnd);
+  if((window.NACRES_DATA||[]).length>0) console.log('[NACRES-RENDER] row0='+JSON.stringify(window.NACRES_DATA[0]));
   var data=(window.NACRES_DATA||[]).filter(function(r){
     if(prg&&r.prog!==prg) return false;
     if(fnd&&r.fond!==fnd) return false;
