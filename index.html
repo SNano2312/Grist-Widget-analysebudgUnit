@@ -1230,7 +1230,7 @@ function renderEvolMulti(prg,fnd){
       if(parseInt(r.annee)!==annee||prg&&r.p!==prg||fnd&&r.fo!==fnd) return;
       var tvNorm=r.tv.replace(/\u2019/g,"'");
       if(r.tm!=='Original'||!r.dtMois) return;
-      if(tvNorm.indexOf("Commandes d'achat")<0&&tvNorm!=='Factures') return;
+      if(tvNorm.indexOf("Commandes d'achat")<0) return;
       if(parseInt(r.dtMois.split('-')[0])!==annee) return;
       var m=r.dtMois.split('-')[1]; monthly[m]=(monthly[m]||0)+r.m;
     });
