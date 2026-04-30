@@ -918,12 +918,13 @@ function renderEvol(){
   const totBud=budRows.reduce((s,r)=>s+r.bud,0);
   const totCDA=budRows.reduce((s,r)=>s+r.cda,0);
   const totRAR=budRows.reduce((s,r)=>s+r.rar,0);
-  // Commandes d'achat Original uniquement = engagements formels ne dépassant pas le budget
-  // Normaliser l'apostrophe (droite ou typographique) pour la comparaison
-  const consoRows=CONSO.filter(r=>
-    (!ann||parseInt(r.annee)===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&
-    r.tv.replace(/’/g,"'").indexOf("Commandes d'achat")>=0&&r.tm==='Original'
-  );
+  // Commandes d'achat Original en priorité ; fallback Factures si aucune commande
+  const _filterBase=r=>(!ann||parseInt(r.annee)===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&r.tm==='Original';
+  let consoRows=CONSO.filter(r=>_filterBase(r)&&r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0);
+  if(!consoRows.length){
+    // Fallback : fonds consommé directement par factures (sans bon de commande)
+    consoRows=CONSO.filter(r=>_filterBase(r)&&r.tv==='Factures');
+  }
   const monthly={};
   for(const r of consoRows){
     const mois=r.dtMois||''; if(!mois||mois.length<7) continue;
@@ -1210,7 +1211,9 @@ function renderEvolMulti(prg,fnd){
     var monthly={};
     CONSO.forEach(function(r){
       if(parseInt(r.annee)!==annee||prg&&r.p!==prg||fnd&&r.fo!==fnd) return;
-      if(r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")<0||r.tm!=='Original'||!r.dtMois) return;
+      var tvNorm=r.tv.replace(/\u2019/g,"'");
+      if(r.tm!=='Original'||!r.dtMois) return;
+      if(tvNorm.indexOf("Commandes d'achat")<0&&tvNorm!=='Factures') return;
       if(parseInt(r.dtMois.split('-')[0])!==annee) return;
       var m=r.dtMois.split('-')[1]; monthly[m]=(monthly[m]||0)+r.m;
     });
