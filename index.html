@@ -112,8 +112,12 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <select id="sel-t1"><option value="">-- Pas de table programmes --</option></select>
     </div>
     <div class="cfg-row">
-      <label>Table Postes commande / NACRES (optionnel)</label>
-      <select id="sel-nacres"><option value="">-- Pas de table NACRES --</option></select>
+      <label>Table Postes commande / NACRES 2025 (optionnel)</label>
+      <select id="sel-nacres25"><option value="">-- Pas de table NACRES 2025 --</option></select>
+    </div>
+    <div class="cfg-row">
+      <label>Table Postes commande / NACRES 2026 (optionnel)</label>
+      <select id="sel-nacres"><option value="">-- Pas de table NACRES 2026 --</option></select>
     </div>
     <div id="cfg-err"></div>
     <button id="btn-analyse" disabled >Lancer l'analyse →</button>
@@ -237,8 +241,8 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
 
   <!-- NACRES -->
   <div id="vw-nacres" style="display:none">
-    <p id="nacres-static" style="color:red;font-weight:bold;padding:10px">NACRES DIV VISIBLE - JS en cours...</p>
     <div class="flt">
+      <div class="fg"><label>Année</label><select id="n-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
       <div class="fg"><label>Programme</label><select id="n-prg"><option value="">Tous</option></select></div>
       <div class="fg"><label>Fonds</label><select id="n-fnd"><option value="">Tous</option></select></div>
       <div class="fg"><label>Type</label><select id="n-type"><option value="">Tous</option><option value="marche">Sur marché</option><option value="hors">Hors marché</option></select></div>
@@ -259,7 +263,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
           <strong>Budget_2025 / Budget_2026</strong> : données budgétaires par CF/Programme/Fonds.<br>
           <strong>Conso_2025 / Conso_2026</strong> : opérations SAP ligne à ligne (type de valeur, montant, fournisseur, date).<br>
           <strong>Table Programmes</strong> : Col. A = N° programme &bull; Col. B = Acronyme &bull; Col. C = Date de fin.<br>
-          <strong>Table NACRES</strong> : postes de commande SAP. Col. A = Code NACRES &bull; Col. E = Type document &bull; Col. I = Valeur nette &bull; Col. S = Fonds.
+          <strong>Table NACRES 2025</strong> et <strong>Table NACRES 2026</strong> : postes de commande SAP par année. Col. A = Code NACRES &bull; Col. E = Type document (OSMA=sur marché) &bull; Col. I = Valeur nette &bull; Col. S = Fonds.
         </p>
       </div>
       <div class="pnl" style="margin-bottom:16px">
@@ -401,7 +405,7 @@ function attachListeners(){
       el.removeEventListener('change',pair[1]); el.addEventListener('change',pair[1]);
     });
   });
-  ['n-prg','n-fnd','n-type','n-vue'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderNacres);el.addEventListener('change',renderNacres);});
+  ['n-ann','n-prg','n-fnd','n-type','n-vue'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderNacres);el.addEventListener('change',renderNacres);});
 }
 window.closeDrill = closeDrill;
 window.sortD      = sortD;
@@ -444,7 +448,7 @@ grist.ready({
       });
       sel.addEventListener('change', checkSelections);
     });
-    ['sel-t1','sel-nacres'].forEach(function(sid){
+    ['sel-t1','sel-nacres25','sel-nacres'].forEach(function(sid){
       const sel=document.getElementById(sid); if(!sel) return;
       tables.forEach(function(t){const opt=document.createElement('option');opt.value=t;opt.textContent=t;sel.appendChild(opt);});
     });
@@ -457,6 +461,7 @@ grist.ready({
     if(saved.c25) document.getElementById('sel-c25').value=saved.c25;
     if(saved.c26) document.getElementById('sel-c26').value=saved.c26;
     if(saved.t1 && saved.t1!=='') document.getElementById('sel-t1').value=saved.t1;
+    if(saved.nacres25 && saved.nacres25!=='') document.getElementById('sel-nacres25').value=saved.nacres25;
     if(saved.nacres && saved.nacres!=='') document.getElementById('sel-nacres').value=saved.nacres;
     checkSelections();
 
@@ -493,8 +498,9 @@ async function lanceAnalyse(){
 
   // Mémoriser la config
   const tT1=document.getElementById('sel-t1').value;
+  const tNacres25=document.getElementById('sel-nacres25').value;
   const tNacres=document.getElementById('sel-nacres').value;
-  try{localStorage.setItem('budgetCfg',JSON.stringify({b25:tB25,b26:tB26,c25:tC25,c26:tC26,t1:tT1,nacres:tNacres}));}catch(e){}
+  try{localStorage.setItem('budgetCfg',JSON.stringify({b25:tB25,b26:tB26,c25:tC25,c26:tC26,t1:tT1,nacres25:tNacres25,nacres:tNacres}));}catch(e){}
 
   showLd('Lecture des données…');
   try{
@@ -549,12 +555,19 @@ async function lanceAnalyse(){
     document.getElementById('dash').style.display='block';
     document.getElementById('dash-title').textContent='Analyse budgétaire'+(CF_LABEL?' — Centre financier '+CF_LABEL:'');
     window.NACRES_DATA=[];
+    if(tNacres25){
+      try{
+        setLd('Lecture NACRES 2025…');
+        const rawN25=await grist.docApi.fetchTable(tNacres25);
+        procNacres(rawN25, 2025);
+      }catch(e){console.log('NACRES 2025:',e.message);}
+    }
     if(tNacres){
       try{
-        setLd('Lecture NACRES…');
+        setLd('Lecture NACRES 2026…');
         const rawN=await grist.docApi.fetchTable(tNacres);
-        procNacres(rawN);
-      }catch(e){console.log('NACRES:',e.message);}
+        procNacres(rawN, 2026);
+      }catch(e){console.log('NACRES 2026:',e.message);}
     }
     fillNacresFilters();
     switchTab('s');
@@ -1168,8 +1181,9 @@ function renderEvolMulti(prg,fnd){
 // ════════════════════════
 // NACRES — Traitement
 // ════════════════════════
-function procNacres(raw){
-  window.NACRES_DATA=[];
+function procNacres(raw, annee){
+  // Accumuler (ne pas réinitialiser si déjà des données)
+  if(!window.NACRES_DATA) window.NACRES_DATA=[];
   var n=(raw[Object.keys(raw)[0]]||[]).length;
   function col(){var names=Array.prototype.slice.call(arguments);for(var j=0;j<names.length;j++){if(raw[names[j]]!==undefined)return raw[names[j]];var k=Object.keys(raw).find(function(k2){return k2.toLowerCase()===names[j].toLowerCase();});if(k)return raw[k];}return new Array(n).fill('');}
   var nacres=col('Grpe_de_marchandises'),cmds=col('Commande_d_achat'),dates=col('Date_de_la_commande_d_achat'),types=col('Type_de_document_d_achat'),fours=col('Fournisseur'),desigs=col('Designation'),vals=col('Valeur_nette_repartie'),rests=col('Valeur_restante_a_facturer'),fonds=col('Fonds'),progs=col('Element_d_OTP');
@@ -1182,7 +1196,7 @@ function procNacres(raw){
     var rawDate=dates[i],dateStr='';
     if(rawDate&&typeof rawDate==='number'&&rawDate>0){var d=new Date(rawDate*1000);dateStr=String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();}
     else if(rawDate&&typeof rawDate==='string') dateStr=rawDate;
-    window.NACRES_DATA.push({nacreCode,nacreDesc,cmd:(cmds[i]||'').toString().trim(),date:dateStr,typeDoc,surMarche,four:(fours[i]||'').toString().trim(),desig:(desigs[i]||'').toString().trim(),val:parseFloat(vals[i])||0,rest:parseFloat(rests[i])||0,fond,prog});
+    window.NACRES_DATA.push({nacreCode,nacreDesc,cmd:(cmds[i]||'').toString().trim(),date:dateStr,typeDoc,surMarche,four:(fours[i]||'').toString().trim(),desig:(desigs[i]||'').toString().trim(),val:parseFloat(vals[i])||0,rest:parseFloat(rests[i])||0,fond,prog,annee:annee?String(annee):''});
   }
 }
 function fillNacresFilters(){
@@ -1201,7 +1215,9 @@ var _chNacres=null;
 function renderNacres(){
   var prg=document.getElementById('n-prg').value,fnd=document.getElementById('n-fnd').value;
   var typeF=document.getElementById('n-type').value,vue=document.getElementById('n-vue').value;
+  var ann=document.getElementById('n-ann').value;
   var data=(window.NACRES_DATA||[]).filter(function(r){
+    if(ann&&r.annee&&r.annee!==ann) return false;
     if(prg&&r.prog!==prg) return false;
     if(fnd&&r.fond!==fnd) return false;
     if(typeF==='marche'&&!r.surMarche) return false;
@@ -1234,10 +1250,10 @@ function renderNacres(){
   var sapSuf="',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)";
   if(vue==='detail'){
     document.getElementById('nacres-chart-wrap').style.display='none';
-    document.getElementById('nacres-th').innerHTML='<tr><th>NACRES</th><th>Description</th><th>N\u00b0 Cde</th><th>Fournisseur</th><th>D\u00e9signation</th><th>Date</th><th>Type</th><th style="text-align:right">Valeur nette</th><th style="text-align:right">Reste fact.</th><th>Fonds</th></tr>';
+    document.getElementById('nacres-th').innerHTML='<tr><th>Année</th><th>NACRES</th><th>Description</th><th>N\u00b0 Cde</th><th>Fournisseur</th><th>D\u00e9signation</th><th>Date</th><th>Type</th><th style="text-align:right">Valeur nette</th><th style="text-align:right">Reste fact.</th><th>Fonds</th></tr>';
     document.getElementById('nacres-tb').innerHTML=[...data].sort(function(a,b){return b.val-a.val;}).map(function(r){
       var cmdLink=r.cmd?'<a href="'+sapBase+encodeURIComponent(r.cmd)+sapSuf+'" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">'+esc(r.cmd)+'</a>':'-';
-      return'<tr><td>'+esc(r.nacreCode)+'</td><td>'+esc(r.nacreDesc)+'</td><td>'+cmdLink+'</td><td>'+esc(r.four)+'</td><td>'+esc(r.desig)+'</td><td>'+esc(r.date)+'</td><td class="'+(r.surMarche?'c-ok':'c-wn')+'">'+esc(r.typeDoc.split(' ')[0])+'</td><td style="text-align:right">'+fmt(r.val)+' \u20ac</td><td style="text-align:right">'+fmt(r.rest)+' \u20ac</td><td>'+esc(r.fond)+'</td></tr>';
+      return'<tr><td>'+(r.annee||'-')+'</td><td>'+esc(r.nacreCode)+'</td><td>'+esc(r.nacreDesc)+'</td><td>'+cmdLink+'</td><td>'+esc(r.four)+'</td><td>'+esc(r.desig)+'</td><td>'+esc(r.date)+'</td><td class="'+(r.surMarche?'c-ok':'c-wn')+'">'+esc(r.typeDoc.split(' ')[0])+'</td><td style="text-align:right">'+fmt(r.val)+' \u20ac</td><td style="text-align:right">'+fmt(r.rest)+' \u20ac</td><td>'+esc(r.fond)+'</td></tr>';
     }).join('');
     document.getElementById('nacres-tf').innerHTML='<tr><td colspan="7">TOTAL</td><td style="text-align:right">'+fmt(totVal)+' \u20ac</td><td style="text-align:right">'+fmt(totRest)+' \u20ac</td><td></td></tr>';
     return;
