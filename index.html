@@ -305,6 +305,7 @@ let _grp='prog', _grpd={};
 let _tables=[];  // tables disponibles dans Grist
 let _currentTab='s';
 window.CONSO_PMT=[];
+window.NACRES_DATA=[];
 
 // ════════════════════════════════════════
 // DEBUG
@@ -532,20 +533,12 @@ async function lanceAnalyse(){
     setLd('Traitement…');
     BUDGET=[]; CONSO=[]; CF_LABEL=''; window.CONSO_PMT=[];
 
-    // DIAGNOSTIC Centre financier
-    console.log('[CF-B25] Centre_financier vals:', JSON.stringify((rawB25['Centre_financier']||[]).slice(0,5)));
-    console.log('[CF-B25] toutes cols avec "centre":', JSON.stringify(Object.keys(rawB25).filter(k=>k.toLowerCase().includes('centre'))));
-    console.log('[DIAG] B25 rows:', (rawB25[Object.keys(rawB25)[0]]||[]).length);
-    console.log('[DIAG] C25 rows:', (rawC25[Object.keys(rawC25)[0]]||[]).length);
 
     procBudget(rawB25, 2025);
     procBudget(rawB26, 2026);
     procConso(rawC25, 2025);
     procConso(rawC26, 2026);
 
-    console.log('[RESULT] BUDGET:', BUDGET.length, 'CF:', CF_LABEL, 'CONSO:', CONSO.length);
-    if(BUDGET.length) console.log('[RESULT] B0:', JSON.stringify(BUDGET[0]));
-    if(CONSO.length) console.log('[RESULT] C0:', JSON.stringify(CONSO[0]));
 
     fillFilters();
     hideLd();
