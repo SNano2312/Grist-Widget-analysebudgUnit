@@ -255,7 +255,6 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
 
   <!-- DOCUMENTATION -->
   <div id="vw-doc" style="display:none">
-    <p style="color:red;font-weight:bold;padding:10px">DOC DIV VISIBLE</p>
     <div style="max-width:900px;margin:0 auto">
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">📂 Sources de données</div>
@@ -281,6 +280,17 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
           <strong style="color:#2563eb">Commandes engagées</strong> : cumul mensuel des <em>Commandes d'achat + Type montant Original</em>, plafonné au budget.<br>
           <strong style="color:#d97706">Prévision</strong> : MIN(dernier cumul + CDa + RAR, Budget). Projetée jusqu'à la date de fin (Table Programmes, Col. C) ou décembre.<br>
           <strong>Comparaison 2025/2026</strong> : courbes superposées par mois calendaire, filtrées sur l'année de la date comptable.
+        </p>
+      </div>
+      <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">📊 Répartition — Montants nets SAP</div>
+        <p style="font-size:.82rem;line-height:1.8">
+          Montants nets = somme de tous les types de montant SAP (Original + Réduction + Modification…) par type de valeur.<br>
+          <strong>💳 Paiements</strong> : décaissements effectifs vers les fournisseurs.<br>
+          <strong>📄 Factures en cours</strong> : factures reçues, comptabilisées mais non encore payées.<br>
+          <strong>🛒 Commandes en cours</strong> : solde résiduel des commandes ouvertes non encore livrées ou facturées.<br>
+          <strong>📝 Pièces préenregistrées</strong> : saisies en attente de validation comptable (notes de frais, etc.).<br>
+          <small style="color:#6b7280">Total affiché ≈ Conso AE du fichier budget. Écart possible : Prestations internes non incluses dans l'export de détail. Les types "Réservation de fonds" et "Blocage de fonds" sont exclus car ils ne correspondent pas à des dépenses réelles.</small>
         </p>
       </div>
       <div class="pnl" style="margin-bottom:16px">
@@ -1072,8 +1082,8 @@ function renderDelais(){
 // RÉPARTITION
 // ════════════════════════════════════
 var _pie=null;
-var TV_CATS={'Paiements':{label:'Paiements',color:'#2563eb'},'Factures':{label:'Factures en cours',color:'#16a34a'},"Commandes d'achat":{label:'Commandes en cours',color:'#d97706'},'Pièces préenregistrées':{label:'Pièces préenreg.',color:'#7c3aed'},'_ress':{label:'Réservations/Blocages',color:'#0891b2'}};
-var TV_RESS=['Réservation de fonds','Blocage de fonds'];
+var TV_CATS={'Paiements':{label:'Paiements',color:'#2563eb'},'Factures':{label:'Factures en cours',color:'#16a34a'},"Commandes d'achat":{label:'Commandes en cours',color:'#d97706'},'Pièces préenregistrées':{label:'Pièces préenreg.',color:'#7c3aed'}};
+var TV_RESS=[];
 function renderRepartition(){
   var ann=document.getElementById('r-ann').value;
   var prg=document.getElementById('r-prg').value;
