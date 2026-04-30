@@ -202,6 +202,15 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="fg"><label>Fonds</label><select id="x-fnd" ><option value="">Tous</option></select></div>
     </div>
     <div class="tw"><table><thead id="x-th"></thead><tbody id="x-tb"></tbody></table></div>
+    <div id="x-drv" style="display:none;margin-top:16px">
+      <div class="drh">
+        <button class="btn" onclick="closeDrillX()">← Retour</button>
+        <span id="x-dr-title" style="font-weight:600;font-size:.95rem"></span>
+      </div>
+      <div class="dk" id="x-dr-kpis"></div>
+      <div id="x-dr-cnt" style="font-size:.78rem;color:var(--mu);margin-bottom:6px"></div>
+      <div class="tw"><table><thead id="x-dr-th"></thead><tbody id="x-dr-tb"></tbody><tfoot id="x-dr-tf"></tfoot></table></div>
+    </div>
   </div>
 
   <!-- TOP FOURNISSEURS -->
@@ -949,9 +958,8 @@ function renderCross(){
   document.getElementById('x-th').innerHTML='<tr>'+cols.map(c=>`<th>${c.l}</th>`).join('')+'</tr>';
   document.getElementById('x-tb').innerHTML=rows.map(r=>{
     const p=r.bud>0?r.conso/r.bud*100:0, cl=p>=90?'r-ok':p>=50?'r-wn':'r-er';
-    return'<tr>'+cols.map(c=>{
+    return`<tr style="cursor:pointer" onclick="openDrillX('${esc(r.annee)}','${esc(r.prog)}','${esc(r.fonds)}')">`+cols.map(c=>{
       if(c.k==='_pct') return`<td><span class="rb ${cl}">${pct(p)}</span></td>`;
-      if(c.k==='_nom') return`<td>${esc((_piX[r.prog]&&_piX[r.prog].nom)||'-')}</td>`;
       if(c.k==='_nom') return`<td>${esc((_piX[r.prog]&&_piX[r.prog].nom)||'-')}</td>`;
       return`<td style="${c.n?'text-align:right':''}">${c.n?fmt(r[c.k])+' €':esc(String(r[c.k]))}</td>`;
     }).join('')+'</tr>';
@@ -1285,6 +1293,81 @@ function renderNacres(){
   }).join('');
   document.getElementById('nacres-tf').innerHTML='<tr><td>TOTAL</td><td style="text-align:right">'+fmt(totVal)+' \u20ac</td><td style="text-align:right">'+fmt(totMar)+' \u20ac</td><td style="text-align:right">'+pctMar.toFixed(1)+' %</td><td style="text-align:right">'+fmt(totHors)+' \u20ac</td><td style="text-align:right">'+fmt(totRest)+' \u20ac</td></tr>';
 }
+
+
+// ════════════════════════════════════
+// DRILL-DOWN TABLEAU CROISÉ
+// ════════════════════════════════════
+var _xDrRows=[], _xDrSC=null, _xDrSD=1;
+function openDrillX(annee, prog, fonds){
+  var label=(prog||'Tous')+' / '+(fonds||'Tous')+(annee?' ('+annee+')':'');
+  document.getElementById('x-dr-title').textContent='Détail : '+label;
+  // Filtrer CONSO
+  _xDrRows=CONSO.filter(function(r){
+    if(annee&&String(r.annee)!==String(annee)) return false;
+    if(prog&&prog!=='Non Applicable'&&r.p!==prog) return false;
+    if(prog==='Non Applicable'&&r.p!=='Non Applicable') return false;
+    if(fonds&&r.fo!==fonds) return false;
+    return true;
+  });
+  _xDrSC=null; _xDrSD=1;
+  // KPIs
+  var tot=_xDrRows.reduce(function(s,r){return s+r.m;},0);
+  var bRow=BUDGET.filter(function(b){
+    return(!annee||String(b.annee)===String(annee))&&(!prog||b.prog===prog)&&(!fonds||b.fonds===fonds);
+  });
+  var bud=bRow.reduce(function(s,b){return s+b.bud;},0);
+  var conso=bRow.reduce(function(s,b){return s+b.conso;},0);
+  var pct2=bud>0?conso/bud*100:0;
+  var cl=pct2>=90?'c-ok':pct2>=50?'c-wn':'c-er';
+  document.getElementById('x-dr-kpis').innerHTML=
+    '<div class="kpi"><div class="kl">Budget AE</div><div class="kv">'+fmt(bud)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">Conso AE</div><div class="kv '+cl+'">'+fmt(conso)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">Taux conso</div><div class="kv '+cl+'">'+pct(pct2)+'</div></div>'+
+    '<div class="kpi"><div class="kl">Nb opérations</div><div class="kv">'+_xDrRows.length+'</div></div>';
+  renderDrillX(_xDrRows, null, 1);
+  document.getElementById('x-drv').style.display='block';
+  document.getElementById('x-drv').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function closeDrillX(){
+  document.getElementById('x-drv').style.display='none';
+}
+function renderDrillX(rows, sc, sd){
+  var cols=[
+    {k:'annee',l:'Année'},{k:'dt',l:'Date'},{k:'tv',l:'Type de valeur'},
+    {k:'cmd',l:'N° Commande'},{k:'f',l:'Fournisseur'},{k:'d',l:'Désignation'},
+    {k:'p',l:'Programme'},{k:'fo',l:'Fonds'},{k:'tm',l:'Type montant'},
+    {k:'m',l:'Montant (€)',n:true},
+  ];
+  var s=[...rows];
+  if(sc) s.sort(function(a,b){var av=a[sc],bv=b[sc];return(typeof av==='number'?(av-bv):String(av).localeCompare(String(bv)))*sd;});
+  var tot=s.reduce(function(t,r){return t+r.m;},0);
+  document.getElementById('x-dr-cnt').textContent=s.length+' ligne(s)';
+  document.getElementById('x-dr-th').innerHTML='<tr>'+cols.map(function(c){
+    return'<th onclick="sortDrillX(\''+c.k+'\')" style="cursor:pointer">'+c.l+(sc===c.k?(sd===1?' ▲':' ▼'):'')+'</th>';
+  }).join('')+'</tr>';
+  var sapBase="https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&/C_PurchaseOrderTP(PurchaseOrder='";
+  var sapSuf="',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)";
+  document.getElementById('x-dr-tb').innerHTML=s.map(function(r){
+    return'<tr>'+cols.map(function(c){
+      if(c.k==='cmd'&&r.cmd&&r.cmd!=='-'){
+        var url=sapBase+encodeURIComponent(r.cmd)+sapSuf;
+        return'<td><a href="'+url+'" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">'+esc(r.cmd)+'</a></td>';
+      }
+      return'<td style="'+(c.n?'text-align:right':'')+'">'+(c.n?fmt(r[c.k])+' €':esc(r[c.k]||'-'))+'</td>';
+    }).join('')+'</tr>';
+  }).join('');
+  document.getElementById('x-dr-tf').innerHTML='<tr>'+cols.map(function(c,i){
+    return i===cols.length-1?'<td style="text-align:right">'+fmt(tot)+' €</td>':i===0?'<td>TOTAL</td>':'<td></td>';
+  }).join('')+'</tr>';
+}
+function sortDrillX(col){
+  if(_xDrSC===col) _xDrSD*=-1; else{_xDrSC=col;_xDrSD=1;}
+  renderDrillX(_xDrRows,_xDrSC,_xDrSD);
+}
+window.openDrillX=openDrillX;
+window.closeDrillX=closeDrillX;
+window.sortDrillX=sortDrillX;
 
 </script>
 </body>
