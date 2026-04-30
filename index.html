@@ -934,11 +934,11 @@ function renderEvol(){
   if(!sortedMois.length){if(_line)_line.destroy();return}
   const budVal=Math.round(totBud*100)/100;
   let cumul=0;
-  const cumulArr=sortedMois.map(m=>{cumul+=monthly[m];return Math.min(Math.round(cumul*100)/100,budVal);});
+  const cumulArr=sortedMois.map(m=>{cumul+=monthly[m];return Math.max(0, Math.min(Math.round(cumul*100)/100,budVal));});
   const lastCumul=cumulArr[cumulArr.length-1]||0;
   // Prévision = dernier cumul + engagements restants, plafonnée au budget
   const prevBrut=Math.round((lastCumul+totCDA+totRAR)*100)/100;
-  const prevision=Math.min(prevBrut, budVal);
+  const prevision=Math.min(Math.max(0, prevBrut), budVal);
   const derniereAnnee=Math.max(...sortedMois.map(m=>parseInt(m)));
   var _piE=window._PROG_INFO||{};
   var moisFin=String(derniereAnnee)+'-12';
@@ -1219,7 +1219,7 @@ function renderEvolMulti(prg,fnd){
     });
     var mois=['01','02','03','04','05','06','07','08','09','10','11','12'];
     var cumul=0;
-    var data=mois.map(function(m){if(monthly[m]!=null){cumul+=monthly[m];return Math.min(Math.round(cumul*100)/100,bv);}return null;});
+    var data=mois.map(function(m){if(monthly[m]!=null){cumul+=monthly[m];return Math.max(0, Math.min(Math.round(cumul*100)/100,bv));}return null;});
     datasets.push({label:'Engagements '+annee+' ('+fmt(bv)+' \u20ac)',data:data,borderColor:cols2[ai][0],backgroundColor:'transparent',tension:.3,pointRadius:3,borderWidth:2,spanGaps:false});
     if(bv>0) datasets.push({label:'Budget '+annee,data:mois.map(function(){return bv;}),borderColor:cols2[ai][0],backgroundColor:'transparent',borderDash:[6,4],tension:0,pointRadius:0,borderWidth:1.5});
   });
