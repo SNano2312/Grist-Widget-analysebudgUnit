@@ -141,9 +141,9 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
   </div>
   <div class="tabs">
     <div class="tab on" id="tab-s" onclick="switchTab('s')">🏠 Synthèse</div>
-    <div class="tab" id="tab-h" onclick="switchTab('h')">Histogramme</div>
-    <div class="tab" id="tab-e" onclick="switchTab('e')">Évolution</div>
-    <div class="tab" id="tab-x" onclick="switchTab('x')">Tableau croisé</div>
+    <div class="tab" id="tab-h" onclick="switchTab('h')">📊 Histogramme</div>
+    <div class="tab" id="tab-e" onclick="switchTab('e')">📈 Évolution</div>
+    <div class="tab" id="tab-x" onclick="switchTab('x')">🔀 Tableau croisé</div>
     <div class="tab" id="tab-f" onclick="switchTab('f')">🏆 Top fournisseurs</div>
     <div class="tab" id="tab-d" onclick="switchTab('d')">⏱ Délais</div>
     <div class="tab" id="tab-r" onclick="switchTab('r')">📊 Répartition</div>
@@ -324,6 +324,16 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
           <strong>Valeur nette répartie</strong> : montant total engagé sur le poste de commande.<br>
           <strong>Reste à facturer</strong> : part non encore facturée = commande non soldée.<br>
           <strong>Commande non soldée</strong> : Reste à facturer &gt; 0 — ligne surlignée en orange dans la vue Détail. Filtre "Non soldées" disponible.
+        </p>
+      </div>
+      <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">🔴 Onglet Commandes non soldées</div>
+        <p style="font-size:.82rem;line-height:1.8">
+          Liste toutes les lignes de postes de commande dont le <strong>Reste à facturer &gt; 0</strong>, c'est-à-dire des marchandises livrées ou des services réalisés mais non encore facturés par le fournisseur.<br>
+          <strong>Colonnes clés</strong> : N° Commande (lien SIFAC+) &bull; Montant engagé &bull; Reste à facturer (en rouge) avec le % restant.<br>
+          <strong>Filtres</strong> : Année, Programme, Fonds, Type (marché / hors marché).<br>
+          <strong>KPIs</strong> : Nombre de commandes non soldées, Reste à facturer total, dont sur marché / hors marché.<br>
+          Le tableau est trié par Reste à facturer décroissant. Export CSV disponible.
         </p>
       </div>
       <div class="pnl">
