@@ -236,6 +236,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
   
   <!-- NACRES -->
   <div id="vw-nacres" style="display:none">
+    <p id="nacres-static" style="color:red;font-weight:bold;padding:10px">NACRES DIV VISIBLE - JS en cours...</p>
     <div class="flt">
       <div class="fg"><label>Programme</label><select id="n-prg"><option value="">Tous</option></select></div>
       <div class="fg"><label>Fonds</label><select id="n-fnd"><option value="">Tous</option></select></div>
@@ -249,6 +250,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
 
   <!-- DOCUMENTATION -->
   <div id="vw-doc" style="display:none">
+    <p style="color:red;font-weight:bold;padding:10px">DOC DIV VISIBLE</p>
     <div style="max-width:900px;margin:0 auto">
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">📂 Sources de données</div>
@@ -1206,6 +1208,7 @@ function renderNacres(){
     return true;
   });
   if(!data.length){
+  document.getElementById('nacres-kpis').innerHTML='<div style="font-size:.75rem;color:var(--mu);padding:4px 8px">NACRES_DATA='+((window.NACRES_DATA||[]).length)+' lignes | data filtrée='+data.length+'</div>';
     document.getElementById('nacres-kpis').innerHTML='';
     document.getElementById('nacres-chart-wrap').style.display='none';
     document.getElementById('nacres-th').innerHTML='';
