@@ -307,7 +307,9 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <p style="font-size:.82rem;line-height:1.8">
           <strong>Sur marché</strong> : type document commence par <code>OSMA</code><br>
           <strong>Hors marché</strong> : tous les autres types (OSBC, CA, CAMA...)<br>
-          <strong>Valeur nette répartie</strong> : montant engagé &bull; <strong>Reste à facturer</strong> : part non encore facturée
+          <strong>Valeur nette répartie</strong> : montant total engagé sur le poste de commande.<br>
+          <strong>Reste à facturer</strong> : part non encore facturée = commande non soldée.<br>
+          <strong>Commande non soldée</strong> : Reste à facturer &gt; 0 — ligne surlignée en orange dans la vue Détail. Filtre "Non soldées" disponible.
         </p>
       </div>
       <div class="pnl">
@@ -1243,7 +1245,6 @@ function renderNacres(){
     return true;
   });
   if(!data.length){
-  document.getElementById('nacres-kpis').innerHTML='<div style="font-size:.75rem;color:var(--mu);padding:4px 8px">NACRES_DATA='+((window.NACRES_DATA||[]).length)+' lignes | data filtrée='+data.length+'</div>';
     document.getElementById('nacres-kpis').innerHTML='';
     document.getElementById('nacres-chart-wrap').style.display='none';
     document.getElementById('nacres-th').innerHTML='';
@@ -1258,12 +1259,14 @@ function renderNacres(){
   var totMar=data.filter(function(r){return r.surMarche;}).reduce(function(s,r){return s+r.val;},0);
   var totHors=totVal-totMar,totRest=data.reduce(function(s,r){return s+r.rest;},0);
   var pctMar=totVal>0?totMar/totVal*100:0;
+  var nbOpen=data.filter(function(r){return r.rest>0;}).length;
+  var pctOpen=data.length>0?nbOpen/data.length*100:0;
   document.getElementById('nacres-kpis').innerHTML=
     '<div class="kpi"><div class="kl">Total engag\u00e9</div><div class="kv">'+fmt(totVal)+' \u20ac</div></div>'+
     '<div class="kpi"><div class="kl">Sur march\u00e9</div><div class="kv c-ok">'+fmt(totMar)+' \u20ac ('+pctMar.toFixed(1)+'%)</div></div>'+
     '<div class="kpi"><div class="kl">Hors march\u00e9</div><div class="kv c-wn">'+fmt(totHors)+' \u20ac</div></div>'+
-    '<div class="kpi"><div class="kl">Reste \u00e0 facturer</div><div class="kv">'+fmt(totRest)+' \u20ac</div></div>'+
-    '<div class="kpi"><div class="kl">Nb lignes</div><div class="kv">'+data.length+'</div></div>';
+    '<div class="kpi"><div class="kl">Reste \u00e0 facturer</div><div class="kv '+(totRest>0?'c-wn':'')+'">'+fmt(totRest)+' \u20ac</div></div>'+
+    '<div class="kpi"><div class="kl">Cdes non sold\u00e9es</div><div class="kv '+(nbOpen>0?'c-er':'c-ok')+'">'+nbOpen+' / '+data.length+' ('+pctOpen.toFixed(0)+'%)</div></div>';
   var sapBase="https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&/C_PurchaseOrderTP(PurchaseOrder='";
   var sapSuf="',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)";
   if(vue==='detail'){
@@ -1271,7 +1274,8 @@ function renderNacres(){
     document.getElementById('nacres-th').innerHTML='<tr><th>Année</th><th>NACRES</th><th>Description</th><th>N\u00b0 Cde</th><th>Fournisseur</th><th>D\u00e9signation</th><th>Date</th><th>Type</th><th style="text-align:right">Valeur nette</th><th style="text-align:right">Reste fact.</th><th>Fonds</th></tr>';
     document.getElementById('nacres-tb').innerHTML=[...data].sort(function(a,b){return b.val-a.val;}).map(function(r){
       var cmdLink=r.cmd?'<a href="'+sapBase+encodeURIComponent(r.cmd)+sapSuf+'" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">'+esc(r.cmd)+'</a>':'-';
-      return'<tr><td>'+(r.annee||'-')+'</td><td>'+esc(r.nacreCode)+'</td><td>'+esc(r.nacreDesc)+'</td><td>'+cmdLink+'</td><td>'+esc(r.four)+'</td><td>'+esc(r.desig)+'</td><td>'+esc(r.date)+'</td><td class="'+(r.surMarche?'c-ok':'c-wn')+'">'+esc(r.typeDoc.split(' ')[0])+'</td><td style="text-align:right">'+fmt(r.val)+' \u20ac</td><td style="text-align:right">'+fmt(r.rest)+' \u20ac</td><td>'+esc(r.fond)+'</td></tr>';
+      var rowStyle=r.rest>0?'background:#fff7ed':'';
+      return'<tr style="'+rowStyle+'"><td>'+(r.annee||'-')+'</td><td>'+esc(r.nacreCode)+'</td><td>'+esc(r.nacreDesc)+'</td><td>'+cmdLink+'</td><td>'+esc(r.four)+'</td><td>'+esc(r.desig)+'</td><td>'+esc(r.date)+'</td><td class="'+(r.surMarche?'c-ok':'c-wn')+'">'+esc(r.typeDoc.split(' ')[0])+'</td><td style="text-align:right">'+fmt(r.val)+' \u20ac</td><td style="text-align:right">'+fmt(r.rest)+' \u20ac</td><td>'+esc(r.fond)+'</td></tr>';
     }).join('');
     document.getElementById('nacres-tf').innerHTML='<tr><td colspan="7">TOTAL</td><td style="text-align:right">'+fmt(totVal)+' \u20ac</td><td style="text-align:right">'+fmt(totRest)+' \u20ac</td><td></td></tr>';
     return;
