@@ -936,6 +936,10 @@ function renderEvol(){
   let cumul=0;
   const cumulArr=sortedMois.map(m=>{cumul+=monthly[m];return Math.min(Math.round(cumul*100)/100,budVal);});
   const lastCumul=cumulArr[cumulArr.length-1]||0;
+  const derniereAnnee=Math.max(...sortedMois.map(m=>parseInt(m)));
+  var _piE=window._PROG_INFO||{};
+  var moisFin=String(derniereAnnee)+'-12';
+  if(prg&&_piE[prg]&&_piE[prg].dateFin) moisFin=_piE[prg].dateFin;
   // Prévision = dernier cumul + engagements (CDa+RAR)
   // Si pas d'engagements formels : projection par rythme mensuel (3 derniers mois)
   const prevBrut=Math.round((lastCumul+totCDA+totRAR)*100)/100;
@@ -956,10 +960,6 @@ function renderEvol(){
       }
     }
   }
-  const derniereAnnee=Math.max(...sortedMois.map(m=>parseInt(m)));
-  var _piE=window._PROG_INFO||{};
-  var moisFin=String(derniereAnnee)+'-12';
-  if(prg&&_piE[prg]&&_piE[prg].dateFin) moisFin=_piE[prg].dateFin;
   const dernierMois=sortedMois[sortedMois.length-1];
   const labels=[...sortedMois];
   const dCumul=[...cumulArr];
