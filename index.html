@@ -936,9 +936,26 @@ function renderEvol(){
   let cumul=0;
   const cumulArr=sortedMois.map(m=>{cumul+=monthly[m];return Math.min(Math.round(cumul*100)/100,budVal);});
   const lastCumul=cumulArr[cumulArr.length-1]||0;
-  // Prévision = dernier cumul + engagements restants, plafonnée au budget
+  // Prévision = dernier cumul + engagements (CDa+RAR)
+  // Si pas d'engagements formels : projection par rythme mensuel (3 derniers mois)
   const prevBrut=Math.round((lastCumul+totCDA+totRAR)*100)/100;
-  const prevision=Math.min(Math.max(0, prevBrut), budVal);
+  let prevision=Math.min(Math.max(0, prevBrut), budVal);
+  // Fallback rythme : si CDa+RAR = 0 et budget non atteint
+  if(Math.abs(totCDA+totRAR)<0.01 && lastCumul<budVal && sortedMois.length>=2){
+    // Calculer le rythme mensuel moyen des 3 derniers mois
+    const derniersMois=sortedMois.slice(-3);
+    const rythme=derniersMois.reduce((s,m)=>s+(monthly[m]||0),0)/derniersMois.length;
+    if(rythme>0){
+      // Compter le nombre de mois restants jusqu'à moisFin
+      const [yF,mF]=(()=>{const tmp=moisFin.split('-');return[parseInt(tmp[0]),parseInt(tmp[1])];})();
+      const [yL,mL]=(()=>{const tmp=sortedMois[sortedMois.length-1].split('-');return[parseInt(tmp[0]),parseInt(tmp[1])];})();
+      const moisRestants=(yF-yL)*12+(mF-mL);
+      if(moisRestants>0){
+        const projFin=Math.round((lastCumul+rythme*moisRestants)*100)/100;
+        prevision=Math.min(projFin, budVal);
+      }
+    }
+  }
   const derniereAnnee=Math.max(...sortedMois.map(m=>parseInt(m)));
   var _piE=window._PROG_INFO||{};
   var moisFin=String(derniereAnnee)+'-12';
