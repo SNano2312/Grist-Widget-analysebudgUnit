@@ -1177,6 +1177,11 @@ function renderFournisseurs(){
 // Basé sur Date de mise à jour Comptabilité budgétaire
 // Lien facture→paiement via Nº pièce de paiement
 // ════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// DÉLAIS DE PAIEMENT
+// Agrégation par fournisseur : Factures Original > 0 vs Paiements > 0
+// Délai = Date MàJ comptabilité de la facture → du paiement (par fournisseur)
+// ════════════════════════════════════════════════════════
 function renderDelais(){
   var ann=document.getElementById('d-ann').value;
   var prg=document.getElementById('d-prg').value;
@@ -1185,43 +1190,60 @@ function renderDelais(){
   var statut=(document.getElementById('d-statut')||{}).value||'';
   var vue=(document.getElementById('d-vue')||{}).value||'four';
 
-  // Index paiements : cmdRef → {dtMaj, montant}
-  // Le cmdRef est partagé entre la facture et son paiement dans SAP
-  var pmtIdx={};
-  (window.CONSO_PMT||[]).forEach(function(r){
-    if(!r.cmdRef) return;
-    if(!pmtIdx[r.cmdRef]) pmtIdx[r.cmdRef]={dtMaj:r.dtMaj||r.dt,m:0};
-    if(r.m>0) pmtIdx[r.cmdRef].m+=r.m;
-  });
-
-  // Construire lignes de factures
-  var rows=[];
+  // Agréger factures par fournisseur (Original > 0 uniquement)
+  var facByFour={};
   CONSO.forEach(function(r){
-    if(r.tv!=='Factures'||r.tm!=='Original') return;
+    if(r.tv!=='Factures') return;
+    if(r.tm!=='Original') return;
     if(r.m<=0) return;
     if(ann&&String(r.annee)!==ann) return;
     if(prg&&r.p!==prg) return;
     if(fnd&&r.fo!==fnd) return;
     if(cf&&r.cc!==cf) return;
-    var pmt=r.cmdRef?pmtIdx[r.cmdRef]:null;
-    var paye=pmt?pmt.m:0;
-    var reste=Math.max(0,r.m-paye);
-    var estPaye=pmt&&reste<0.05;
+    var f=r.f||'(inconnu)';
+    if(!facByFour[f]) facByFour[f]={four:f,montant:0,nb:0,prog:r.p,fonds:r.fo,
+                                     dtMin:r.dtMaj||r.dt,dtMax:r.dtMaj||r.dt};
+    facByFour[f].montant+=r.m;
+    facByFour[f].nb++;
+    var dt=r.dtMaj||r.dt;
+    if(dt&&(!facByFour[f].dtMin||dt<facByFour[f].dtMin)) facByFour[f].dtMin=dt;
+    if(dt&&(!facByFour[f].dtMax||dt>facByFour[f].dtMax)) facByFour[f].dtMax=dt;
+  });
+
+  // Agréger paiements par fournisseur (> 0, sans filtre année/prog/fonds)
+  var pmtByFour={};
+  (window.CONSO_PMT||[]).forEach(function(r){
+    if(r.m<=0) return;
+    if(cf&&r.cc!==cf) return;
+    var f=r.f||'(inconnu)';
+    if(!pmtByFour[f]) pmtByFour[f]={m:0,dtMax:r.dtMaj||r.dt};
+    pmtByFour[f].m+=r.m;
+    var dt=r.dtMaj||r.dt;
+    if(dt&&(!pmtByFour[f].dtMax||dt>pmtByFour[f].dtMax)) pmtByFour[f].dtMax=dt;
+  });
+
+  // Construire les lignes par fournisseur
+  var rows=Object.values(facByFour).map(function(f){
+    var p=pmtByFour[f.four];
+    var paye=p?p.m:0;
+    var reste=Math.max(0,f.montant-paye);
+    var estPaye=reste<0.05;
+    // Délai = entre dtMax facture et dtMax paiement
     var delai=null;
-    if(pmt&&r.dtMaj&&pmt.dtMaj){
-      function toDate(s){var p=(s||'').split('/');return p.length===3?new Date(+p[2],+p[1]-1,+p[0]):null;}
-      var d1=toDate(r.dtMaj),d2=toDate(pmt.dtMaj);
+    if(p&&f.dtMax&&p.dtMax){
+      function toD(s){var pt=(s||'').split('/');return pt.length===3?new Date(+pt[2],+pt[1]-1,+pt[0]):null;}
+      var d1=toD(f.dtMax),d2=toD(p.dtMax);
       if(d1&&d2) delai=Math.round((d2-d1)/(864e5));
     }
-    rows.push({annee:r.annee,prog:r.p,fonds:r.fo,four:r.f,
-               dtFac:r.dtMaj||r.dt,dtPmt:pmt?pmt.dtMaj:'',
-               montant:r.m,paye:paye,reste:reste,
-               estPaye:estPaye,delai:delai,cc:r.cc});
+    return{four:f.four,nb:f.nb,montant:f.montant,paye:paye,reste:reste,
+           estPaye:estPaye,delai:delai,dtFac:f.dtMin,dtPmt:p?p.dtMax:''};
   });
 
   // Filtrer par statut
   if(statut==='attente') rows=rows.filter(function(r){return!r.estPaye;});
   if(statut==='paye') rows=rows.filter(function(r){return r.estPaye;});
+
+  rows.sort(function(a,b){return b.reste-a.reste||b.montant-a.montant;});
 
   // KPIs
   var totFac=rows.reduce(function(s,r){return s+r.montant;},0);
@@ -1233,102 +1255,52 @@ function renderDelais(){
   var medDelai=delaisOk.length?delaisOk.slice().sort(function(a,b){return a-b;})[Math.floor(delaisOk.length/2)]:0;
 
   document.getElementById('delai-kpis').innerHTML=
-    '<div class="kpi"><div class="kl">Nb factures</div><div class="kv">'+rows.length+'</div></div>'+
-    '<div class="kpi"><div class="kl">Facturé</div><div class="kv">'+fmt(totFac)+' €</div></div>'+
-    '<div class="kpi"><div class="kl">Payé</div><div class="kv c-ok">'+fmt(totPaye)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">Fournisseurs</div><div class="kv">'+rows.length+'</div></div>'+
+    '<div class="kpi"><div class="kl">Total facturé</div><div class="kv">'+fmt(totFac)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">Total payé</div><div class="kv c-ok">'+fmt(totPaye)+' €</div></div>'+
     '<div class="kpi"><div class="kl">Reste à payer</div><div class="kv '+(totReste>0.01?'c-er':'c-ok')+'">'+fmt(totReste)+' €</div></div>'+
     '<div class="kpi"><div class="kl">En attente</div><div class="kv '+(nbAttente>0?'c-wn':'c-ok')+'">'+nbAttente+'</div></div>'+
-    '<div class="kpi"><div class="kl">Délai moyen</div><div class="kv '+(moyDelai>30?'c-wn':'')+'">'+moyDelai+' j</div></div>'+
+    '<div class="kpi"><div class="kl">Délai moy.</div><div class="kv '+(moyDelai>30?'c-wn':'')+'">'+moyDelai+' j</div></div>'+
     '<div class="kpi"><div class="kl">Délai médian</div><div class="kv">'+medDelai+' j</div></div>';
 
-  if(vue==='four'){
-    // Vue par fournisseur
-    var byF={};
-    rows.forEach(function(r){
-      if(!byF[r.four]) byF[r.four]={four:r.four,nb:0,montant:0,paye:0,reste:0,delais:[],nbAttente:0};
-      byF[r.four].nb++;
-      byF[r.four].montant+=r.montant;
-      byF[r.four].paye+=r.paye;
-      byF[r.four].reste+=r.reste;
-      if(!r.estPaye) byF[r.four].nbAttente++;
-      if(r.delai!==null&&r.delai>=0) byF[r.four].delais.push(r.delai);
-    });
-    var fours=Object.values(byF).sort(function(a,b){return b.reste-a.reste||b.montant-a.montant;});
-    document.getElementById('d-th').innerHTML=
-      '<tr><th>Fournisseur</th><th style="text-align:right">Nb fact.</th>'+
-      '<th style="text-align:right">Facturé</th><th style="text-align:right">Payé</th>'+
-      '<th style="text-align:right">Reste</th>'+
-      '<th style="text-align:right">Délai moy.</th><th style="text-align:right">Délai max</th>'+
-      '<th style="text-align:right">En attente</th></tr>';
-    document.getElementById('d-tb').innerHTML=fours.map(function(r){
-      var moy=r.delais.length?Math.round(r.delais.reduce(function(s,d){return s+d;},0)/r.delais.length):null;
-      var max=r.delais.length?Math.max.apply(null,r.delais):null;
-      var clMoy=moy>60?'c-er':moy>30?'c-wn':'';
-      return'<tr>'+
-        '<td>'+esc(r.four||'-')+'</td>'+
-        '<td style="text-align:right">'+r.nb+'</td>'+
-        '<td style="text-align:right">'+fmt(r.montant)+' €</td>'+
-        '<td style="text-align:right;color:var(--ok)">'+fmt(r.paye)+' €</td>'+
-        '<td style="text-align:right;font-weight:700;color:'+(r.reste>0.01?'var(--er)':'inherit')+'">'+fmt(r.reste)+' €</td>'+
-        '<td style="text-align:right" class="'+clMoy+'">'+(moy!==null?moy+' j':'-')+'</td>'+
-        '<td style="text-align:right">'+(max!==null?max+' j':'-')+'</td>'+
-        '<td style="text-align:right;color:'+(r.nbAttente>0?'var(--wn)':'inherit')+'">'+r.nbAttente+'</td>'+
-      '</tr>';
-    }).join('');
-    var tF=fours.reduce(function(s,r){return s+r.montant;},0);
-    var tP=fours.reduce(function(s,r){return s+r.paye;},0);
-    var tR=fours.reduce(function(s,r){return s+r.reste;},0);
-    document.getElementById('d-tf').innerHTML=
-      '<tr><td>TOTAL ('+fours.length+')</td><td style="text-align:right">'+rows.length+'</td>'+
-      '<td style="text-align:right">'+fmt(tF)+' €</td>'+
-      '<td style="text-align:right">'+fmt(tP)+' €</td>'+
-      '<td style="text-align:right;font-weight:700;color:var(--er)">'+fmt(tR)+' €</td>'+
-      '<td colspan="3"></td></tr>';
-  } else {
-    // Vue détail lignes
-    var sorted=[...rows].sort(function(a,b){return(b.delai||0)-(a.delai||0);});
-    document.getElementById('d-th').innerHTML=
-      '<tr><th>Année</th><th>Programme</th><th>Fonds</th><th>Fournisseur</th>'+
-      '<th>Date fact.</th><th>Date pmt</th>'+
-      '<th style="text-align:right">Facturé</th>'+
-      '<th style="text-align:right">Payé</th>'+
-      '<th style="text-align:right">Reste</th>'+
-      '<th style="text-align:right">Délai</th><th>Statut</th></tr>';
-    document.getElementById('d-tb').innerHTML=sorted.map(function(r){
-      var clD=r.delai>60?'c-er':r.delai>30?'c-wn':'c-ok';
-      var badge=r.estPaye?'<span class="rb r-ok">Payé</span>':'<span class="rb r-wn">En attente</span>';
-      return'<tr>'+
-        '<td>'+r.annee+'</td>'+
-        '<td>'+esc(r.prog)+'</td>'+
-        '<td>'+esc(r.fonds)+'</td>'+
-        '<td>'+esc(r.four||'-')+'</td>'+
-        '<td>'+esc(r.dtFac)+'</td>'+
-        '<td>'+esc(r.dtPmt||'-')+'</td>'+
-        '<td style="text-align:right">'+fmt(r.montant)+' €</td>'+
-        '<td style="text-align:right;color:var(--ok)">'+fmt(r.paye)+' €</td>'+
-        '<td style="text-align:right;font-weight:700;color:'+(r.reste>0.01?'var(--er)':'inherit')+'">'+fmt(r.reste)+' €</td>'+
-        '<td style="text-align:right" class="'+(r.delai!==null?clD:'')+'">'+(r.delai!==null?r.delai+' j':'-')+'</td>'+
-        '<td>'+badge+'</td>'+
-      '</tr>';
-    }).join('');
-    var tF2=sorted.reduce(function(s,r){return s+r.montant;},0);
-    var tR2=sorted.reduce(function(s,r){return s+r.reste;},0);
-    document.getElementById('d-tf').innerHTML=
-      '<tr><td colspan="6">TOTAL</td>'+
-      '<td style="text-align:right">'+fmt(tF2)+' €</td><td></td>'+
-      '<td style="text-align:right;font-weight:700;color:var(--er)">'+fmt(tR2)+' €</td>'+
-      '<td colspan="2"></td></tr>';
-  }
+  document.getElementById('d-th').innerHTML=
+    '<tr><th>Fournisseur</th><th style="text-align:right">Nb fact.</th>'+
+    '<th style="text-align:right">Facturé</th>'+
+    '<th style="text-align:right">Payé</th>'+
+    '<th style="text-align:right">Reste à payer</th>'+
+    '<th style="text-align:right">Délai (j)</th>'+
+    '<th>1ère fact.</th><th>Statut</th></tr>';
+
+  document.getElementById('d-tb').innerHTML=rows.map(function(r){
+    var clD=r.delai!==null?(r.delai>60?'c-er':r.delai>30?'c-wn':'c-ok'):'';
+    var badge=r.estPaye?'<span class="rb r-ok">Payé</span>':'<span class="rb r-wn">En attente</span>';
+    return'<tr>'+
+      '<td>'+esc(r.four)+'</td>'+
+      '<td style="text-align:right">'+r.nb+'</td>'+
+      '<td style="text-align:right">'+fmt(r.montant)+' €</td>'+
+      '<td style="text-align:right;color:var(--ok)">'+fmt(r.paye)+' €</td>'+
+      '<td style="text-align:right;font-weight:700;color:'+(r.reste>0.01?'var(--er)':'inherit')+'">'+fmt(r.reste)+' €</td>'+
+      '<td style="text-align:right" class="'+clD+'">'+(r.delai!==null?r.delai+' j':'-')+'</td>'+
+      '<td style="color:var(--mu)">'+esc(r.dtFac)+'</td>'+
+      '<td>'+badge+'</td>'+
+    '</tr>';
+  }).join('');
+
+  var tF=rows.reduce(function(s,r){return s+r.montant;},0);
+  var tP=rows.reduce(function(s,r){return s+r.paye;},0);
+  var tR=rows.reduce(function(s,r){return s+r.reste;},0);
+  document.getElementById('d-tf').innerHTML=
+    '<tr><td>TOTAL ('+rows.length+')</td><td></td>'+
+    '<td style="text-align:right">'+fmt(tF)+' €</td>'+
+    '<td style="text-align:right;color:var(--ok)">'+fmt(tP)+' €</td>'+
+    '<td style="text-align:right;font-weight:700;color:var(--er)">'+fmt(tR)+' €</td>'+
+    '<td colspan="3"></td></tr>';
 }
 
 
-// ════════════════════════════════════
-// RÉPARTITION
-// ════════════════════════════════════
-var _pie=null;
 var TV_CATS={'Paiements':{label:'Paiements',color:'#2563eb'},'Factures':{label:'Factures en cours',color:'#16a34a'},"Commandes d'achat":{label:'Commandes en cours',color:'#d97706'},'Pièces préenregistrées':{label:'Pièces préenreg.',color:'#7c3aed'}};
 var TV_RESS=[];
-
+var _pie=null;
 function renderRepartition(){
   var ann=document.getElementById('r-ann').value;
   var prg=document.getElementById('r-prg').value;
