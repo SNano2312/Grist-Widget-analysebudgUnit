@@ -727,7 +727,9 @@ function procConso(raw, annee){
         f:(fours[i]||'').toString().trim(),
         m:N(monts[i]),
         p:(!pP||pP==='NA')?'Non Applicable':pP,
-        fo:fP});
+        fo:fP,
+        saisiPar:(col('Saisi_par','Saisi par')[i]||'').toString().trim(),
+        refOM:(col('Reference','R\u00e9f\u00e9rence')[i]||'').toString().trim()});
       continue;
     }
     if(!tv || TV_EXCL.includes(tv)) continue;
@@ -1568,7 +1570,15 @@ function renderOM(){
 
   // Calcul des montants nets par type
   var engages=omRows.filter(function(r){return r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0||r.tv==='R\u00e9servation de fonds';}).reduce(function(s,r){return s+r.m;},0);
-  var payes=omRows.filter(function(r){return r.tv==='Paiements';}).reduce(function(s,r){return s+r.m;},0);
+  // Paiements dans CONSO_PMT (séparés de CONSO)
+  var omPMT=(window.CONSO_PMT||[]).filter(function(r){
+    if(r.saisiPar!=='NOTILUSBUS') return false;
+    if(ann&&String(r.annee)!==ann) return false;
+    if(prg&&r.p!==prg) return false;
+    if(fnd&&r.fo!==fnd) return false;
+    return true;
+  });
+  var payes=omPMT.reduce(function(s,r){return s+(r.m>0?r.m:0);},0);
   var factures=omRows.filter(function(r){return r.tv==='Factures';}).reduce(function(s,r){return s+r.m;},0);
   var enCours=engages-payes;
   var nbOMs=new Set(omRows.map(function(r){return r.refOM;}).filter(Boolean)).size;
@@ -1590,9 +1600,15 @@ function renderOM(){
       var k=r.p+'||'+r.fo;
       if(!byProg[k]) byProg[k]={prog:r.p,fonds:r.fo,eng:0,paye:0,fac:0,nb:new Set()};
       if(r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0||r.tv==='R\u00e9servation de fonds') byProg[k].eng+=r.m;
-      if(r.tv==='Paiements') byProg[k].paye+=r.m;
+      // Paiements via CONSO_PMT — voir cumul global ci-dessus
       if(r.tv==='Factures') byProg[k].fac+=r.m;
       if(r.refOM) byProg[k].nb.add(r.refOM);
+    });
+    // Ajouter paiements depuis CONSO_PMT dans byProg
+    omPMT.forEach(function(r){
+      var k=r.p+'||'+r.fo;
+      if(!byProg[k]) byProg[k]={prog:r.p,fonds:r.fo,eng:0,paye:0,fac:0,nb:new Set()};
+      if(r.m>0) byProg[k].paye+=r.m;
     });
     var rows=Object.values(byProg).sort(function(a,b){return b.eng-a.eng;});
     document.getElementById('om-th').innerHTML='<tr><th>Programme</th><th>Nom</th><th>Fonds</th><th style="text-align:right">Engag\u00e9</th><th style="text-align:right">Pay\u00e9</th><th style="text-align:right">Solde</th><th style="text-align:right">Nb OM</th></tr>';
@@ -1618,6 +1634,12 @@ function renderOM(){
       if(r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0||r.tv==='R\u00e9servation de fonds') byOM[k].eng+=r.m;
       if(r.tv==='Paiements') byOM[k].paye+=r.m;
       if(r.tv==='Factures') byOM[k].fac+=r.m;
+    });
+    // Ajouter paiements depuis CONSO_PMT dans byOM
+    omPMT.forEach(function(r){
+      var k=r.refOM||'(sans r\u00e9f\u00e9rence)';
+      if(!byOM[k]) byOM[k]={ref:k,prog:r.p,fonds:r.fo,annee:r.annee,eng:0,paye:0,fac:0};
+      if(r.m>0) byOM[k].paye+=r.m;
     });
     var omList=Object.values(byOM).sort(function(a,b){return b.eng-a.eng;});
     document.getElementById('om-th').innerHTML='<tr><th>N° Ordre mission</th><th>Ann\u00e9e</th><th>Programme</th><th>Fonds</th><th style="text-align:right">Engag\u00e9</th><th style="text-align:right">Pay\u00e9</th><th style="text-align:right">Solde</th><th>Statut</th></tr>';
