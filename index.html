@@ -1177,13 +1177,11 @@ function renderDelais(){
   var statut=(document.getElementById('d-statut')||{}).value||'';
   var vue=(document.getElementById('d-vue')||{}).value||'four';
 
-  // Agréger paiements par fournisseur
+  // Agréger paiements par fournisseur (toutes années, sans filtre annee/prog/fonds)
+  // Un paiement 2026 peut régler une facture 2025 → ne pas filtrer par période
   var pmtByFour={};
   (window.CONSO_PMT||[]).forEach(function(r){
-    if(ann&&parseInt(r.annee)!==parseInt(ann)) return;
-    if(prg&&r.p!==prg) return;
-    if(fnd&&r.fo!==fnd) return;
-    if(cf&&r.cc!==cf) return;
+    if(cf&&r.cc!==cf) return; // seul le filtre CC s'applique
     if(!pmtByFour[r.f]) pmtByFour[r.f]=0;
     if(r.m>0) pmtByFour[r.f]+=r.m;
   });
