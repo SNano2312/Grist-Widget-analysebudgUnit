@@ -1283,6 +1283,12 @@ function renderDelais(){
 }
 
 
+// ════════════════════════════════════
+// RÉPARTITION
+// ════════════════════════════════════
+var _pie=null;
+var TV_CATS={'Paiements':{label:'Paiements',color:'#2563eb'},'Factures':{label:'Factures en cours',color:'#16a34a'},"Commandes d'achat":{label:'Commandes en cours',color:'#d97706'},'Pi\u00e8ces pr\u00e9enregistr\u00e9es':{label:'Pi\u00e8ces pr\u00e9enreg.',color:'#7c3aed'}};
+var TV_RESS=[];
 function renderRepartition(){
   var ann=document.getElementById('r-ann').value;
   var prg=document.getElementById('r-prg').value;
