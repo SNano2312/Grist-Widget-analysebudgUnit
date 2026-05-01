@@ -261,6 +261,15 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <div class="ks" id="om-kpis"></div>
     <div id="om-chart-wrap" class="pnl" style="margin-bottom:16px;display:none"><canvas id="chOM" style="max-height:300px"></canvas></div>
     <div class="tw"><table><thead id="om-th"></thead><tbody id="om-tb"></tbody><tfoot id="om-tf"></tfoot></table></div>
+    <div id="om-drv" style="display:none;margin-top:16px">
+      <div class="drh">
+        <button class="btn" onclick="closeOMDrill()">← Retour</button>
+        <span id="om-dr-title" style="font-weight:600;font-size:.95rem"></span>
+      </div>
+      <div class="dk" id="om-dr-kpis"></div>
+      <div id="om-dr-cnt" style="font-size:.78rem;color:var(--mu);margin-bottom:6px"></div>
+      <div class="tw"><table><thead id="om-dr-th"></thead><tbody id="om-dr-tb"></tbody><tfoot id="om-dr-tf"></tfoot></table></div>
+    </div>
   </div>
 
   <!-- NACRES -->
@@ -1614,7 +1623,7 @@ function renderOM(){
     document.getElementById('om-th').innerHTML='<tr><th>Programme</th><th>Nom</th><th>Fonds</th><th style="text-align:right">Engag\u00e9</th><th style="text-align:right">Pay\u00e9</th><th style="text-align:right">Solde</th><th style="text-align:right">Nb OM</th></tr>';
     document.getElementById('om-tb').innerHTML=rows.map(function(r){
       var solde=r.eng-r.paye;
-      return'<tr><td>'+esc(r.prog)+'</td><td>'+esc((pi[r.prog]&&pi[r.prog].nom)||'-')+'</td><td>'+esc(r.fonds)+'</td>'+
+      return'<tr style="cursor:pointer" onclick="openOMDrill(\'prog\','+JSON.stringify(r.prog)+','+JSON.stringify(r.fonds)+','+JSON.stringify(ann)+')"><td>'+esc(r.prog)+'</td><td>'+esc((pi[r.prog]&&pi[r.prog].nom)||'-')+'</td><td>'+esc(r.fonds)+'</td>'+
         '<td style="text-align:right">'+fmt(r.eng)+' \u20ac</td>'+
         '<td style="text-align:right;color:var(--ok)">'+fmt(r.paye)+' \u20ac</td>'+
         '<td style="text-align:right;color:'+(solde>0?'var(--wn)':'inherit')+'">'+fmt(solde)+' \u20ac</td>'+
@@ -1646,7 +1655,7 @@ function renderOM(){
     document.getElementById('om-tb').innerHTML=omList.map(function(r){
       var solde=r.eng-r.paye;
       var statut=Math.abs(solde)<0.01?'<span class="rb r-ok">Sold\u00e9</span>':'<span class="rb r-wn">En cours</span>';
-      return'<tr><td style="font-weight:500">'+esc(r.ref)+'</td><td>'+r.annee+'</td><td>'+esc(r.prog)+'</td><td>'+esc(r.fonds)+'</td>'+
+      return'<tr style="cursor:pointer" onclick="openOMDrill(\'om\','+JSON.stringify(r.ref)+',null,null)"><td style="font-weight:500">'+esc(r.ref)+'</td><td>'+r.annee+'</td><td>'+esc(r.prog)+'</td><td>'+esc(r.fonds)+'</td>'+
         '<td style="text-align:right">'+fmt(r.eng)+' \u20ac</td>'+
         '<td style="text-align:right;color:var(--ok)">'+fmt(r.paye)+' \u20ac</td>'+
         '<td style="text-align:right;color:'+(Math.abs(solde)>0.01?'var(--wn)':'inherit')+'">'+fmt(solde)+' \u20ac</td>'+
@@ -1682,6 +1691,103 @@ function renderOM(){
     }).join('');
     document.getElementById('om-tf').innerHTML='<tr><td>TOTAL</td><td style="text-align:right">'+fmt(Object.values(monthly).reduce(function(s,v){return s+v;},0))+' \u20ac</td><td></td></tr>';
   }
+}
+
+
+// ════════════════════════════════════
+// DRILL-DOWN MISSIONS
+// ════════════════════════════════════
+var _omDrRows=[], _omDrSC=null, _omDrSD=1;
+
+function openOMDrill(type, key1, key2, anneeF){
+  document.getElementById('om-drv').style.display='block';
+  document.getElementById('om-drv').scrollIntoView({behavior:'smooth',block:'start'});
+  var title='';
+
+  if(type==='prog'){
+    // Drill par programme/fonds : toutes les lignes CONSO NOTILUSBUS de ce prog/fonds
+    var prog=key1, fonds=key2;
+    title='Détail missions : '+prog+' / '+fonds+(anneeF?' ('+anneeF+')':'');
+    _omDrRows=CONSO.filter(function(r){
+      if(r.saisiPar!=='NOTILUSBUS') return false;
+      if(anneeF&&String(r.annee)!==String(anneeF)) return false;
+      if(r.p!==prog) return false;
+      if(r.fo!==fonds) return false;
+      return true;
+    });
+    // Ajouter les paiements depuis CONSO_PMT
+    var pmt=(window.CONSO_PMT||[]).filter(function(r){
+      if(r.saisiPar!=='NOTILUSBUS') return false;
+      if(anneeF&&String(r.annee)!==String(anneeF)) return false;
+      if(r.p!==prog) return false;
+      if(r.fo!==fonds) return false;
+      return true;
+    });
+    _omDrRows=_omDrRows.concat(pmt);
+  } else {
+    // Drill par ordre de mission (refOM = key1)
+    var refOM=key1;
+    title='Détail ordre de mission : '+refOM;
+    var conso=CONSO.filter(function(r){
+      return r.saisiPar==='NOTILUSBUS'&&r.refOM===refOM;
+    });
+    var pmt=(window.CONSO_PMT||[]).filter(function(r){
+      return r.saisiPar==='NOTILUSBUS'&&r.refOM===refOM;
+    });
+    _omDrRows=conso.concat(pmt);
+  }
+
+  document.getElementById('om-dr-title').textContent=title;
+  _omDrSC=null; _omDrSD=1;
+
+  // KPIs
+  var eng=_omDrRows.filter(function(r){return r.tv&&r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0&&r.tm==='Original';}).reduce(function(s,r){return s+r.m;},0);
+  var paye=_omDrRows.filter(function(r){return r.tv==='Paiements';}).reduce(function(s,r){return s+(r.m>0?r.m:0);},0);
+  var fac=_omDrRows.filter(function(r){return r.tv==='Factures'&&r.tm==='Original';}).reduce(function(s,r){return s+r.m;},0);
+  document.getElementById('om-dr-kpis').innerHTML=
+    '<div class="kpi"><div class="kl">Engag\u00e9 (Orig.)</div><div class="kv">'+fmt(eng)+' \u20ac</div></div>'+
+    '<div class="kpi"><div class="kl">Factur\u00e9</div><div class="kv">'+fmt(fac)+' \u20ac</div></div>'+
+    '<div class="kpi"><div class="kl">Pay\u00e9</div><div class="kv c-ok">'+fmt(paye)+' \u20ac</div></div>'+
+    '<div class="kpi"><div class="kl">Solde</div><div class="kv '+(eng-paye>0?'c-wn':'')+'">'+fmt(eng-paye)+' \u20ac</div></div>'+
+    '<div class="kpi"><div class="kl">Nb lignes</div><div class="kv">'+_omDrRows.length+'</div></div>';
+
+  renderOMDrill(_omDrRows, null, 1);
+}
+
+function closeOMDrill(){
+  document.getElementById('om-drv').style.display='none';
+}
+
+function renderOMDrill(rows, sc, sd){
+  var cols=[
+    {k:'annee',l:'Ann\u00e9e'},{k:'tv',l:'Type valeur'},{k:'tm',l:'Type montant'},
+    {k:'refOM',l:'N\u00b0 OM'},{k:'dt',l:'Date'},
+    {k:'f',l:'Fournisseur'},{k:'d',l:'D\u00e9signation'},
+    {k:'p',l:'Programme'},{k:'fo',l:'Fonds'},
+    {k:'m',l:'Montant (\u20ac)',n:true},
+  ];
+  var sorted=[...rows];
+  if(sc) sorted.sort(function(a,b){var av=a[sc]||'',bv=b[sc]||'';return(typeof av==='number'?(av-bv):String(av).localeCompare(String(bv)))*sd;});
+  var tot=sorted.reduce(function(s,r){return s+r.m;},0);
+  document.getElementById('om-dr-cnt').textContent=sorted.length+' ligne(s)';
+  document.getElementById('om-dr-th').innerHTML='<tr>'+cols.map(function(c){
+    return'<th onclick="sortOMDrill(\''+c.k+'\')" style="cursor:pointer">'+c.l+(sc===c.k?(sd===1?' \u25b2':' \u25bc'):'')+'</th>';
+  }).join('')+'</tr>';
+  document.getElementById('om-dr-tb').innerHTML=sorted.map(function(r){
+    return'<tr>'+cols.map(function(c){
+      var v=r[c.k]||'-';
+      if(c.n) return'<td style="text-align:right;font-weight:'+(r.m<0?'700':'400')+';color:'+(r.m<0?'var(--er)':'inherit')+'">'+fmt(r.m)+' \u20ac</td>';
+      return'<td>'+esc(String(v))+'</td>';
+    }).join('')+'</tr>';
+  }).join('');
+  document.getElementById('om-dr-tf').innerHTML='<tr>'+cols.map(function(c,i){
+    return i===cols.length-1?'<td style="text-align:right">'+fmt(tot)+' \u20ac</td>':i===0?'<td>TOTAL</td>':'<td></td>';
+  }).join('')+'</tr>';
+}
+
+function sortOMDrill(col){
+  if(_omDrSC===col) _omDrSD*=-1; else{_omDrSC=col;_omDrSD=1;}
+  renderOMDrill(_omDrRows,_omDrSC,_omDrSD);
 }
 
 </script>
