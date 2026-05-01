@@ -271,7 +271,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <div class="tw"><table><thead id="om-th"></thead><tbody id="om-tb"></tbody><tfoot id="om-tf"></tfoot></table></div>
     <div id="om-drv" style="display:none;margin-top:16px">
       <div class="drh">
-        <button class="btn" onclick="closeOMDrill()">← Retour</button>
+        <button class="btn" id="btn-close-om-drill">← Retour</button>
         <span id="om-dr-title" style="font-weight:600;font-size:.95rem"></span>
       </div>
       <div class="dk" id="om-dr-kpis"></div>
@@ -486,6 +486,8 @@ function attachListeners(){
   ['n-ann','n-prg','n-fnd','n-cf','n-type','n-vue','n-statut'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderNacres);el.addEventListener('change',renderNacres);});
   ['om-ann','om-prg','om-fnd','om-cf','om-vue'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderOM);el.addEventListener('change',renderOM);});
   ['o-ann','o-prg','o-fnd','o-cf','o-type'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderOpenOrders);el.addEventListener('change',renderOpenOrders);});
+  var btnCloseOM=document.getElementById('btn-close-om-drill');
+  if(btnCloseOM) btnCloseOM.addEventListener('click',closeOMDrill);
 }
 window.closeDrill = closeDrill;
 window.sortD      = sortD;
@@ -1665,18 +1667,12 @@ function renderOM(){
     document.getElementById('om-th').innerHTML='<tr><th>Programme</th><th>Nom</th><th>Fonds</th><th style="text-align:right">Engag\u00e9</th><th style="text-align:right">Pay\u00e9</th><th style="text-align:right">Solde</th><th style="text-align:right">Nb OM</th></tr>';
     document.getElementById('om-tb').innerHTML=rows.map(function(r){
       var solde=r.eng-r.paye;
-      return'<tr style="cursor:pointer" data-drill="prog" data-key1="'+esc(r.prog)+'" data-key2="'+esc(r.fonds)+'" data-ann="'+esc(ann||'')+'" ><td>'+esc(r.prog)+'</td><td>'+esc((pi[r.prog]&&pi[r.prog].nom)||'-')+'</td><td>'+esc(r.fonds)+'</td>'+
+      return'<tr style="cursor:pointer" onclick="openOMDrill(\'prog\',this.dataset.k1,this.dataset.k2,this.dataset.ann)" data-k1="'+esc(r.prog)+'" data-k2="'+esc(r.fonds)+'" data-ann="'+esc(ann||'')+'" ><td>'+esc(r.prog)+'</td><td>'+esc((pi[r.prog]&&pi[r.prog].nom)||'-')+'</td><td>'+esc(r.fonds)+'</td>'+
         '<td style="text-align:right">'+fmt(r.eng)+' \u20ac</td>'+
         '<td style="text-align:right;color:var(--ok)">'+fmt(r.paye)+' \u20ac</td>'+
         '<td style="text-align:right;color:'+(solde>0?'var(--wn)':'inherit')+'">'+fmt(solde)+' \u20ac</td>'+
         '<td style="text-align:right">'+r.nb.size+'</td></tr>';
     }).join('');
-    // Attacher les listeners après rendu
-    document.querySelectorAll('#om-tb tr[data-drill]').forEach(function(tr){
-      tr.addEventListener('click',function(){
-        openOMDrill(this.dataset.drill,this.dataset.key1,this.dataset.key2||null,this.dataset.ann||null);
-      });
-    });
     var totEng=rows.reduce(function(s,r){return s+r.eng;},0);
     var totPay=rows.reduce(function(s,r){return s+r.paye;},0);
     document.getElementById('om-tf').innerHTML='<tr><td colspan="3">TOTAL</td><td style="text-align:right">'+fmt(totEng)+' \u20ac</td><td style="text-align:right">'+fmt(totPay)+' \u20ac</td><td style="text-align:right">'+fmt(totEng-totPay)+' \u20ac</td><td style="text-align:right">'+nbOMs+'</td></tr>';
@@ -1702,18 +1698,12 @@ function renderOM(){
     document.getElementById('om-tb').innerHTML=omList.map(function(r){
       var solde=r.eng-r.paye;
       var statut=Math.abs(solde)<0.01?'<span class="rb r-ok">Sold\u00e9</span>':'<span class="rb r-wn">En cours</span>';
-      return'<tr style="cursor:pointer" data-drill="om" data-key1="'+esc(r.ref)+'" ><td style="font-weight:500">'+esc(r.ref)+'</td><td>'+r.annee+'</td><td>'+esc(r.prog)+'</td><td>'+esc(r.fonds)+'</td>'+
+      return'<tr style="cursor:pointer" onclick="openOMDrill(\'om\',this.dataset.k1,null,null)" data-k1="'+esc(r.ref)+'" ><td style="font-weight:500">'+esc(r.ref)+'</td><td>'+r.annee+'</td><td>'+esc(r.prog)+'</td><td>'+esc(r.fonds)+'</td>'+
         '<td style="text-align:right">'+fmt(r.eng)+' \u20ac</td>'+
         '<td style="text-align:right;color:var(--ok)">'+fmt(r.paye)+' \u20ac</td>'+
         '<td style="text-align:right;color:'+(Math.abs(solde)>0.01?'var(--wn)':'inherit')+'">'+fmt(solde)+' \u20ac</td>'+
         '<td>'+statut+'</td></tr>';
     }).join('');
-    // Attacher les listeners après rendu
-    document.querySelectorAll('#om-tb tr[data-drill]').forEach(function(tr){
-      tr.addEventListener('click',function(){
-        openOMDrill(this.dataset.drill,this.dataset.key1,null,null);
-      });
-    });
     var totEng2=omList.reduce(function(s,r){return s+r.eng;},0);
     var totPay2=omList.reduce(function(s,r){return s+r.paye;},0);
     var nbSoldes=omList.filter(function(r){return Math.abs(r.eng-r.paye)<0.01;}).length;
@@ -1834,7 +1824,7 @@ function renderOMDrill(rows, sc, sd){
       if(c.n) return'<td style="text-align:right;font-weight:'+(r.m<0?'700':'400')+';color:'+(r.m<0?'var(--er)':'inherit')+'">'+fmt(r.m)+' \u20ac</td>';
       var v=r[c.k]||'';
       if(c.link==='sifac'){if(!v)return'<td>-</td>';var url=sapBase+encodeURIComponent(v)+sapSuf;return'<td><a href="'+url+'" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">'+esc(v)+'</a></td>';}
-      if(c.link==='notilus'){if(!v)return'<td>-</td>';var numOM=v.replace(/^[A-Z]+-/i,'');var url=notilusBase+encodeURIComponent(numOM);return'<td><a href="'+url+'" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">'+esc(v)+'</a></td>';}
+      if(c.link==='notilus'){if(!v)return'<td>-</td>';var numOM=v.replace(/^[A-Z]+-/i,'');var isOMP=Math.abs(r.m)<=0.01;var omPath=isOMP?'OMP':'OD';var url='https://esr-inrae.notilus-pio.cegid.cloud/#/'+omPath+'/'+encodeURIComponent(numOM);return'<td><a href="'+url+'" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">'+esc(v)+(isOMP?' <small style="color:var(--mu)">(OMP)</small>':'')+'</a></td>';}
       return'<td>'+esc(String(v||'-'))+'</td>';
     }).join('')+'</tr>';
   }).join('');
