@@ -1234,6 +1234,15 @@ function renderEvolMulti(prg,fnd){
       if(parseInt(r.dtMois.split('-')[0])!==annee) return;
       var m=r.dtMois.split('-')[1]; monthly[m]=(monthly[m]||0)+r.m;
     });
+    // Fallback Factures si aucune CdA pour cette année
+    if(!Object.keys(monthly).length){
+      CONSO.forEach(function(r){
+        if(parseInt(r.annee)!==annee||prg&&r.p!==prg||fnd&&r.fo!==fnd) return;
+        if(r.tv!=='Factures'||r.tm!=='Original'||!r.dtMois) return;
+        if(parseInt(r.dtMois.split('-')[0])!==annee) return;
+        var m=r.dtMois.split('-')[1]; monthly[m]=(monthly[m]||0)+r.m;
+      });
+    }
     var mois=['01','02','03','04','05','06','07','08','09','10','11','12'];
     var cumul=0;
     var data=mois.map(function(m){if(monthly[m]!=null){cumul+=monthly[m];return Math.min(Math.round(cumul*100)/100,bv);}return null;});
