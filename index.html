@@ -725,6 +725,8 @@ function procConso(raw, annee){
     }
     return new Array(n).fill('');
   };
+  // Log des vraies colonnes Grist (1 seul log par table)
+  if(!window._colsLogged) { window._colsLogged=true; console.log('[COLS]', JSON.stringify(Object.keys(raw))); }
 
   const TV_EXCL = ['Paiements','Comptabilis. coûts secondaires'];
   const tvs    = col('Texte_type_val_', 'Texte type val.');
@@ -1803,6 +1805,7 @@ function renderOMDrill(rows, sc, sd){
     {k:'m',l:'Montant (\u20ac)',n:true},
   ];
   var sorted=[...rows];
+  if(sorted.length) console.log('[OM-DRILL] row0='+JSON.stringify({cmdRef:sorted[0].cmdRef,cmd:sorted[0].cmd,refOM:sorted[0].refOM,cc:sorted[0].cc,tv:sorted[0].tv}));
   if(sc) sorted.sort(function(a,b){var av=a[sc]||'',bv=b[sc]||'';return(typeof av==='number'?(av-bv):String(av).localeCompare(String(bv)))*sd;});
   var tot=sorted.reduce(function(s,r){return s+r.m;},0);
   document.getElementById('om-dr-cnt').textContent=sorted.length+' ligne(s)';
