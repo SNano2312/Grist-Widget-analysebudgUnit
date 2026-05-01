@@ -750,6 +750,7 @@ function procConso(raw, annee){
       const fP=(fonds[i]||'').toString().trim();
       const pP=(progs[i]||'').toString().trim();
       if(fP) window.CONSO_PMT.push({annee,tv,
+        dt:(function(){var rawD=dts[i];if(typeof rawD==='number'&&rawD>0){var dd=new Date(rawD*1000);return String(dd.getDate()).padStart(2,'0')+'/'+String(dd.getMonth()+1).padStart(2,'0')+'/'+dd.getFullYear();}return(rawD||'').toString().trim();})(),
         f:(fours[i]||'').toString().trim(),
         m:N(monts[i]),
         p:(!pP||pP==='NA')?'Non Applicable':pP,
