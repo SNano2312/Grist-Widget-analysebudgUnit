@@ -202,7 +202,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
   <!-- TABLEAU CROISÉ -->
   <div id="vw-x" style="display:none">
     <div class="flt">
-      <div class="fg"><label>Année</label><select id="x-ann" ><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Année</label><select id="x-ann" ><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option><option value="comp">Comparaison 2025/2026</option></select></div>
       <div class="fg"><label>Programme</label><select id="x-prg" ><option value="">Tous</option></select></div>
       <div class="fg"><label>Fonds</label><select id="x-fnd" ><option value="">Tous</option></select></div>
       <div class="fg"><label>Centre de coûts</label><select id="x-cf"><option value="">Tous</option></select></div>
@@ -506,6 +506,7 @@ window.sortOMDrill = sortOMDrill;
 window.procNacres = procNacres;
 window.fillNacresFilters = fillNacresFilters;
 window.renderCross= renderCross;
+window.renderCrossComp = renderCrossComp;
 
 document.addEventListener('DOMContentLoaded', function(){
   const b = document.getElementById('btn-debug-inner');
@@ -1064,8 +1065,16 @@ function renderCross(){
   const fnd=document.getElementById('x-fnd').value;
   const cf=(document.getElementById('x-cf')||{}).value||'';
   const _pcCC=cf?new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;})):null;
+  const pi=window._PROG_INFO||{};
+
+  if(ann==='comp'){
+    // Mode comparaison 2025 vs 2026
+    renderCrossComp(prg, fnd, _pcCC, pi);
+    return;
+  }
+
   const rows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCC||_pcCC.has(b.prog)));
-  var _piX=window._PROG_INFO||{};
+  var _piX=pi;
   const cols=[
     {k:'cf',l:'Centre fin.'},{k:'annee',l:'Année'},{k:'prog',l:'Programme'},{k:'_nom',l:'Nom'},{k:'fonds',l:'Fonds'},
     {k:'bud',l:'Budget AE N',n:1},{k:'conso',l:'Conso AE N',n:1},{k:'nconso',l:'Non Conso',n:1},
@@ -1080,6 +1089,85 @@ function renderCross(){
       if(c.k==='_nom') return`<td>${esc((_piX[r.prog]&&_piX[r.prog].nom)||'-')}</td>`;
       return`<td style="${c.n?'text-align:right':''}">${c.n?fmt(r[c.k])+' €':esc(String(r[c.k]))}</td>`;
     }).join('')+'</tr>';
+  }).join('');
+}
+
+function renderCrossComp(prg, fnd, pcCC, pi){
+  // Construire un index {prog|fonds → {2025: {...}, 2026: {...}}}
+  var idx={};
+  BUDGET.forEach(function(b){
+    if(prg&&b.prog!==prg) return;
+    if(fnd&&b.fonds!==fnd) return;
+    if(pcCC&&!pcCC.has(b.prog)) return;
+    var k=b.prog+'||'+b.fonds;
+    if(!idx[k]) idx[k]={prog:b.prog,fonds:b.fonds,nom:(pi[b.prog]&&pi[b.prog].nom)||'-'};
+    idx[k][b.annee]=b;
+  });
+
+  var rows=Object.values(idx).sort(function(a,b){
+    return a.prog.localeCompare(b.prog)||a.fonds.localeCompare(b.fonds);
+  });
+
+  function evol(v25, v26){
+    if(!v25||v25===0) return v26>0?'+∞':'—';
+    var p=(v26-v25)/Math.abs(v25)*100;
+    var cl=p>10?'color:var(--ok)':p<-10?'color:var(--er)':'color:var(--mu)';
+    var sign=p>=0?'+':'';
+    return'<span style="'+cl+';font-size:.8em">'+sign+p.toFixed(1)+'%</span>';
+  }
+
+  function val(r, annee, k){
+    return r[annee]?r[annee][k]:0;
+  }
+
+  // En-têtes
+  document.getElementById('x-th').innerHTML=
+    '<tr>'+
+    '<th rowspan="2">Programme</th>'+
+    '<th rowspan="2">Nom</th>'+
+    '<th rowspan="2">Fonds</th>'+
+    '<th colspan="3" style="text-align:center;background:#eff6ff;border-bottom:1px solid var(--bd)">Budget AE</th>'+
+    '<th colspan="3" style="text-align:center;background:#f0fdf4;border-bottom:1px solid var(--bd)">Conso AE</th>'+
+    '<th colspan="3" style="text-align:center;background:#fff7ed;border-bottom:1px solid var(--bd)">Taux conso</th>'+
+    '<th colspan="3" style="text-align:center;background:#f5f3ff;border-bottom:1px solid var(--bd)">Payé (CP)</th>'+
+    '</tr>'+
+    '<tr>'+
+    '<th style="text-align:right;background:#eff6ff">2025</th><th style="text-align:right;background:#eff6ff">2026</th><th style="text-align:center;background:#eff6ff">Évol.</th>'+
+    '<th style="text-align:right;background:#f0fdf4">2025</th><th style="text-align:right;background:#f0fdf4">2026</th><th style="text-align:center;background:#f0fdf4">Évol.</th>'+
+    '<th style="text-align:right;background:#fff7ed">2025</th><th style="text-align:right;background:#fff7ed">2026</th><th style="text-align:center;background:#fff7ed">Écart</th>'+
+    '<th style="text-align:right;background:#f5f3ff">2025</th><th style="text-align:right;background:#f5f3ff">2026</th><th style="text-align:center;background:#f5f3ff">Évol.</th>'+
+    '</tr>';
+
+  document.getElementById('x-tb').innerHTML=rows.map(function(r){
+    var b25=val(r,2025,'bud'), b26=val(r,2026,'bud');
+    var c25=val(r,2025,'conso'), c26=val(r,2026,'conso');
+    var p25=b25>0?c25/b25*100:0, p26=b26>0?c26/b26*100:0;
+    var py25=val(r,2025,'paye'), py26=val(r,2026,'paye');
+    var cl25=p25>=90?'r-ok':p25>=50?'r-wn':'r-er';
+    var cl26=p26>=90?'r-ok':p26>=50?'r-wn':'r-er';
+    var dp=p26-p25;
+    var dpCl=dp>5?'color:var(--ok)':dp<-5?'color:var(--er)':'color:var(--mu)';
+    return'<tr>'+
+      '<td style="font-weight:600">'+esc(r.prog)+'</td>'+
+      '<td>'+esc(r.nom)+'</td>'+
+      '<td>'+esc(r.fonds)+'</td>'+
+      // Budget
+      '<td style="text-align:right;background:#eff6ff">'+fmt(b25)+' €</td>'+
+      '<td style="text-align:right;background:#eff6ff">'+fmt(b26)+' €</td>'+
+      '<td style="text-align:center;background:#eff6ff">'+evol(b25,b26)+'</td>'+
+      // Conso
+      '<td style="text-align:right;background:#f0fdf4">'+fmt(c25)+' €</td>'+
+      '<td style="text-align:right;background:#f0fdf4">'+fmt(c26)+' €</td>'+
+      '<td style="text-align:center;background:#f0fdf4">'+evol(c25,c26)+'</td>'+
+      // Taux
+      '<td style="text-align:right;background:#fff7ed"><span class="rb '+cl25+'">'+pct(p25)+'</span></td>'+
+      '<td style="text-align:right;background:#fff7ed"><span class="rb '+cl26+'">'+pct(p26)+'</span></td>'+
+      '<td style="text-align:center;background:#fff7ed"><span style="'+dpCl+';font-size:.8em">'+(dp>=0?'+':'')+dp.toFixed(1)+' pt</span></td>'+
+      // Payé
+      '<td style="text-align:right;background:#f5f3ff">'+fmt(py25)+' €</td>'+
+      '<td style="text-align:right;background:#f5f3ff">'+fmt(py26)+' €</td>'+
+      '<td style="text-align:center;background:#f5f3ff">'+evol(py25,py26)+'</td>'+
+    '</tr>';
   }).join('');
 }
 
