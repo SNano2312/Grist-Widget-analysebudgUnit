@@ -785,7 +785,7 @@ function procConso(raw, annee){
     const saisiPar=(col('Saisi_par','Saisi par')[i]||'').toString().trim();
     const refOM=(col('Reference','Référence')[i]||'').toString().trim();
     const cc=(col('Centre_de_couts')[i]||'').toString().trim();
-    const cmdRef=(col('Numero_de_piece_de_la_piece_de_reference')[i]||'').toString().trim();
+    const cmdRef=(function(){var v=col('Numero_de_piece_de_la_piece_de_reference')[i];if(!v&&v!==0)return'';var n=parseFloat(v);return isNaN(n)?String(v).trim():String(Math.round(n));})();
     CONSO.push({
       annee, tv,
       cf: CF_LABEL,
@@ -1675,8 +1675,17 @@ function renderOM(){
     // Vue par ordre de mission
     document.getElementById('om-chart-wrap').style.display='none';
     var byOM={};
+    // Étape 1 : construire un index cmdRef → refOM depuis les factures
+    var cmdRefToOM={};
     omRows.forEach(function(r){
-      var k=r.refOM||'(sans référence)';
+      if(r.refOM&&r.cmdRef) cmdRefToOM[r.cmdRef]=r.refOM;
+    });
+    omPMT.forEach(function(r){
+      if(r.refOM&&r.cmdRef) cmdRefToOM[r.cmdRef]=r.refOM;
+    });
+    // Étape 2 : remplir byOM en rattachant les CdA via cmdRef
+    omRows.forEach(function(r){
+      var k=r.refOM||(r.cmdRef&&cmdRefToOM[r.cmdRef])||'(sans référence)';
       if(!byOM[k]) byOM[k]={ref:k,prog:r.p,fonds:r.fo,annee:r.annee,eng:0,paye:0,fac:0};
       if(r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0&&r.tm==='Original') byOM[k].eng+=r.m;
       if(r.tv==='Paiements') byOM[k].paye+=r.m;
@@ -1766,12 +1775,17 @@ function openOMDrill(type, key1, key2, anneeF){
     // Drill par ordre de mission (refOM = key1)
     var refOM=key1;
     title='Détail ordre de mission : '+refOM;
-    var conso=CONSO.filter(function(r){
-      return r.saisiPar==='NOTILUSBUS'&&r.refOM===refOM;
-    });
-    var pmt=(window.CONSO_PMT||[]).filter(function(r){
-      return r.saisiPar==='NOTILUSBUS'&&r.refOM===refOM;
-    });
+    var refOM=key1;
+    title='Détail ordre de mission : '+refOM;
+    // Factures et autres lignes avec le refOM
+    // Étape 1 : trouver tous les cmdRef liés à cet OM via les factures
+    var facLignes=CONSO.filter(function(r){return r.saisiPar==='NOTILUSBUS'&&r.refOM===refOM;});
+    var pmtLignes=(window.CONSO_PMT||[]).filter(function(r){return r.saisiPar==='NOTILUSBUS'&&r.refOM===refOM;});
+    var cmdRefsOM=new Set(facLignes.concat(pmtLignes).map(function(r){return r.cmdRef;}).filter(Boolean));
+    // Étape 2 : inclure les CdA qui ont un cmdRef de cet OM
+    var cdaLignes=CONSO.filter(function(r){return r.saisiPar==='NOTILUSBUS'&&r.refOM===''&&cmdRefsOM.has(r.cmdRef);});
+    var conso=facLignes.concat(cdaLignes);
+    var pmt=pmtLignes;
     _omDrRows=conso.concat(pmt);
   }
 
