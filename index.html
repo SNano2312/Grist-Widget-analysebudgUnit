@@ -155,7 +155,8 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
 
   <!-- SYNTHÈSE -->
   <div id="vw-s">
-    <div class="flt"><div class="fg"><label>Année</label><select id="s-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div></div>
+    <div class="flt"><div class="fg"><label>Année</label><select id="s-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Centre de coûts</label><select id="s-cf"><option value="">Tous</option></select></div></div>
     <div id="synthese-content"></div>
   </div>
 
@@ -165,6 +166,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="fg"><label>Année</label><select id="h-ann" ><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
       <div class="fg"><label>Programme</label><select id="h-prg" ><option value="">Tous</option></select></div>
       <div class="fg"><label>Fonds</label><select id="h-fnd" ><option value="">Tous</option></select></div>
+      <div class="fg"><label>Centre de coûts</label><select id="h-cf"><option value="">Tous</option></select></div>
       <div class="fg"><label>Regrouper par</label>
         <select id="h-grp" >
           <option value="prog">Programme</option>
@@ -192,6 +194,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="fg"><label>Année</label><select id="e-ann" ><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option><option value="multi">Comparaison 2025/2026</option></select></div>
       <div class="fg"><label>Programme</label><select id="e-prg" ><option value="">Tous</option></select></div>
       <div class="fg"><label>Fonds</label><select id="e-fnd" ><option value="">Tous</option></select></div>
+      <div class="fg"><label>Centre de coûts</label><select id="e-cf"><option value="">Tous</option></select></div>
     </div>
     <div class="pnl"><div class="pnl-t">Évolution mensuelle des engagements et prévisions</div><canvas id="chLine"></canvas></div>
   </div>
@@ -202,6 +205,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="fg"><label>Année</label><select id="x-ann" ><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
       <div class="fg"><label>Programme</label><select id="x-prg" ><option value="">Tous</option></select></div>
       <div class="fg"><label>Fonds</label><select id="x-fnd" ><option value="">Tous</option></select></div>
+      <div class="fg"><label>Centre de coûts</label><select id="x-cf"><option value="">Tous</option></select></div>
     </div>
     <div class="tw"><table><thead id="x-th"></thead><tbody id="x-tb"></tbody></table></div>
     <div id="x-drv" style="display:none;margin-top:16px">
@@ -221,6 +225,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="fg"><label>Année</label><select id="f-ann2"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
       <div class="fg"><label>Programme</label><select id="f-prg2"><option value="">Tous</option></select></div>
       <div class="fg"><label>Fonds</label><select id="f-fnd2"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Centre de coûts</label><select id="f-cf"><option value="">Tous</option></select></div>
       <div class="fg"><label>Afficher</label><select id="f-top"><option value="10">Top 10</option><option value="20">Top 20</option><option value="50">Top 50</option></select></div>
     </div>
     <div class="tw"><table><thead id="f-th"></thead><tbody id="f-tb"></tbody></table></div>
@@ -232,6 +237,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="fg"><label>Année</label><select id="d-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
       <div class="fg"><label>Programme</label><select id="d-prg"><option value="">Tous</option></select></div>
       <div class="fg"><label>Fonds</label><select id="d-fnd"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Centre de coûts</label><select id="d-cf"><option value="">Tous</option></select></div>
     </div>
     <div class="ks" id="delai-kpis"></div>
     <div class="tw"><table><thead id="d-th"></thead><tbody id="d-tb"></tbody></table></div>
@@ -243,6 +249,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="fg"><label>Année</label><select id="r-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
       <div class="fg"><label>Programme</label><select id="r-prg"><option value="">Tous</option></select></div>
       <div class="fg"><label>Fonds</label><select id="r-fnd"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Centre de coûts</label><select id="r-cf"><option value="">Tous</option></select></div>
     </div>
     <div style="display:flex;gap:16px;flex-wrap:wrap">
       <div class="pnl" style="flex:1;min-width:280px"><div class="pnl-t">Par type de valeur</div><canvas id="chPie" style="max-height:260px"></canvas></div>
@@ -256,6 +263,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="fg"><label>Année</label><select id="om-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
       <div class="fg"><label>Programme</label><select id="om-prg"><option value="">Tous</option></select></div>
       <div class="fg"><label>Fonds</label><select id="om-fnd"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Centre de coûts</label><select id="om-cf"><option value="">Tous</option></select></div>
       <div class="fg"><label>Vue</label><select id="om-vue"><option value="prog">Par programme</option><option value="om">Par ordre de mission</option><option value="evol">Évolution mensuelle</option></select></div>
     </div>
     <div class="ks" id="om-kpis"></div>
@@ -278,6 +286,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="fg"><label>Année</label><select id="n-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
       <div class="fg"><label>Programme</label><select id="n-prg"><option value="">Tous</option></select></div>
       <div class="fg"><label>Fonds</label><select id="n-fnd"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Centre de coûts</label><select id="n-cf"><option value="">Tous</option></select></div>
       <div class="fg"><label>Type</label><select id="n-type"><option value="">Tous</option><option value="marche">Sur marché</option><option value="hors">Hors marché</option></select></div>
       <div class="fg"><label>Statut</label><select id="n-statut"><option value="">Toutes</option><option value="open">Non soldées</option><option value="closed">Soldées</option></select></div>
       <div class="fg"><label>Vue</label><select id="n-vue"><option value="nacres">Par code NACRES</option><option value="four">Par fournisseur</option><option value="detail">Détail lignes</option></select></div>
@@ -293,6 +302,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="fg"><label>Année</label><select id="o-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
       <div class="fg"><label>Programme</label><select id="o-prg"><option value="">Tous</option></select></div>
       <div class="fg"><label>Fonds</label><select id="o-fnd"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Centre de coûts</label><select id="o-cf"><option value="">Tous</option></select></div>
       <div class="fg"><label>Type</label><select id="o-type"><option value="">Tous</option><option value="marche">Sur marché</option><option value="hors">Hors marché</option></select></div>
     </div>
     <div class="ks" id="open-kpis"></div>
@@ -459,13 +469,13 @@ window.exportCSV = exportCSV;
 
 function attachListeners(){
   var pairs=[
-    [['h-ann','h-prg','h-fnd','h-grp'],renderHisto],
-    [['e-ann','e-prg','e-fnd'],renderEvol],
-    [['x-ann','x-prg','x-fnd'],renderCross],
-    [['f-ann2','f-prg2','f-fnd2','f-top'],renderFournisseurs],
-    [['d-ann','d-prg','d-fnd'],renderDelais],
-    [['r-ann','r-prg','r-fnd'],renderRepartition],
-    [['s-ann'],renderSynthese]
+    [['h-ann','h-prg','h-fnd','h-cf','h-grp'],renderHisto],
+    [['e-ann','e-prg','e-fnd','e-cf'],renderEvol],
+    [['x-ann','x-prg','x-fnd','x-cf'],renderCross],
+    [['f-ann2','f-prg2','f-fnd2','f-cf','f-top'],renderFournisseurs],
+    [['d-ann','d-prg','d-fnd','d-cf'],renderDelais],
+    [['r-ann','r-prg','r-fnd','r-cf'],renderRepartition],
+    [['s-ann','s-cf'],renderSynthese]
   ];
   pairs.forEach(function(pair){
     pair[0].forEach(function(id){
@@ -473,9 +483,9 @@ function attachListeners(){
       el.removeEventListener('change',pair[1]); el.addEventListener('change',pair[1]);
     });
   });
-  ['n-ann','n-prg','n-fnd','n-type','n-vue','n-statut'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderNacres);el.addEventListener('change',renderNacres);});
-  ['om-ann','om-prg','om-fnd','om-vue'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderOM);el.addEventListener('change',renderOM);});
-  ['o-ann','o-prg','o-fnd','o-type'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderOpenOrders);el.addEventListener('change',renderOpenOrders);});
+  ['n-ann','n-prg','n-fnd','n-cf','n-type','n-vue','n-statut'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderNacres);el.addEventListener('change',renderNacres);});
+  ['om-ann','om-prg','om-fnd','om-cf','om-vue'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderOM);el.addEventListener('change',renderOM);});
+  ['o-ann','o-prg','o-fnd','o-cf','o-type'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderOpenOrders);el.addEventListener('change',renderOpenOrders);});
 }
 window.closeDrill = closeDrill;
 window.sortD      = sortD;
@@ -738,7 +748,8 @@ function procConso(raw, annee){
         p:(!pP||pP==='NA')?'Non Applicable':pP,
         fo:fP,
         saisiPar:(col('Saisi_par','Saisi par')[i]||'').toString().trim(),
-        refOM:(col('Reference','R\u00e9f\u00e9rence')[i]||'').toString().trim()});
+        refOM:(col('Reference','R\u00e9f\u00e9rence')[i]||'').toString().trim(),
+        cmd:(cmds[i]||'').toString().trim()});
       continue;
     }
     if(!tv || TV_EXCL.includes(tv)) continue;
@@ -810,6 +821,13 @@ function fillFilters(){
     s.innerHTML='<option value="">Tous</option>';
     fonds.forEach(f=>s.innerHTML+=`<option value="${esc(f)}">${esc(f)}</option>`);
   });
+  // Centre financier (CF)
+  const cfs=[...new Set(BUDGET.map(b=>b.cf).filter(Boolean))].sort();
+  ['s-cf','h-cf','e-cf','x-cf','f-cf','d-cf','r-cf','om-cf','n-cf','o-cf'].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.innerHTML='<option value="">Tous</option>';
+    cfs.forEach(c=>el.innerHTML+=`<option value="${esc(c)}">${esc(c)}</option>`);
+  });
   attachListeners();
 }
 
@@ -837,9 +855,9 @@ function switchTab(t){
 // ════════════════════════════════════════
 // HISTOGRAMME
 // ════════════════════════════════════════
-function gf(){return{ann:document.getElementById('h-ann').value,prg:document.getElementById('h-prg').value,fnd:document.getElementById('h-fnd').value,grp:document.getElementById('h-grp').value}}
+function gf(){return{ann:document.getElementById('h-ann').value,prg:document.getElementById('h-prg').value,fnd:document.getElementById('h-fnd').value,cf:(document.getElementById('h-cf')||{}).value||'',grp:document.getElementById('h-grp').value}}
 function fb(f){
-  const rows=BUDGET.filter(b=>(!f.ann||parseInt(b.annee)===parseInt(f.ann))&&(!f.prg||b.prog===f.prg)&&(!f.fnd||b.fonds===f.fnd));
+  const rows=BUDGET.filter(b=>(!f.ann||parseInt(b.annee)===parseInt(f.ann))&&(!f.prg||b.prog===f.prg)&&(!f.fnd||b.fonds===f.fnd)&&(!f.cf||b.cf===f.cf));
   if(f.prg||f.fnd) console.log('[FILTER] prg='+f.prg+' fnd='+f.fnd+' -> '+rows.length+' lignes budget');
   if(f.prg&&BUDGET.length) console.log('[FILTER] BUDGET[0].prog='+JSON.stringify(BUDGET[0].prog)+' vs f.prg='+JSON.stringify(f.prg));
   return rows;
@@ -943,13 +961,14 @@ function renderEvol(){
   const ann=document.getElementById('e-ann').value;
   const prg=document.getElementById('e-prg').value;
   const fnd=document.getElementById('e-fnd').value;
+  const cf=(document.getElementById('e-cf')||{}).value||'';
   if(ann==='multi'){renderEvolMulti(prg,fnd);return;}
-  const budRows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd));
+  const budRows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!cf||b.cf===cf));
   const totBud=budRows.reduce((s,r)=>s+r.bud,0);
   const totCDA=budRows.reduce((s,r)=>s+r.cda,0);
   const totRAR=budRows.reduce((s,r)=>s+r.rar,0);
   // Commandes d'achat Original en priorité ; fallback Factures si aucune commande
-  const _filterBase=r=>(!ann||parseInt(r.annee)===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&r.tm==='Original';
+  const _filterBase=r=>(!ann||parseInt(r.annee)===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&(!cf||r.cf===cf)&&r.tm==='Original';
   let consoRows=CONSO.filter(r=>_filterBase(r)&&r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0);
   if(!consoRows.length){
     // Fallback : fonds consommé directement par factures (sans bon de commande)
@@ -1024,7 +1043,8 @@ function renderCross(){
   const ann=document.getElementById('x-ann').value;
   const prg=document.getElementById('x-prg').value;
   const fnd=document.getElementById('x-fnd').value;
-  const rows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd));
+  const cf=(document.getElementById('x-cf')||{}).value||'';
+  const rows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!cf||b.cf===cf));
   var _piX=window._PROG_INFO||{};
   const cols=[
     {k:'cf',l:'Centre fin.'},{k:'annee',l:'Année'},{k:'prog',l:'Programme'},{k:'_nom',l:'Nom'},{k:'fonds',l:'Fonds'},
@@ -1048,9 +1068,11 @@ function renderCross(){
 // ════════════════════════════════════
 function renderSynthese(){
   var ann=document.getElementById('s-ann').value;
+  var cf=document.getElementById('s-cf').value;
   var pi=window._PROG_INFO||{}, today=new Date(), byProg={};
   BUDGET.forEach(function(b){
     if(ann&&parseInt(b.annee)!==parseInt(ann)) return;
+    if(cf&&b.cf!==cf) return;
     if(!byProg[b.prog]) byProg[b.prog]={bud:0,conso:0,nconso:0,cda:0,rar:0,om:0,nf:0,paye:0,rap:0};
     var g=byProg[b.prog];
     g.bud+=b.bud;g.conso+=b.conso;g.nconso+=b.nconso;g.cda+=b.cda;g.rar+=b.rar;g.om+=b.om;g.nf+=b.nf;g.paye+=b.paye;g.rap+=b.rap;
@@ -1102,12 +1124,14 @@ function renderFournisseurs(){
   var ann=document.getElementById('f-ann2').value;
   var prg=document.getElementById('f-prg2').value;
   var fnd=document.getElementById('f-fnd2').value;
+  var cf=(document.getElementById('f-cf')||{}).value||'';
   var top=parseInt(document.getElementById('f-top').value)||10;
   var byF={};
   (window.CONSO_PMT||[]).forEach(function(r){
     if(ann&&parseInt(r.annee)!==parseInt(ann)) return;
     if(prg&&r.p!==prg) return;
     if(fnd&&r.fo!==fnd) return;
+    if(cf&&r.fo!==cf) return;
     if(r.m<=0) return;
     if(!byF[r.f]) byF[r.f]={m:0,n:0};
     byF[r.f].m+=r.m; byF[r.f].n++;
@@ -1128,6 +1152,7 @@ function renderDelais(){
   var ann=document.getElementById('d-ann').value;
   var prg=document.getElementById('d-prg').value;
   var fnd=document.getElementById('d-fnd').value;
+  var cf=(document.getElementById('d-cf')||{}).value||'';
   var cmdMap={};
   CONSO.forEach(function(r){
     if(!r.cmd) return;
@@ -1141,6 +1166,7 @@ function renderDelais(){
     if(ann&&parseInt(r.annee)!==parseInt(ann)) return;
     if(prg&&r.p!==prg) return;
     if(fnd&&r.fo!==fnd) return;
+    if(cf&&r.cf!==cf) return;
     if(!r.piecePrec) return;
     var cmd=cmdMap[r.piecePrec]; if(!cmd) return;
     var d=Math.round((pd(r.dt)-pd(cmd.dt))/(864e5));
@@ -1173,12 +1199,14 @@ function renderRepartition(){
   var ann=document.getElementById('r-ann').value;
   var prg=document.getElementById('r-prg').value;
   var fnd=document.getElementById('r-fnd').value;
+  var cf=(document.getElementById('r-cf')||{}).value||'';
   var all=CONSO.concat(window.CONSO_PMT||[]);
   var byCat={},byPC={};
   all.forEach(function(r){
     if(ann&&parseInt(r.annee)!==parseInt(ann)) return;
     if(prg&&r.p!==prg) return;
     if(fnd&&r.fo!==fnd) return;
+    if(cf&&r.cf!==cf) return;
     var cat=TV_RESS.indexOf(r.tv)>=0?'_ress':(TV_CATS[r.tv]?r.tv:null);
     if(!cat) return;
     byCat[cat]=(byCat[cat]||0)+r.m;
@@ -1557,6 +1585,7 @@ function renderOM(){
   var ann=document.getElementById('om-ann').value;
   var prg=document.getElementById('om-prg').value;
   var fnd=document.getElementById('om-fnd').value;
+  var cf=(document.getElementById('om-cf')||{}).value||'';
   var vue=document.getElementById('om-vue').value;
 
   // Filtrer les lignes missions
@@ -1565,6 +1594,7 @@ function renderOM(){
     if(ann&&String(r.annee)!==ann) return false;
     if(prg&&r.p!==prg) return false;
     if(fnd&&r.fo!==fnd) return false;
+    if(cf&&r.cf!==cf) return false;
     return true;
   });
 
@@ -1765,6 +1795,7 @@ function renderOMDrill(rows, sc, sd){
     {k:'cmd',l:'N\u00b0 CDA',link:'sifac'},
     {k:'f',l:'Fournisseur'},{k:'d',l:'D\u00e9signation'},
     {k:'p',l:'Programme'},{k:'fo',l:'Fonds'},
+    {k:'m',l:'Montant (\u20ac)',n:true},
   ];
   var sorted=[...rows];
   if(sc) sorted.sort(function(a,b){var av=a[sc]||'',bv=b[sc]||'';return(typeof av==='number'?(av-bv):String(av).localeCompare(String(bv)))*sd;});
