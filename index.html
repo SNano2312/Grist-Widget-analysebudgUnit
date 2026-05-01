@@ -1665,12 +1665,18 @@ function renderOM(){
     document.getElementById('om-th').innerHTML='<tr><th>Programme</th><th>Nom</th><th>Fonds</th><th style="text-align:right">Engag\u00e9</th><th style="text-align:right">Pay\u00e9</th><th style="text-align:right">Solde</th><th style="text-align:right">Nb OM</th></tr>';
     document.getElementById('om-tb').innerHTML=rows.map(function(r){
       var solde=r.eng-r.paye;
-      return'<tr style="cursor:pointer" onclick="openOMDrill(\'prog\','+JSON.stringify(r.prog)+','+JSON.stringify(r.fonds)+','+JSON.stringify(ann)+')"><td>'+esc(r.prog)+'</td><td>'+esc((pi[r.prog]&&pi[r.prog].nom)||'-')+'</td><td>'+esc(r.fonds)+'</td>'+
+      return'<tr style="cursor:pointer" data-drill="prog" data-key1="'+esc(r.prog)+'" data-key2="'+esc(r.fonds)+'" data-ann="'+esc(ann||'')+'" ><td>'+esc(r.prog)+'</td><td>'+esc((pi[r.prog]&&pi[r.prog].nom)||'-')+'</td><td>'+esc(r.fonds)+'</td>'+
         '<td style="text-align:right">'+fmt(r.eng)+' \u20ac</td>'+
         '<td style="text-align:right;color:var(--ok)">'+fmt(r.paye)+' \u20ac</td>'+
         '<td style="text-align:right;color:'+(solde>0?'var(--wn)':'inherit')+'">'+fmt(solde)+' \u20ac</td>'+
         '<td style="text-align:right">'+r.nb.size+'</td></tr>';
     }).join('');
+    // Attacher les listeners après rendu
+    document.querySelectorAll('#om-tb tr[data-drill]').forEach(function(tr){
+      tr.addEventListener('click',function(){
+        openOMDrill(this.dataset.drill,this.dataset.key1,this.dataset.key2||null,this.dataset.ann||null);
+      });
+    });
     var totEng=rows.reduce(function(s,r){return s+r.eng;},0);
     var totPay=rows.reduce(function(s,r){return s+r.paye;},0);
     document.getElementById('om-tf').innerHTML='<tr><td colspan="3">TOTAL</td><td style="text-align:right">'+fmt(totEng)+' \u20ac</td><td style="text-align:right">'+fmt(totPay)+' \u20ac</td><td style="text-align:right">'+fmt(totEng-totPay)+' \u20ac</td><td style="text-align:right">'+nbOMs+'</td></tr>';
@@ -1696,12 +1702,18 @@ function renderOM(){
     document.getElementById('om-tb').innerHTML=omList.map(function(r){
       var solde=r.eng-r.paye;
       var statut=Math.abs(solde)<0.01?'<span class="rb r-ok">Sold\u00e9</span>':'<span class="rb r-wn">En cours</span>';
-      return'<tr style="cursor:pointer" onclick="openOMDrill(\'om\','+JSON.stringify(r.ref)+',null,null)"><td style="font-weight:500">'+esc(r.ref)+'</td><td>'+r.annee+'</td><td>'+esc(r.prog)+'</td><td>'+esc(r.fonds)+'</td>'+
+      return'<tr style="cursor:pointer" data-drill="om" data-key1="'+esc(r.ref)+'" ><td style="font-weight:500">'+esc(r.ref)+'</td><td>'+r.annee+'</td><td>'+esc(r.prog)+'</td><td>'+esc(r.fonds)+'</td>'+
         '<td style="text-align:right">'+fmt(r.eng)+' \u20ac</td>'+
         '<td style="text-align:right;color:var(--ok)">'+fmt(r.paye)+' \u20ac</td>'+
         '<td style="text-align:right;color:'+(Math.abs(solde)>0.01?'var(--wn)':'inherit')+'">'+fmt(solde)+' \u20ac</td>'+
         '<td>'+statut+'</td></tr>';
     }).join('');
+    // Attacher les listeners après rendu
+    document.querySelectorAll('#om-tb tr[data-drill]').forEach(function(tr){
+      tr.addEventListener('click',function(){
+        openOMDrill(this.dataset.drill,this.dataset.key1,null,null);
+      });
+    });
     var totEng2=omList.reduce(function(s,r){return s+r.eng;},0);
     var totPay2=omList.reduce(function(s,r){return s+r.paye;},0);
     var nbSoldes=omList.filter(function(r){return Math.abs(r.eng-r.paye)<0.01;}).length;
