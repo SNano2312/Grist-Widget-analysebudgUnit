@@ -1569,7 +1569,7 @@ function renderOM(){
   }
 
   // Calcul des montants nets par type
-  var engages=omRows.filter(function(r){return r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0||r.tv==='R\u00e9servation de fonds';}).reduce(function(s,r){return s+r.m;},0);
+  var engages=omRows.filter(function(r){return r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0&&r.tm==='Original';}).reduce(function(s,r){return s+r.m;},0);
   // Paiements dans CONSO_PMT (séparés de CONSO)
   var omPMT=(window.CONSO_PMT||[]).filter(function(r){
     if(r.saisiPar!=='NOTILUSBUS') return false;
@@ -1579,7 +1579,7 @@ function renderOM(){
     return true;
   });
   var payes=omPMT.reduce(function(s,r){return s+(r.m>0?r.m:0);},0);
-  var factures=omRows.filter(function(r){return r.tv==='Factures';}).reduce(function(s,r){return s+r.m;},0);
+  var factures=omRows.filter(function(r){return r.tv==='Factures'&&r.tm==='Original';}).reduce(function(s,r){return s+r.m;},0);
   var enCours=engages-payes;
   var nbOMs=new Set(omRows.map(function(r){return r.refOM;}).filter(Boolean)).size;
 
@@ -1599,7 +1599,7 @@ function renderOM(){
     omRows.forEach(function(r){
       var k=r.p+'||'+r.fo;
       if(!byProg[k]) byProg[k]={prog:r.p,fonds:r.fo,eng:0,paye:0,fac:0,nb:new Set()};
-      if(r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0||r.tv==='R\u00e9servation de fonds') byProg[k].eng+=r.m;
+      if(r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0&&r.tm==='Original') byProg[k].eng+=r.m;
       // Paiements via CONSO_PMT — voir cumul global ci-dessus
       if(r.tv==='Factures') byProg[k].fac+=r.m;
       if(r.refOM) byProg[k].nb.add(r.refOM);
@@ -1631,7 +1631,7 @@ function renderOM(){
     omRows.forEach(function(r){
       var k=r.refOM||'(sans référence)';
       if(!byOM[k]) byOM[k]={ref:k,prog:r.p,fonds:r.fo,annee:r.annee,eng:0,paye:0,fac:0};
-      if(r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0||r.tv==='R\u00e9servation de fonds') byOM[k].eng+=r.m;
+      if(r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0&&r.tm==='Original') byOM[k].eng+=r.m;
       if(r.tv==='Paiements') byOM[k].paye+=r.m;
       if(r.tv==='Factures') byOM[k].fac+=r.m;
     });
@@ -1663,7 +1663,7 @@ function renderOM(){
     var monthly={};
     omRows.forEach(function(r){
       if(!r.dtMois) return;
-      if(r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")<0&&r.tv!=='R\u00e9servation de fonds') return;
+      if(r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")<0) return;
       if(r.tm!=='Original') return;
       monthly[r.dtMois]=(monthly[r.dtMois]||0)+r.m;
     });
