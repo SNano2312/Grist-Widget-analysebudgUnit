@@ -752,6 +752,7 @@ function procConso(raw, annee){
       const fP=(fonds[i]||'').toString().trim();
       const pP=(progs[i]||'').toString().trim();
       if(fP) window.CONSO_PMT.push({annee,tv,
+        dtMaj:(function(){var rawD=col('Date_de_mise_a_jour_Comptabilite_budgeta')[i];if(typeof rawD==='number'&&rawD>0){var dd=new Date(rawD*1000);return String(dd.getDate()).padStart(2,'0')+'/'+String(dd.getMonth()+1).padStart(2,'0')+'/'+dd.getFullYear();}return(rawD||'').toString().trim();})(),
         dt:(function(){var rawD=dts[i];if(typeof rawD==='number'&&rawD>0){var dd=new Date(rawD*1000);return String(dd.getDate()).padStart(2,'0')+'/'+String(dd.getMonth()+1).padStart(2,'0')+'/'+dd.getFullYear();}return(rawD||'').toString().trim();})(),
         dt:(function(){var rawD=dts[i];if(typeof rawD==='number'&&rawD>0){var dd=new Date(rawD*1000);return String(dd.getDate()).padStart(2,'0')+'/'+String(dd.getMonth()+1).padStart(2,'0')+'/'+dd.getFullYear();}return(rawD||'').toString().trim();})(),
         f:(fours[i]||'').toString().trim(),
@@ -795,6 +796,7 @@ function procConso(raw, annee){
     const saisiPar=(col('Saisi_par','Saisi par')[i]||'').toString().trim();
     const refOM=(col('Reference','Référence')[i]||'').toString().trim();
     const cc=(col('Centre_de_couts')[i]||'').toString().trim();
+    const pmtNum=(function(){var v=col('N_piece_de_paiement','Nº_pièce_de_paiement','No_piece_de_paiement')[i];if(!v&&v!==0)return'';var n=parseFloat(v);return isNaN(n)?String(v).trim():String(Math.round(n));})();
     const cmdRef=(function(){var v=col('Numero_de_piece_de_la_piece_de_reference')[i];if(!v&&v!==0)return'';var n=parseFloat(v);return isNaN(n)?String(v).trim():String(Math.round(n));})();
     CONSO.push({
       annee, tv,
@@ -802,7 +804,8 @@ function procConso(raw, annee){
       piecePrec,
       f:(fours[i]||'').toString().trim(),
       cmd:(cmds[i]||'').toString().trim(),
-      saisiPar, refOM, cc, cmdRef,
+      saisiPar, refOM, cc, cmdRef, pmtNum,
+      dtMaj:(function(){var rawD=col('Date_de_mise_a_jour_Comptabilite_budgeta')[i];if(typeof rawD==='number'&&rawD>0){var dd=new Date(rawD*1000);return String(dd.getDate()).padStart(2,'0')+'/'+String(dd.getMonth()+1).padStart(2,'0')+'/'+dd.getFullYear();}return(rawD||'').toString().trim();})(),
       d:(desigs[i]||'').toString().trim(),
       dt, dtMois,
       m:N(monts[i]),
@@ -1169,6 +1172,11 @@ function renderFournisseurs(){
 // ════════════════════════════════════════════════════════
 // DÉLAIS DE PAIEMENT (Factures vs Paiements par fournisseur)
 // ════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// DÉLAIS DE PAIEMENT
+// Basé sur Date de mise à jour Comptabilité budgétaire
+// Lien facture→paiement via Nº pièce de paiement
+// ════════════════════════════════════════════════════════
 function renderDelais(){
   var ann=document.getElementById('d-ann').value;
   var prg=document.getElementById('d-prg').value;
@@ -1177,36 +1185,37 @@ function renderDelais(){
   var statut=(document.getElementById('d-statut')||{}).value||'';
   var vue=(document.getElementById('d-vue')||{}).value||'four';
 
-  // Agréger paiements par fournisseur (toutes années, sans filtre annee/prog/fonds)
-  // Un paiement 2026 peut régler une facture 2025 → ne pas filtrer par période
-  var pmtByFour={};
+  // Index paiements : pmtNum → {dtMaj, montant}
+  var pmtIdx={};
   (window.CONSO_PMT||[]).forEach(function(r){
-    if(cf&&r.cc!==cf) return; // seul le filtre CC s'applique
-    if(!pmtByFour[r.f]) pmtByFour[r.f]=0;
-    if(r.m>0) pmtByFour[r.f]+=r.m;
+    if(!r.cmdRef) return;
+    if(!pmtIdx[r.cmdRef]) pmtIdx[r.cmdRef]={dtMaj:r.dtMaj||r.dt,m:0};
+    if(r.m>0) pmtIdx[r.cmdRef].m+=r.m;
   });
 
-  // Agréger factures par fournisseur
-  var facByFour={};
+  // Construire lignes de factures
+  var rows=[];
   CONSO.forEach(function(r){
-    if(r.tv!=='Factures') return;
-    if(ann&&parseInt(r.annee)!==parseInt(ann)) return;
+    if(r.tv!=='Factures'||r.tm!=='Original') return;
+    if(r.m<=0) return;
+    if(ann&&String(r.annee)!==ann) return;
     if(prg&&r.p!==prg) return;
     if(fnd&&r.fo!==fnd) return;
     if(cf&&r.cc!==cf) return;
-    if(r.m<=0) return;
-    if(!facByFour[r.f]) facByFour[r.f]={four:r.f,montant:0,nbFac:0,prog:r.p,fonds:r.fo,lignes:[]};
-    facByFour[r.f].montant+=r.m;
-    facByFour[r.f].nbFac++;
-    facByFour[r.f].lignes.push({annee:r.annee,prog:r.p,fonds:r.fo,dt:r.dt,montant:r.m,cc:r.cc});
-  });
-
-  // Calculer reste à payer
-  var rows=Object.values(facByFour).map(function(f){
-    var paye=pmtByFour[f.four]||0;
-    var reste=Math.max(0,f.montant-paye);
-    var estPaye=reste<0.05;
-    return Object.assign({},f,{paye:paye,reste:reste,estPaye:estPaye});
+    var pmt=r.pmtNum?pmtIdx[r.pmtNum]:null;
+    var paye=pmt?pmt.m:0;
+    var reste=Math.max(0,r.m-paye);
+    var estPaye=pmt&&reste<0.05;
+    var delai=null;
+    if(pmt&&r.dtMaj&&pmt.dtMaj){
+      function toDate(s){var p=(s||'').split('/');return p.length===3?new Date(+p[2],+p[1]-1,+p[0]):null;}
+      var d1=toDate(r.dtMaj),d2=toDate(pmt.dtMaj);
+      if(d1&&d2) delai=Math.round((d2-d1)/(864e5));
+    }
+    rows.push({annee:r.annee,prog:r.p,fonds:r.fo,four:r.f,
+               dtFac:r.dtMaj||r.dt,dtPmt:pmt?pmt.dtMaj:'',
+               montant:r.m,paye:paye,reste:reste,
+               estPaye:estPaye,delai:delai,cc:r.cc});
   });
 
   // Filtrer par statut
@@ -1218,77 +1227,100 @@ function renderDelais(){
   var totPaye=rows.reduce(function(s,r){return s+r.paye;},0);
   var totReste=rows.reduce(function(s,r){return s+r.reste;},0);
   var nbAttente=rows.filter(function(r){return!r.estPaye;}).length;
-  document.getElementById('delai-kpis').innerHTML=
-    '<div class="kpi"><div class="kl">Fournisseurs</div><div class="kv">'+rows.length+'</div></div>'+
-    '<div class="kpi"><div class="kl">Total facturé</div><div class="kv">'+fmt(totFac)+' €</div></div>'+
-    '<div class="kpi"><div class="kl">Total payé</div><div class="kv c-ok">'+fmt(totPaye)+' €</div></div>'+
-    '<div class="kpi"><div class="kl">Reste à payer</div><div class="kv '+(totReste>0.01?'c-er':'c-ok')+'">'+fmt(totReste)+' €</div></div>'+
-    '<div class="kpi"><div class="kl">En attente</div><div class="kv '+(nbAttente>0?'c-wn':'c-ok')+'">'+nbAttente+'</div></div>';
+  var delaisOk=rows.filter(function(r){return r.delai!==null&&r.delai>=0;}).map(function(r){return r.delai;});
+  var moyDelai=delaisOk.length?Math.round(delaisOk.reduce(function(s,d){return s+d;},0)/delaisOk.length):0;
+  var medDelai=delaisOk.length?delaisOk.slice().sort(function(a,b){return a-b;})[Math.floor(delaisOk.length/2)]:0;
 
-  rows.sort(function(a,b){return b.reste-a.reste;});
+  document.getElementById('delai-kpis').innerHTML=
+    '<div class="kpi"><div class="kl">Nb factures</div><div class="kv">'+rows.length+'</div></div>'+
+    '<div class="kpi"><div class="kl">Facturé</div><div class="kv">'+fmt(totFac)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">Payé</div><div class="kv c-ok">'+fmt(totPaye)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">Reste à payer</div><div class="kv '+(totReste>0.01?'c-er':'c-ok')+'">'+fmt(totReste)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">En attente</div><div class="kv '+(nbAttente>0?'c-wn':'c-ok')+'">'+nbAttente+'</div></div>'+
+    '<div class="kpi"><div class="kl">Délai moyen</div><div class="kv '+(moyDelai>30?'c-wn':'')+'">'+moyDelai+' j</div></div>'+
+    '<div class="kpi"><div class="kl">Délai médian</div><div class="kv">'+medDelai+' j</div></div>';
 
   if(vue==='four'){
+    // Vue par fournisseur
+    var byF={};
+    rows.forEach(function(r){
+      if(!byF[r.four]) byF[r.four]={four:r.four,nb:0,montant:0,paye:0,reste:0,delais:[],nbAttente:0};
+      byF[r.four].nb++;
+      byF[r.four].montant+=r.montant;
+      byF[r.four].paye+=r.paye;
+      byF[r.four].reste+=r.reste;
+      if(!r.estPaye) byF[r.four].nbAttente++;
+      if(r.delai!==null&&r.delai>=0) byF[r.four].delais.push(r.delai);
+    });
+    var fours=Object.values(byF).sort(function(a,b){return b.reste-a.reste||b.montant-a.montant;});
     document.getElementById('d-th').innerHTML=
-      '<tr><th>Fournisseur</th><th style="text-align:right">Nb factures</th>'+
+      '<tr><th>Fournisseur</th><th style="text-align:right">Nb fact.</th>'+
       '<th style="text-align:right">Facturé</th><th style="text-align:right">Payé</th>'+
-      '<th style="text-align:right">Reste à payer</th><th>Statut</th></tr>';
-    document.getElementById('d-tb').innerHTML=rows.map(function(r){
-      var badge=r.estPaye?'<span class="rb r-ok">Payé</span>':'<span class="rb r-wn">En attente</span>';
+      '<th style="text-align:right">Reste</th>'+
+      '<th style="text-align:right">Délai moy.</th><th style="text-align:right">Délai max</th>'+
+      '<th style="text-align:right">En attente</th></tr>';
+    document.getElementById('d-tb').innerHTML=fours.map(function(r){
+      var moy=r.delais.length?Math.round(r.delais.reduce(function(s,d){return s+d;},0)/r.delais.length):null;
+      var max=r.delais.length?Math.max.apply(null,r.delais):null;
+      var clMoy=moy>60?'c-er':moy>30?'c-wn':'';
       return'<tr>'+
         '<td>'+esc(r.four||'-')+'</td>'+
-        '<td style="text-align:right">'+r.nbFac+'</td>'+
+        '<td style="text-align:right">'+r.nb+'</td>'+
         '<td style="text-align:right">'+fmt(r.montant)+' €</td>'+
         '<td style="text-align:right;color:var(--ok)">'+fmt(r.paye)+' €</td>'+
         '<td style="text-align:right;font-weight:700;color:'+(r.reste>0.01?'var(--er)':'inherit')+'">'+fmt(r.reste)+' €</td>'+
-        '<td>'+badge+'</td>'+
+        '<td style="text-align:right" class="'+clMoy+'">'+(moy!==null?moy+' j':'-')+'</td>'+
+        '<td style="text-align:right">'+(max!==null?max+' j':'-')+'</td>'+
+        '<td style="text-align:right;color:'+(r.nbAttente>0?'var(--wn)':'inherit')+'">'+r.nbAttente+'</td>'+
       '</tr>';
     }).join('');
+    var tF=fours.reduce(function(s,r){return s+r.montant;},0);
+    var tP=fours.reduce(function(s,r){return s+r.paye;},0);
+    var tR=fours.reduce(function(s,r){return s+r.reste;},0);
     document.getElementById('d-tf').innerHTML=
-      '<tr><td>TOTAL</td><td></td>'+
-      '<td style="text-align:right">'+fmt(totFac)+' €</td>'+
-      '<td style="text-align:right;color:var(--ok)">'+fmt(totPaye)+' €</td>'+
-      '<td style="text-align:right;font-weight:700;color:var(--er)">'+fmt(totReste)+' €</td>'+
-      '<td></td></tr>';
+      '<tr><td>TOTAL ('+fours.length+')</td><td style="text-align:right">'+rows.length+'</td>'+
+      '<td style="text-align:right">'+fmt(tF)+' €</td>'+
+      '<td style="text-align:right">'+fmt(tP)+' €</td>'+
+      '<td style="text-align:right;font-weight:700;color:var(--er)">'+fmt(tR)+' €</td>'+
+      '<td colspan="3"></td></tr>';
   } else {
-    // Détail toutes les lignes de factures
-    var detail=[];
-    rows.forEach(function(r){
-      var pUnitaire=r.lignes.length>0?r.paye/r.lignes.length:0;
-      r.lignes.forEach(function(l){
-        var resteL=Math.max(0,l.montant-pUnitaire);
-        var estPayeL=resteL<0.05;
-        if(statut==='attente'&&estPayeL) return;
-        if(statut==='paye'&&!estPayeL) return;
-        detail.push(Object.assign({},l,{four:r.four,reste:resteL,estPaye:estPayeL}));
-      });
-    });
-    detail.sort(function(a,b){return b.reste-a.reste;});
+    // Vue détail lignes
+    var sorted=[...rows].sort(function(a,b){return(b.delai||0)-(a.delai||0);});
     document.getElementById('d-th').innerHTML=
       '<tr><th>Année</th><th>Programme</th><th>Fonds</th><th>Fournisseur</th>'+
-      '<th>Date fact.</th><th style="text-align:right">Montant</th><th>Statut</th></tr>';
-    document.getElementById('d-tb').innerHTML=detail.map(function(r){
+      '<th>Date fact.</th><th>Date pmt</th>'+
+      '<th style="text-align:right">Facturé</th>'+
+      '<th style="text-align:right">Payé</th>'+
+      '<th style="text-align:right">Reste</th>'+
+      '<th style="text-align:right">Délai</th><th>Statut</th></tr>';
+    document.getElementById('d-tb').innerHTML=sorted.map(function(r){
+      var clD=r.delai>60?'c-er':r.delai>30?'c-wn':'c-ok';
       var badge=r.estPaye?'<span class="rb r-ok">Payé</span>':'<span class="rb r-wn">En attente</span>';
       return'<tr>'+
         '<td>'+r.annee+'</td>'+
         '<td>'+esc(r.prog)+'</td>'+
         '<td>'+esc(r.fonds)+'</td>'+
         '<td>'+esc(r.four||'-')+'</td>'+
-        '<td>'+esc(r.dt)+'</td>'+
+        '<td>'+esc(r.dtFac)+'</td>'+
+        '<td>'+esc(r.dtPmt||'-')+'</td>'+
         '<td style="text-align:right">'+fmt(r.montant)+' €</td>'+
+        '<td style="text-align:right;color:var(--ok)">'+fmt(r.paye)+' €</td>'+
+        '<td style="text-align:right;font-weight:700;color:'+(r.reste>0.01?'var(--er)':'inherit')+'">'+fmt(r.reste)+' €</td>'+
+        '<td style="text-align:right" class="'+(r.delai!==null?clD:'')+'">'+(r.delai!==null?r.delai+' j':'-')+'</td>'+
         '<td>'+badge+'</td>'+
       '</tr>';
     }).join('');
-    document.getElementById('d-tf').innerHTML='';
+    var tF2=sorted.reduce(function(s,r){return s+r.montant;},0);
+    var tR2=sorted.reduce(function(s,r){return s+r.reste;},0);
+    document.getElementById('d-tf').innerHTML=
+      '<tr><td colspan="6">TOTAL</td>'+
+      '<td style="text-align:right">'+fmt(tF2)+' €</td><td></td>'+
+      '<td style="text-align:right;font-weight:700;color:var(--er)">'+fmt(tR2)+' €</td>'+
+      '<td colspan="2"></td></tr>';
   }
 }
 
 
-// ════════════════════════════════════
-// RÉPARTITION
-// ════════════════════════════════════
-var _pie=null;
-var TV_CATS={'Paiements':{label:'Paiements',color:'#2563eb'},'Factures':{label:'Factures en cours',color:'#16a34a'},"Commandes d'achat":{label:'Commandes en cours',color:'#d97706'},'Pi\u00e8ces pr\u00e9enregistr\u00e9es':{label:'Pi\u00e8ces pr\u00e9enreg.',color:'#7c3aed'}};
-var TV_RESS=[];
 function renderRepartition(){
   var ann=document.getElementById('r-ann').value;
   var prg=document.getElementById('r-prg').value;
