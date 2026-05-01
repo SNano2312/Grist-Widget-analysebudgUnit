@@ -1761,10 +1761,10 @@ function closeOMDrill(){
 function renderOMDrill(rows, sc, sd){
   var cols=[
     {k:'annee',l:'Ann\u00e9e'},{k:'tv',l:'Type valeur'},{k:'tm',l:'Type montant'},
-    {k:'refOM',l:'N\u00b0 OM'},{k:'dt',l:'Date'},
+    {k:'refOM',l:'N\u00b0 OM',link:'notilus'},{k:'dt',l:'Date'},
+    {k:'cmd',l:'N\u00b0 CDA',link:'sifac'},
     {k:'f',l:'Fournisseur'},{k:'d',l:'D\u00e9signation'},
     {k:'p',l:'Programme'},{k:'fo',l:'Fonds'},
-    {k:'m',l:'Montant (\u20ac)',n:true},
   ];
   var sorted=[...rows];
   if(sc) sorted.sort(function(a,b){var av=a[sc]||'',bv=b[sc]||'';return(typeof av==='number'?(av-bv):String(av).localeCompare(String(bv)))*sd;});
@@ -1773,16 +1773,19 @@ function renderOMDrill(rows, sc, sd){
   document.getElementById('om-dr-th').innerHTML='<tr>'+cols.map(function(c){
     return'<th onclick="sortOMDrill(\''+c.k+'\')" style="cursor:pointer">'+c.l+(sc===c.k?(sd===1?' \u25b2':' \u25bc'):'')+'</th>';
   }).join('')+'</tr>';
+  var sapBase="https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&/C_PurchaseOrderTP(PurchaseOrder='";
+  var sapSuf="',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)";
+  var notilusBase='https://esr-inrae.notilus-pio.cegid.cloud/#/OD/';
   document.getElementById('om-dr-tb').innerHTML=sorted.map(function(r){
     return'<tr>'+cols.map(function(c){
-      var v=r[c.k]||'-';
       if(c.n) return'<td style="text-align:right;font-weight:'+(r.m<0?'700':'400')+';color:'+(r.m<0?'var(--er)':'inherit')+'">'+fmt(r.m)+' \u20ac</td>';
-      return'<td>'+esc(String(v))+'</td>';
+      var v=r[c.k]||'';
+      if(c.link==='sifac'){if(!v)return'<td>-</td>';var url=sapBase+encodeURIComponent(v)+sapSuf;return'<td><a href="'+url+'" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">'+esc(v)+'</a></td>';}
+      if(c.link==='notilus'){if(!v)return'<td>-</td>';var numOM=v.replace(/^[A-Z]+-/i,'');var url=notilusBase+encodeURIComponent(numOM);return'<td><a href="'+url+'" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">'+esc(v)+'</a></td>';}
+      return'<td>'+esc(String(v||'-'))+'</td>';
     }).join('')+'</tr>';
   }).join('');
-  document.getElementById('om-dr-tf').innerHTML='<tr>'+cols.map(function(c,i){
-    return i===cols.length-1?'<td style="text-align:right">'+fmt(tot)+' \u20ac</td>':i===0?'<td>TOTAL</td>':'<td></td>';
-  }).join('')+'</tr>';
+  document.getElementById('om-dr-tf').innerHTML='<tr>'+cols.map(function(c,i){return i===cols.length-1?'<td style="text-align:right">'+fmt(tot)+' \u20ac</td>':i===0?'<td>TOTAL</td>':'<td></td>';}).join('')+'</tr>';
 }
 
 function sortOMDrill(col){
