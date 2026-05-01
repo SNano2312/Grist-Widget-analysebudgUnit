@@ -145,7 +145,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <div class="tab" id="tab-e" onclick="switchTab('e')">📈 Évolution</div>
     <div class="tab" id="tab-x" onclick="switchTab('x')">🔀 Tableau croisé</div>
     <div class="tab" id="tab-f" onclick="switchTab('f')">🏆 Top fournisseurs</div>
-    <div class="tab" id="tab-d" onclick="switchTab('d')">⏱ Délais</div>
+    <div class="tab" id="tab-d" onclick="switchTab('d')">⏱ Délais de paiement</div>
     <div class="tab" id="tab-r" onclick="switchTab('r')">📊 Répartition</div>
     <div class="tab" id="tab-nacres" onclick="switchTab('nacres')">🧪 NACRES</div>
     <div class="tab" id="tab-om" onclick="switchTab('om')">✈️ Missions</div>
@@ -238,9 +238,11 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="fg"><label>Programme</label><select id="d-prg"><option value="">Tous</option></select></div>
       <div class="fg"><label>Fonds</label><select id="d-fnd"><option value="">Tous</option></select></div>
       <div class="fg"><label>Centre de coûts</label><select id="d-cf"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Statut</label><select id="d-statut"><option value="">Tous</option><option value="attente">En attente</option><option value="paye">Payés</option></select></div>
+      <div class="fg"><label>Vue</label><select id="d-vue"><option value="four">Par fournisseur</option><option value="detail">Détail factures</option></select></div>
     </div>
     <div class="ks" id="delai-kpis"></div>
-    <div class="tw"><table><thead id="d-th"></thead><tbody id="d-tb"></tbody></table></div>
+    <div class="tw"><table><thead id="d-th"></thead><tbody id="d-tb"></tbody><tfoot id="d-tf"></tfoot></table></div>
   </div>
 
   <!-- RÉPARTITION -->
@@ -473,7 +475,7 @@ function attachListeners(){
     [['e-ann','e-prg','e-fnd','e-cf'],renderEvol],
     [['x-ann','x-prg','x-fnd','x-cf'],renderCross],
     [['f-ann2','f-prg2','f-fnd2','f-cf','f-top'],renderFournisseurs],
-    [['d-ann','d-prg','d-fnd','d-cf'],renderDelais],
+    [['d-ann','d-prg','d-fnd','d-cf','d-statut','d-vue'],renderDelais],
     [['r-ann','r-prg','r-fnd','r-cf'],renderRepartition],
     [['s-ann','s-cf'],renderSynthese]
   ];
@@ -750,6 +752,7 @@ function procConso(raw, annee){
       const fP=(fonds[i]||'').toString().trim();
       const pP=(progs[i]||'').toString().trim();
       if(fP) window.CONSO_PMT.push({annee,tv,
+        dt:(function(){var rawD=dts[i];if(typeof rawD==='number'&&rawD>0){var dd=new Date(rawD*1000);return String(dd.getDate()).padStart(2,'0')+'/'+String(dd.getMonth()+1).padStart(2,'0')+'/'+dd.getFullYear();}return(rawD||'').toString().trim();})(),
         dt:(function(){var rawD=dts[i];if(typeof rawD==='number'&&rawD>0){var dd=new Date(rawD*1000);return String(dd.getDate()).padStart(2,'0')+'/'+String(dd.getMonth()+1).padStart(2,'0')+'/'+dd.getFullYear();}return(rawD||'').toString().trim();})(),
         f:(fours[i]||'').toString().trim(),
         m:N(monts[i]),
@@ -1163,53 +1166,125 @@ function renderFournisseurs(){
 // ════════════════════════════════════
 // DÉLAIS
 // ════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// DÉLAIS DE PAIEMENT (Factures vs Paiements par fournisseur)
+// ════════════════════════════════════════════════════════
 function renderDelais(){
   var ann=document.getElementById('d-ann').value;
   var prg=document.getElementById('d-prg').value;
   var fnd=document.getElementById('d-fnd').value;
   var cf=(document.getElementById('d-cf')||{}).value||'';
-  var cmdMap={};
-  CONSO.forEach(function(r){
-    if(!r.cmd) return;
-    var tv2=r.tv.replace(/\u2019/g,"'");
-    if(tv2==="Commandes d'achat"&&!cmdMap[r.cmd]) cmdMap[r.cmd]={dt:r.dt,p:r.p,fo:r.fo,f:r.f,annee:r.annee};
+  var statut=(document.getElementById('d-statut')||{}).value||'';
+  var vue=(document.getElementById('d-vue')||{}).value||'four';
+
+  // Agréger paiements par fournisseur
+  var pmtByFour={};
+  (window.CONSO_PMT||[]).forEach(function(r){
+    if(ann&&parseInt(r.annee)!==parseInt(ann)) return;
+    if(prg&&r.p!==prg) return;
+    if(fnd&&r.fo!==fnd) return;
+    if(cf&&r.cc!==cf) return;
+    if(!pmtByFour[r.f]) pmtByFour[r.f]=0;
+    if(r.m>0) pmtByFour[r.f]+=r.m;
   });
-  function pd(s){var p=(s||'').split('/');return p.length===3?new Date(+p[2],+p[1]-1,+p[0]):new Date(s);}
-  var rows=[];
+
+  // Agréger factures par fournisseur
+  var facByFour={};
   CONSO.forEach(function(r){
     if(r.tv!=='Factures') return;
     if(ann&&parseInt(r.annee)!==parseInt(ann)) return;
     if(prg&&r.p!==prg) return;
     if(fnd&&r.fo!==fnd) return;
     if(cf&&r.cc!==cf) return;
-    if(!r.piecePrec) return;
-    var cmd=cmdMap[r.piecePrec]; if(!cmd) return;
-    var d=Math.round((pd(r.dt)-pd(cmd.dt))/(864e5));
-    if(d>=0) rows.push({annee:r.annee,prog:r.p,fonds:r.fo,four:r.f||cmd.f,dCmd:cmd.dt,dFac:r.dt,delai:d,m:r.m});
+    if(r.m<=0) return;
+    if(!facByFour[r.f]) facByFour[r.f]={four:r.f,montant:0,nbFac:0,prog:r.p,fonds:r.fo,lignes:[]};
+    facByFour[r.f].montant+=r.m;
+    facByFour[r.f].nbFac++;
+    facByFour[r.f].lignes.push({annee:r.annee,prog:r.p,fonds:r.fo,dt:r.dt,montant:r.m,cc:r.cc});
   });
-  var total=rows.length;
-  var moy=total?Math.round(rows.reduce(function(s,r){return s+r.delai;},0)/total):0;
-  var srt=[...rows].sort(function(a,b){return a.delai-b.delai;});
-  var med=total?srt[Math.floor(total/2)].delai:0;
+
+  // Calculer reste à payer
+  var rows=Object.values(facByFour).map(function(f){
+    var paye=pmtByFour[f.four]||0;
+    var reste=Math.max(0,f.montant-paye);
+    var estPaye=reste<0.05;
+    return Object.assign({},f,{paye:paye,reste:reste,estPaye:estPaye});
+  });
+
+  // Filtrer par statut
+  if(statut==='attente') rows=rows.filter(function(r){return!r.estPaye;});
+  if(statut==='paye') rows=rows.filter(function(r){return r.estPaye;});
+
+  // KPIs
+  var totFac=rows.reduce(function(s,r){return s+r.montant;},0);
+  var totPaye=rows.reduce(function(s,r){return s+r.paye;},0);
+  var totReste=rows.reduce(function(s,r){return s+r.reste;},0);
+  var nbAttente=rows.filter(function(r){return!r.estPaye;}).length;
   document.getElementById('delai-kpis').innerHTML=
-    '<div class="kpi"><div class="kl">Délai moyen</div><div class="kv">'+moy+' j</div></div>'+
-    '<div class="kpi"><div class="kl">Délai médian</div><div class="kv">'+med+' j</div></div>'+
-    '<div class="kpi"><div class="kl">&le; 30 j</div><div class="kv c-ok">'+rows.filter(function(r){return r.delai<=30;}).length+'</div></div>'+
-    '<div class="kpi"><div class="kl">&gt; 90 j</div><div class="kv c-er">'+rows.filter(function(r){return r.delai>90;}).length+'</div></div>'+
-    '<div class="kpi"><div class="kl">Factures</div><div class="kv">'+total+'</div></div>';
-  document.getElementById('d-th').innerHTML='<tr><th>Année</th><th>Programme</th><th>Fonds</th><th>Fournisseur</th><th>Date Cde</th><th>Date Fact.</th><th style="text-align:right">Délai (j)</th><th style="text-align:right">Montant</th></tr>';
-  document.getElementById('d-tb').innerHTML=[...rows].sort(function(a,b){return b.delai-a.delai;}).map(function(r){
-    var cl=r.delai>90?'c-er':r.delai>30?'c-wn':'c-ok';
-    return'<tr><td>'+r.annee+'</td><td>'+esc(r.prog)+'</td><td>'+esc(r.fonds)+'</td><td>'+esc(r.four)+'</td><td>'+r.dCmd+'</td><td>'+r.dFac+'</td><td style="text-align:right;font-weight:700" class="'+cl+'">'+r.delai+'</td><td style="text-align:right">'+fmt(r.m)+' €</td></tr>';
-  }).join('');
+    '<div class="kpi"><div class="kl">Fournisseurs</div><div class="kv">'+rows.length+'</div></div>'+
+    '<div class="kpi"><div class="kl">Total facturé</div><div class="kv">'+fmt(totFac)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">Total payé</div><div class="kv c-ok">'+fmt(totPaye)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">Reste à payer</div><div class="kv '+(totReste>0.01?'c-er':'c-ok')+'">'+fmt(totReste)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">En attente</div><div class="kv '+(nbAttente>0?'c-wn':'c-ok')+'">'+nbAttente+'</div></div>';
+
+  rows.sort(function(a,b){return b.reste-a.reste;});
+
+  if(vue==='four'){
+    document.getElementById('d-th').innerHTML=
+      '<tr><th>Fournisseur</th><th style="text-align:right">Nb factures</th>'+
+      '<th style="text-align:right">Facturé</th><th style="text-align:right">Payé</th>'+
+      '<th style="text-align:right">Reste à payer</th><th>Statut</th></tr>';
+    document.getElementById('d-tb').innerHTML=rows.map(function(r){
+      var badge=r.estPaye?'<span class="rb r-ok">Payé</span>':'<span class="rb r-wn">En attente</span>';
+      return'<tr>'+
+        '<td>'+esc(r.four||'-')+'</td>'+
+        '<td style="text-align:right">'+r.nbFac+'</td>'+
+        '<td style="text-align:right">'+fmt(r.montant)+' €</td>'+
+        '<td style="text-align:right;color:var(--ok)">'+fmt(r.paye)+' €</td>'+
+        '<td style="text-align:right;font-weight:700;color:'+(r.reste>0.01?'var(--er)':'inherit')+'">'+fmt(r.reste)+' €</td>'+
+        '<td>'+badge+'</td>'+
+      '</tr>';
+    }).join('');
+    document.getElementById('d-tf').innerHTML=
+      '<tr><td>TOTAL</td><td></td>'+
+      '<td style="text-align:right">'+fmt(totFac)+' €</td>'+
+      '<td style="text-align:right;color:var(--ok)">'+fmt(totPaye)+' €</td>'+
+      '<td style="text-align:right;font-weight:700;color:var(--er)">'+fmt(totReste)+' €</td>'+
+      '<td></td></tr>';
+  } else {
+    // Détail toutes les lignes de factures
+    var detail=[];
+    rows.forEach(function(r){
+      var pUnitaire=r.lignes.length>0?r.paye/r.lignes.length:0;
+      r.lignes.forEach(function(l){
+        var resteL=Math.max(0,l.montant-pUnitaire);
+        var estPayeL=resteL<0.05;
+        if(statut==='attente'&&estPayeL) return;
+        if(statut==='paye'&&!estPayeL) return;
+        detail.push(Object.assign({},l,{four:r.four,reste:resteL,estPaye:estPayeL}));
+      });
+    });
+    detail.sort(function(a,b){return b.reste-a.reste;});
+    document.getElementById('d-th').innerHTML=
+      '<tr><th>Année</th><th>Programme</th><th>Fonds</th><th>Fournisseur</th>'+
+      '<th>Date fact.</th><th style="text-align:right">Montant</th><th>Statut</th></tr>';
+    document.getElementById('d-tb').innerHTML=detail.map(function(r){
+      var badge=r.estPaye?'<span class="rb r-ok">Payé</span>':'<span class="rb r-wn">En attente</span>';
+      return'<tr>'+
+        '<td>'+r.annee+'</td>'+
+        '<td>'+esc(r.prog)+'</td>'+
+        '<td>'+esc(r.fonds)+'</td>'+
+        '<td>'+esc(r.four||'-')+'</td>'+
+        '<td>'+esc(r.dt)+'</td>'+
+        '<td style="text-align:right">'+fmt(r.montant)+' €</td>'+
+        '<td>'+badge+'</td>'+
+      '</tr>';
+    }).join('');
+    document.getElementById('d-tf').innerHTML='';
+  }
 }
 
-// ════════════════════════════════════
-// RÉPARTITION
-// ════════════════════════════════════
-var _pie=null;
-var TV_CATS={'Paiements':{label:'Paiements',color:'#2563eb'},'Factures':{label:'Factures en cours',color:'#16a34a'},"Commandes d'achat":{label:'Commandes en cours',color:'#d97706'},'Pièces préenregistrées':{label:'Pièces préenreg.',color:'#7c3aed'}};
-var TV_RESS=[];
+
 function renderRepartition(){
   var ann=document.getElementById('r-ann').value;
   var prg=document.getElementById('r-prg').value;
