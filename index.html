@@ -749,7 +749,9 @@ function procConso(raw, annee){
         fo:fP,
         saisiPar:(col('Saisi_par','Saisi par')[i]||'').toString().trim(),
         refOM:(col('Reference','R\u00e9f\u00e9rence')[i]||'').toString().trim(),
-        cmd:(cmds[i]||'').toString().trim()});
+        cmd:(cmds[i]||'').toString().trim(),
+        cc:(col('Centre_de_couts','Centre_de_co_ts','Centre de co\u00fbts','Centre de couts')[i]||'').toString().trim(),
+        cmdRef:(col('Numero_de_piece_de_la_piece_de_reference','Num\u00e9ro de pi\u00e8ce de la pi\u00e8ce de r\u00e9f\u00e9rence')[i]||'').toString().trim()});
       continue;
     }
     if(!tv || TV_EXCL.includes(tv)) continue;
@@ -821,8 +823,8 @@ function fillFilters(){
     s.innerHTML='<option value="">Tous</option>';
     fonds.forEach(f=>s.innerHTML+=`<option value="${esc(f)}">${esc(f)}</option>`);
   });
-  // Centre financier (CF)
-  const cfs=[...new Set(BUDGET.map(b=>b.cf).filter(Boolean))].sort();
+  // Centre de coûts (CC) - format 0496C0001
+  const cfs=[...new Set(CONSO.map(r=>r.cc).filter(Boolean))].sort();
   ['s-cf','h-cf','e-cf','x-cf','f-cf','d-cf','r-cf','om-cf','n-cf','o-cf'].forEach(id=>{
     const el=document.getElementById(id); if(!el) return;
     el.innerHTML='<option value="">Tous</option>';
@@ -857,7 +859,8 @@ function switchTab(t){
 // ════════════════════════════════════════
 function gf(){return{ann:document.getElementById('h-ann').value,prg:document.getElementById('h-prg').value,fnd:document.getElementById('h-fnd').value,cf:(document.getElementById('h-cf')||{}).value||'',grp:document.getElementById('h-grp').value}}
 function fb(f){
-  const rows=BUDGET.filter(b=>(!f.ann||parseInt(b.annee)===parseInt(f.ann))&&(!f.prg||b.prog===f.prg)&&(!f.fnd||b.fonds===f.fnd)&&(!f.cf||b.cf===f.cf));
+  const _pcCC3=f.cf?new Set(CONSO.filter(function(r){return r.cc===f.cf;}).map(function(r){return r.p;})):null;
+  const rows=BUDGET.filter(b=>(!f.ann||parseInt(b.annee)===parseInt(f.ann))&&(!f.prg||b.prog===f.prg)&&(!f.fnd||b.fonds===f.fnd)&&(!_pcCC3||_pcCC3.has(b.prog)));
   if(f.prg||f.fnd) console.log('[FILTER] prg='+f.prg+' fnd='+f.fnd+' -> '+rows.length+' lignes budget');
   if(f.prg&&BUDGET.length) console.log('[FILTER] BUDGET[0].prog='+JSON.stringify(BUDGET[0].prog)+' vs f.prg='+JSON.stringify(f.prg));
   return rows;
@@ -968,7 +971,7 @@ function renderEvol(){
   const totCDA=budRows.reduce((s,r)=>s+r.cda,0);
   const totRAR=budRows.reduce((s,r)=>s+r.rar,0);
   // Commandes d'achat Original en priorité ; fallback Factures si aucune commande
-  const _filterBase=r=>(!ann||parseInt(r.annee)===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&(!cf||r.cf===cf)&&r.tm==='Original';
+  const _filterBase=r=>(!ann||parseInt(r.annee)===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&(!cf||r.cc===cf)&&r.tm==='Original';
   let consoRows=CONSO.filter(r=>_filterBase(r)&&r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0);
   if(!consoRows.length){
     // Fallback : fonds consommé directement par factures (sans bon de commande)
@@ -1044,7 +1047,8 @@ function renderCross(){
   const prg=document.getElementById('x-prg').value;
   const fnd=document.getElementById('x-fnd').value;
   const cf=(document.getElementById('x-cf')||{}).value||'';
-  const rows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!cf||b.cf===cf));
+  const _pcCC=cf?new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;})):null;
+  const rows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCC||_pcCC.has(b.prog)));
   var _piX=window._PROG_INFO||{};
   const cols=[
     {k:'cf',l:'Centre fin.'},{k:'annee',l:'Année'},{k:'prog',l:'Programme'},{k:'_nom',l:'Nom'},{k:'fonds',l:'Fonds'},
@@ -1070,9 +1074,10 @@ function renderSynthese(){
   var ann=document.getElementById('s-ann').value;
   var cf=document.getElementById('s-cf').value;
   var pi=window._PROG_INFO||{}, today=new Date(), byProg={};
+  var progsCC=cf?new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;})):null;
   BUDGET.forEach(function(b){
     if(ann&&parseInt(b.annee)!==parseInt(ann)) return;
-    if(cf&&b.cf!==cf) return;
+    if(progsCC&&!progsCC.has(b.prog)) return;
     if(!byProg[b.prog]) byProg[b.prog]={bud:0,conso:0,nconso:0,cda:0,rar:0,om:0,nf:0,paye:0,rap:0};
     var g=byProg[b.prog];
     g.bud+=b.bud;g.conso+=b.conso;g.nconso+=b.nconso;g.cda+=b.cda;g.rar+=b.rar;g.om+=b.om;g.nf+=b.nf;g.paye+=b.paye;g.rap+=b.rap;
@@ -1131,7 +1136,7 @@ function renderFournisseurs(){
     if(ann&&parseInt(r.annee)!==parseInt(ann)) return;
     if(prg&&r.p!==prg) return;
     if(fnd&&r.fo!==fnd) return;
-    if(cf&&r.fo!==cf) return;
+    if(cf&&r.cc!==cf) return;
     if(r.m<=0) return;
     if(!byF[r.f]) byF[r.f]={m:0,n:0};
     byF[r.f].m+=r.m; byF[r.f].n++;
@@ -1166,7 +1171,7 @@ function renderDelais(){
     if(ann&&parseInt(r.annee)!==parseInt(ann)) return;
     if(prg&&r.p!==prg) return;
     if(fnd&&r.fo!==fnd) return;
-    if(cf&&r.cf!==cf) return;
+    if(cf&&r.cc!==cf) return;
     if(!r.piecePrec) return;
     var cmd=cmdMap[r.piecePrec]; if(!cmd) return;
     var d=Math.round((pd(r.dt)-pd(cmd.dt))/(864e5));
@@ -1206,7 +1211,7 @@ function renderRepartition(){
     if(ann&&parseInt(r.annee)!==parseInt(ann)) return;
     if(prg&&r.p!==prg) return;
     if(fnd&&r.fo!==fnd) return;
-    if(cf&&r.cf!==cf) return;
+    if(cf&&r.cc!==cf) return;
     var cat=TV_RESS.indexOf(r.tv)>=0?'_ress':(TV_CATS[r.tv]?r.tv:null);
     if(!cat) return;
     byCat[cat]=(byCat[cat]||0)+r.m;
@@ -1594,7 +1599,7 @@ function renderOM(){
     if(ann&&String(r.annee)!==ann) return false;
     if(prg&&r.p!==prg) return false;
     if(fnd&&r.fo!==fnd) return false;
-    if(cf&&r.cf!==cf) return false;
+    if(cf&&r.cc!==cf) return false;
     return true;
   });
 
@@ -1792,7 +1797,7 @@ function renderOMDrill(rows, sc, sd){
   var cols=[
     {k:'annee',l:'Ann\u00e9e'},{k:'tv',l:'Type valeur'},{k:'tm',l:'Type montant'},
     {k:'refOM',l:'N\u00b0 OM',link:'notilus'},{k:'dt',l:'Date'},
-    {k:'cmd',l:'N\u00b0 CDA',link:'sifac'},
+    {k:'cmdRef',l:'N\u00b0 CDA',link:'sifac'},
     {k:'f',l:'Fournisseur'},{k:'d',l:'D\u00e9signation'},
     {k:'p',l:'Programme'},{k:'fo',l:'Fonds'},
     {k:'m',l:'Montant (\u20ac)',n:true},
