@@ -148,6 +148,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <div class="tab" id="tab-d" onclick="switchTab('d')">⏱ Délais</div>
     <div class="tab" id="tab-r" onclick="switchTab('r')">📊 Répartition</div>
     <div class="tab" id="tab-nacres" onclick="switchTab('nacres')">🧪 NACRES</div>
+    <div class="tab" id="tab-om" onclick="switchTab('om')">✈️ Missions</div>
     <div class="tab" id="tab-open" onclick="switchTab('open')">🔴 Cdes non soldées</div>
     <div class="tab" id="tab-doc" onclick="switchTab('doc')">📖 Documentation</div>
   </div>
@@ -247,6 +248,19 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="pnl" style="flex:1;min-width:280px"><div class="pnl-t">Par type de valeur</div><canvas id="chPie" style="max-height:260px"></canvas></div>
       <div class="pnl" style="flex:2;min-width:280px"><div class="pnl-t">Détail par programme</div><div class="tw" style="max-height:260px"><table><thead id="r-th"></thead><tbody id="r-tb"></tbody></table></div></div>
     </div>
+  </div>
+
+  <!-- MISSIONS -->
+  <div id="vw-om" style="display:none">
+    <div class="flt">
+      <div class="fg"><label>Année</label><select id="om-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Programme</label><select id="om-prg"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label><select id="om-fnd"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Vue</label><select id="om-vue"><option value="prog">Par programme</option><option value="om">Par ordre de mission</option><option value="evol">Évolution mensuelle</option></select></div>
+    </div>
+    <div class="ks" id="om-kpis"></div>
+    <div id="om-chart-wrap" class="pnl" style="margin-bottom:16px;display:none"><canvas id="chOM" style="max-height:300px"></canvas></div>
+    <div class="tw"><table><thead id="om-th"></thead><tbody id="om-tb"></tbody><tfoot id="om-tf"></tfoot></table></div>
   </div>
 
   <!-- NACRES -->
@@ -451,6 +465,7 @@ function attachListeners(){
     });
   });
   ['n-ann','n-prg','n-fnd','n-type','n-vue','n-statut'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderNacres);el.addEventListener('change',renderNacres);});
+  ['om-ann','om-prg','om-fnd','om-vue'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderOM);el.addEventListener('change',renderOM);});
   ['o-ann','o-prg','o-fnd','o-type'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderOpenOrders);el.addEventListener('change',renderOpenOrders);});
 }
 window.closeDrill = closeDrill;
@@ -742,12 +757,15 @@ function procConso(raw, annee){
     }
 
     const piecePrec=(col('Numero_de_la_piece_precedente','Numéro de la pièce précédente')[i]||'').toString().trim();
+    const saisiPar=(col('Saisi_par','Saisi par')[i]||'').toString().trim();
+    const refOM=(col('Reference','Référence')[i]||'').toString().trim();
     CONSO.push({
       annee, tv,
       cf: CF_LABEL,
       piecePrec,
       f:(fours[i]||'').toString().trim(),
       cmd:(cmds[i]||'').toString().trim(),
+      saisiPar, refOM,
       d:(desigs[i]||'').toString().trim(),
       dt, dtMois,
       m:N(monts[i]),
@@ -771,12 +789,12 @@ function hideLd(){document.getElementById('ld').classList.remove('on')}
 function fillFilters(){
   const progs=[...new Set(BUDGET.map(b=>b.prog))].sort();
   const fonds=[...new Set(BUDGET.map(b=>b.fonds))].sort();
-  ['h-prg','e-prg','x-prg','f-prg2','d-prg','r-prg'].forEach(id=>{
+  ['h-prg','e-prg','x-prg','f-prg2','d-prg','r-prg','om-prg'].forEach(id=>{
     const s=document.getElementById(id);
     s.innerHTML='<option value="">Tous</option>';
     progs.forEach(p=>s.innerHTML+=`<option value="${esc(p)}">${esc(p)}</option>`);
   });
-  ['h-fnd','e-fnd','x-fnd','f-fnd2','d-fnd','r-fnd'].forEach(id=>{
+  ['h-fnd','e-fnd','x-fnd','f-fnd2','d-fnd','r-fnd','om-fnd'].forEach(id=>{
     const s=document.getElementById(id);
     s.innerHTML='<option value="">Tous</option>';
     fonds.forEach(f=>s.innerHTML+=`<option value="${esc(f)}">${esc(f)}</option>`);
@@ -786,20 +804,21 @@ function fillFilters(){
 
 function switchTab(t){
   _currentTab=t;
-  ['s','h','e','x','f','d','r','nacres','open','doc'].forEach(function(k){
+  ['s','h','e','x','f','d','r','om','nacres','open','doc'].forEach(function(k){
     var tab=document.getElementById('tab-'+k);
     var vw=document.getElementById('vw-'+k);
     if(tab) tab.classList.toggle('on',k===t);
     if(vw) vw.style.display=k===t?'block':'none';
   });
   var btnExp=document.getElementById('btn-export');
-  if(btnExp) btnExp.style.display=['x','f','d','nacres','open'].includes(t)?'':'none';
+  if(btnExp) btnExp.style.display=['x','f','d','om','nacres','open'].includes(t)?'':'none';
   if(t==='s') renderSynthese();
   if(t==='e') renderEvol();
   if(t==='x') renderCross();
   if(t==='f') renderFournisseurs();
   if(t==='d') renderDelais();
   if(t==='r') renderRepartition();
+  if(t==='om') renderOM();
   if(t==='nacres') renderNacres();
   if(t==='open') renderOpenOrders();
 }
@@ -1516,6 +1535,131 @@ function renderOpenOrders(){
     '<td style="text-align:right">'+fmt(totVal)+' \u20ac</td>'+
     '<td style="text-align:right;font-weight:700;color:var(--er)">'+fmt(totRest)+' \u20ac</td>'+
     '<td></td></tr>';
+}
+
+
+// ════════════════════════════════════
+// MISSIONS (NOTILUSBUS)
+// ════════════════════════════════════
+var _chOM=null;
+function renderOM(){
+  var ann=document.getElementById('om-ann').value;
+  var prg=document.getElementById('om-prg').value;
+  var fnd=document.getElementById('om-fnd').value;
+  var vue=document.getElementById('om-vue').value;
+
+  // Filtrer les lignes missions
+  var omRows=CONSO.filter(function(r){
+    if(r.saisiPar!=='NOTILUSBUS') return false;
+    if(ann&&String(r.annee)!==ann) return false;
+    if(prg&&r.p!==prg) return false;
+    if(fnd&&r.fo!==fnd) return false;
+    return true;
+  });
+
+  if(!omRows.length){
+    document.getElementById('om-kpis').innerHTML='<div style="padding:20px;color:var(--mu)">\u26a0\ufe0f Aucune donn\u00e9e mission. V\u00e9rifiez que la colonne "Saisi par" est pr\u00e9sente dans vos tables de conso.</div>';
+    document.getElementById('om-th').innerHTML='';
+    document.getElementById('om-tb').innerHTML='';
+    document.getElementById('om-tf').innerHTML='';
+    document.getElementById('om-chart-wrap').style.display='none';
+    return;
+  }
+
+  // Calcul des montants nets par type
+  var engages=omRows.filter(function(r){return r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0||r.tv==='R\u00e9servation de fonds';}).reduce(function(s,r){return s+r.m;},0);
+  var payes=omRows.filter(function(r){return r.tv==='Paiements';}).reduce(function(s,r){return s+r.m;},0);
+  var factures=omRows.filter(function(r){return r.tv==='Factures';}).reduce(function(s,r){return s+r.m;},0);
+  var enCours=engages-payes;
+  var nbOMs=new Set(omRows.map(function(r){return r.refOM;}).filter(Boolean)).size;
+
+  document.getElementById('om-kpis').innerHTML=
+    '<div class="kpi"><div class="kl">Engag\u00e9s (OM)</div><div class="kv">'+fmt(engages)+' \u20ac</div></div>'+
+    '<div class="kpi"><div class="kl">Pay\u00e9s</div><div class="kv c-ok">'+fmt(payes)+' \u20ac</div></div>'+
+    '<div class="kpi"><div class="kl">Factur\u00e9s</div><div class="kv">'+fmt(factures)+' \u20ac</div></div>'+
+    '<div class="kpi"><div class="kl">Solde en cours</div><div class="kv '+(enCours>0?'c-wn':'')+'">'+fmt(enCours)+' \u20ac</div></div>'+
+    '<div class="kpi"><div class="kl">Nb ordres mission</div><div class="kv">'+nbOMs+'</div></div>';
+
+  var pi=window._PROG_INFO||{};
+
+  if(vue==='prog'){
+    // Vue par programme/fonds
+    document.getElementById('om-chart-wrap').style.display='none';
+    var byProg={};
+    omRows.forEach(function(r){
+      var k=r.p+'||'+r.fo;
+      if(!byProg[k]) byProg[k]={prog:r.p,fonds:r.fo,eng:0,paye:0,fac:0,nb:new Set()};
+      if(r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0||r.tv==='R\u00e9servation de fonds') byProg[k].eng+=r.m;
+      if(r.tv==='Paiements') byProg[k].paye+=r.m;
+      if(r.tv==='Factures') byProg[k].fac+=r.m;
+      if(r.refOM) byProg[k].nb.add(r.refOM);
+    });
+    var rows=Object.values(byProg).sort(function(a,b){return b.eng-a.eng;});
+    document.getElementById('om-th').innerHTML='<tr><th>Programme</th><th>Nom</th><th>Fonds</th><th style="text-align:right">Engag\u00e9</th><th style="text-align:right">Pay\u00e9</th><th style="text-align:right">Solde</th><th style="text-align:right">Nb OM</th></tr>';
+    document.getElementById('om-tb').innerHTML=rows.map(function(r){
+      var solde=r.eng-r.paye;
+      return'<tr><td>'+esc(r.prog)+'</td><td>'+esc((pi[r.prog]&&pi[r.prog].nom)||'-')+'</td><td>'+esc(r.fonds)+'</td>'+
+        '<td style="text-align:right">'+fmt(r.eng)+' \u20ac</td>'+
+        '<td style="text-align:right;color:var(--ok)">'+fmt(r.paye)+' \u20ac</td>'+
+        '<td style="text-align:right;color:'+(solde>0?'var(--wn)':'inherit')+'">'+fmt(solde)+' \u20ac</td>'+
+        '<td style="text-align:right">'+r.nb.size+'</td></tr>';
+    }).join('');
+    var totEng=rows.reduce(function(s,r){return s+r.eng;},0);
+    var totPay=rows.reduce(function(s,r){return s+r.paye;},0);
+    document.getElementById('om-tf').innerHTML='<tr><td colspan="3">TOTAL</td><td style="text-align:right">'+fmt(totEng)+' \u20ac</td><td style="text-align:right">'+fmt(totPay)+' \u20ac</td><td style="text-align:right">'+fmt(totEng-totPay)+' \u20ac</td><td style="text-align:right">'+nbOMs+'</td></tr>';
+
+  } else if(vue==='om'){
+    // Vue par ordre de mission
+    document.getElementById('om-chart-wrap').style.display='none';
+    var byOM={};
+    omRows.forEach(function(r){
+      var k=r.refOM||'(sans référence)';
+      if(!byOM[k]) byOM[k]={ref:k,prog:r.p,fonds:r.fo,annee:r.annee,eng:0,paye:0,fac:0};
+      if(r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0||r.tv==='R\u00e9servation de fonds') byOM[k].eng+=r.m;
+      if(r.tv==='Paiements') byOM[k].paye+=r.m;
+      if(r.tv==='Factures') byOM[k].fac+=r.m;
+    });
+    var omList=Object.values(byOM).sort(function(a,b){return b.eng-a.eng;});
+    document.getElementById('om-th').innerHTML='<tr><th>N° Ordre mission</th><th>Ann\u00e9e</th><th>Programme</th><th>Fonds</th><th style="text-align:right">Engag\u00e9</th><th style="text-align:right">Pay\u00e9</th><th style="text-align:right">Solde</th><th>Statut</th></tr>';
+    document.getElementById('om-tb').innerHTML=omList.map(function(r){
+      var solde=r.eng-r.paye;
+      var statut=Math.abs(solde)<0.01?'<span class="rb r-ok">Sold\u00e9</span>':'<span class="rb r-wn">En cours</span>';
+      return'<tr><td style="font-weight:500">'+esc(r.ref)+'</td><td>'+r.annee+'</td><td>'+esc(r.prog)+'</td><td>'+esc(r.fonds)+'</td>'+
+        '<td style="text-align:right">'+fmt(r.eng)+' \u20ac</td>'+
+        '<td style="text-align:right;color:var(--ok)">'+fmt(r.paye)+' \u20ac</td>'+
+        '<td style="text-align:right;color:'+(Math.abs(solde)>0.01?'var(--wn)':'inherit')+'">'+fmt(solde)+' \u20ac</td>'+
+        '<td>'+statut+'</td></tr>';
+    }).join('');
+    var totEng2=omList.reduce(function(s,r){return s+r.eng;},0);
+    var totPay2=omList.reduce(function(s,r){return s+r.paye;},0);
+    var nbSoldes=omList.filter(function(r){return Math.abs(r.eng-r.paye)<0.01;}).length;
+    document.getElementById('om-tf').innerHTML='<tr><td colspan="4">TOTAL ('+omList.length+' OM dont '+nbSoldes+' sold\u00e9s)</td><td style="text-align:right">'+fmt(totEng2)+' \u20ac</td><td style="text-align:right">'+fmt(totPay2)+' \u20ac</td><td style="text-align:right">'+fmt(totEng2-totPay2)+' \u20ac</td><td></td></tr>';
+
+  } else {
+    // Vue évolution mensuelle
+    document.getElementById('om-chart-wrap').style.display='';
+    var monthly={};
+    omRows.forEach(function(r){
+      if(!r.dtMois) return;
+      if(r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")<0&&r.tv!=='R\u00e9servation de fonds') return;
+      if(r.tm!=='Original') return;
+      monthly[r.dtMois]=(monthly[r.dtMois]||0)+r.m;
+    });
+    var moisList=Object.keys(monthly).sort();
+    if(_chOM) _chOM.destroy();
+    _chOM=new Chart(document.getElementById('chOM').getContext('2d'),{
+      type:'bar',
+      data:{labels:moisList,datasets:[{label:'Engagements OM (Original)',data:moisList.map(function(m){return Math.round(monthly[m]*100)/100;}),backgroundColor:'#7c3aed'}]},
+      options:{responsive:true,plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return fmt(c.raw)+' \u20ac';}}}},scales:{y:{ticks:{callback:function(v){return fmt(v)+' \u20ac';}}}}}
+    });
+    document.getElementById('om-th').innerHTML='<tr><th>Mois</th><th style="text-align:right">Engag\u00e9</th><th style="text-align:right">Cumul</th></tr>';
+    var cumul=0;
+    document.getElementById('om-tb').innerHTML=moisList.map(function(m){
+      cumul+=monthly[m];
+      return'<tr><td>'+m+'</td><td style="text-align:right">'+fmt(monthly[m])+' \u20ac</td><td style="text-align:right">'+fmt(cumul)+' \u20ac</td></tr>';
+    }).join('');
+    document.getElementById('om-tf').innerHTML='<tr><td>TOTAL</td><td style="text-align:right">'+fmt(Object.values(monthly).reduce(function(s,v){return s+v;},0))+' \u20ac</td><td></td></tr>';
+  }
 }
 
 </script>
