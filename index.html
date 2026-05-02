@@ -149,6 +149,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <div class="tab" id="tab-r" onclick="switchTab('r')">📊 Répartition</div>
     <div class="tab" id="tab-nacres" onclick="switchTab('nacres')">🧪 NACRES</div>
     <div class="tab" id="tab-om" onclick="switchTab('om')">✈️ Missions</div>
+    <div class="tab" id="tab-pluri" onclick="switchTab('pluri')">📋 Engagements pluriannuels</div>
     <div class="tab" id="tab-open" onclick="switchTab('open')">🔴 Cdes non soldées</div>
     <div class="tab" id="tab-doc" onclick="switchTab('doc')">📖 Documentation</div>
   </div>
@@ -296,6 +297,16 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <div class="ks" id="nacres-kpis"></div>
     <div id="nacres-chart-wrap" class="pnl" style="margin-bottom:16px"><canvas id="chNacres" style="max-height:320px"></canvas></div>
     <div class="tw"><table><thead id="nacres-th"></thead><tbody id="nacres-tb"></tbody><tfoot id="nacres-tf"></tfoot></table></div>
+  </div>
+
+  <!-- ENGAGEMENTS PLURIANNUELS -->
+  <div id="vw-pluri" style="display:none">
+    <div class="flt">
+      <div class="fg"><label>Programme</label><select id="pl-prg"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label><select id="pl-fnd"><option value="">Tous</option></select></div>
+    </div>
+    <div class="ks" id="pluri-kpis"></div>
+    <div class="tw"><table><thead id="pluri-th"></thead><tbody id="pluri-tb"></tbody><tfoot id="pluri-tf"></tfoot></table></div>
   </div>
 
   <!-- COMMANDES NON SOLDÉES -->
@@ -487,6 +498,7 @@ function attachListeners(){
   });
   ['n-ann','n-prg','n-fnd','n-cf','n-type','n-vue','n-statut'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderNacres);el.addEventListener('change',renderNacres);});
   ['om-ann','om-prg','om-fnd','om-cf','om-vue'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderOM);el.addEventListener('change',renderOM);});
+  ['pl-prg','pl-fnd'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderPluri);el.addEventListener('change',renderPluri);});
   ['o-ann','o-prg','o-fnd','o-cf','o-type'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderOpenOrders);el.addEventListener('change',renderOpenOrders);});
   var btnCloseOM=document.getElementById('btn-close-om-drill');
   if(btnCloseOM) btnCloseOM.addEventListener('click',closeOMDrill);
@@ -830,12 +842,12 @@ function hideLd(){document.getElementById('ld').classList.remove('on')}
 function fillFilters(){
   const progs=[...new Set(BUDGET.map(b=>b.prog))].sort();
   const fonds=[...new Set(BUDGET.map(b=>b.fonds))].sort();
-  ['h-prg','e-prg','x-prg','f-prg2','d-prg','r-prg','om-prg'].forEach(id=>{
+  ['h-prg','e-prg','x-prg','f-prg2','d-prg','r-prg','om-prg','pl-prg'].forEach(id=>{
     const s=document.getElementById(id);
     s.innerHTML='<option value="">Tous</option>';
     progs.forEach(p=>s.innerHTML+=`<option value="${esc(p)}">${esc(p)}</option>`);
   });
-  ['h-fnd','e-fnd','x-fnd','f-fnd2','d-fnd','r-fnd','om-fnd'].forEach(id=>{
+  ['h-fnd','e-fnd','x-fnd','f-fnd2','d-fnd','r-fnd','om-fnd','pl-fnd'].forEach(id=>{
     const s=document.getElementById(id);
     s.innerHTML='<option value="">Tous</option>';
     fonds.forEach(f=>s.innerHTML+=`<option value="${esc(f)}">${esc(f)}</option>`);
@@ -852,14 +864,14 @@ function fillFilters(){
 
 function switchTab(t){
   _currentTab=t;
-  ['s','h','e','x','f','d','r','om','nacres','open','doc'].forEach(function(k){
+  ['s','h','e','x','f','d','r','om','nacres','pluri','open','doc'].forEach(function(k){
     var tab=document.getElementById('tab-'+k);
     var vw=document.getElementById('vw-'+k);
     if(tab) tab.classList.toggle('on',k===t);
     if(vw) vw.style.display=k===t?'block':'none';
   });
   var btnExp=document.getElementById('btn-export');
-  if(btnExp) btnExp.style.display=['x','f','d','om','nacres','open'].includes(t)?'':'none';
+  if(btnExp) btnExp.style.display=['x','f','d','om','nacres','pluri','open'].includes(t)?'':'none';
   if(t==='s') renderSynthese();
   if(t==='e') renderEvol();
   if(t==='x') renderCross();
@@ -868,6 +880,7 @@ function switchTab(t){
   if(t==='r') renderRepartition();
   if(t==='om') renderOM();
   if(t==='nacres') renderNacres();
+  if(t==='pluri') renderPluri();
   if(t==='open') renderOpenOrders();
 }
 
@@ -2027,6 +2040,136 @@ function renderOMDrill(rows, sc, sd){
 function sortOMDrill(col){
   if(_omDrSC===col) _omDrSD*=-1; else{_omDrSC=col;_omDrSD=1;}
   renderOMDrill(_omDrRows,_omDrSC,_omDrSD);
+}
+
+
+// ════════════════════════════════════════════════════════
+// ENGAGEMENTS PLURIANNUELS
+// Consolidation Budget (CDa + RAR) + NACRES (non soldées)
+// ════════════════════════════════════════════════════════
+function renderPluri(){
+  var prg=document.getElementById('pl-prg').value;
+  var fnd=document.getElementById('pl-fnd').value;
+  var pi=window._PROG_INFO||{};
+
+  // ── Budget : RAR par programme/fonds (toutes années) ──
+  var budIdx={};
+  BUDGET.forEach(function(b){
+    if(prg&&b.prog!==prg) return;
+    if(fnd&&b.fonds!==fnd) return;
+    if(b.rar<=0&&b.cda<=0) return;
+    var k=b.prog+'||'+b.fonds;
+    if(!budIdx[k]) budIdx[k]={prog:b.prog,fonds:b.fonds,
+      cda25:0,rar25:0,bud25:0,conso25:0,
+      cda26:0,rar26:0,bud26:0,conso26:0};
+    var yr=String(b.annee);
+    if(yr==='2025'){
+      budIdx[k].cda25+=b.cda; budIdx[k].rar25+=b.rar;
+      budIdx[k].bud25+=b.bud; budIdx[k].conso25+=b.conso;
+    } else if(yr==='2026'){
+      budIdx[k].cda26+=b.cda; budIdx[k].rar26+=b.rar;
+      budIdx[k].bud26+=b.bud; budIdx[k].conso26+=b.conso;
+    }
+  });
+
+  // ── NACRES : non soldées par programme/fonds ──
+  var nacIdx={};
+  (window.NACRES_DATA||[]).forEach(function(r){
+    if(r.rest<=0) return;
+    if(prg&&r.prog!==prg) return;
+    // Extraire code fonds sans description
+    var fondsCode=r.fond.replace(/\s*\(.*$/,'').trim();
+    if(fnd&&fondsCode!==fnd) return;
+    var k=r.prog+'||'+fondsCode;
+    if(!nacIdx[k]) nacIdx[k]={prog:r.prog,fonds:fondsCode,engage:0,reste:0,nbCmd:0};
+    nacIdx[k].engage+=r.val;
+    nacIdx[k].reste+=r.rest;
+    nacIdx[k].nbCmd++;
+  });
+
+  // ── Fusionner les deux sources ──
+  var allKeys=new Set([...Object.keys(budIdx),...Object.keys(nacIdx)]);
+  var rows=[];
+  allKeys.forEach(function(k){
+    var b=budIdx[k]||{prog:k.split('||')[0],fonds:k.split('||')[1],
+      cda25:0,rar25:0,bud25:0,conso25:0,cda26:0,rar26:0,bud26:0,conso26:0};
+    var n=nacIdx[k]||{engage:0,reste:0,nbCmd:0};
+    var rar_total=b.rar25+b.rar26;
+    var cda_total=b.cda25+b.cda26;
+    if(rar_total<=0&&n.reste<=0) return; // ne garder que ce qui a un RAR ou un reste
+    rows.push({
+      prog:b.prog,fonds:b.fonds,nom:(pi[b.prog]&&pi[b.prog].nom)||'-',
+      bud25:b.bud25,cda25:b.cda25,rar25:b.rar25,conso25:b.conso25,
+      bud26:b.bud26,cda26:b.cda26,rar26:b.rar26,conso26:b.conso26,
+      rar_total:rar_total,cda_total:cda_total,
+      nac_engage:n.engage,nac_reste:n.reste,nac_nb:n.nbCmd
+    });
+  });
+
+  rows.sort(function(a,b){return b.rar_total-a.rar_total;});
+
+  // ── KPIs ──
+  var totRar25=rows.reduce(function(s,r){return s+r.rar25;},0);
+  var totRar26=rows.reduce(function(s,r){return s+r.rar26;},0);
+  var totCda25=rows.reduce(function(s,r){return s+r.cda25;},0);
+  var totCda26=rows.reduce(function(s,r){return s+r.cda26;},0);
+  var totNacReste=rows.reduce(function(s,r){return s+r.nac_reste;},0);
+  document.getElementById('pluri-kpis').innerHTML=
+    '<div class="kpi"><div class="kl">RAR Total 2025+2026</div><div class="kv c-wn">'+fmt(totRar25+totRar26)+' \u20ac</div></div>'+
+    '<div class="kpi"><div class="kl">RAR 2025</div><div class="kv">'+fmt(totRar25)+' \u20ac</div></div>'+
+    '<div class="kpi"><div class="kl">RAR 2026</div><div class="kv">'+fmt(totRar26)+' \u20ac</div></div>'+
+    '<div class="kpi"><div class="kl">CDa engag\u00e9es 2025+2026</div><div class="kv">'+fmt(totCda25+totCda26)+' \u20ac</div></div>'+
+    '<div class="kpi"><div class="kl">NACRES reste \u00e0 facturer</div><div class="kv c-er">'+fmt(totNacReste)+' \u20ac</div></div>';
+
+  // ── Tableau ──
+  document.getElementById('pluri-th').innerHTML=
+    '<tr>'+
+    '<th>Programme</th><th>Nom</th><th>Fonds</th>'+
+    '<th style="text-align:right">Budget 2025</th>'+
+    '<th style="text-align:right">CDa 2025</th>'+
+    '<th style="text-align:right;color:var(--wn)">RAR 2025</th>'+
+    '<th style="text-align:right">Budget 2026</th>'+
+    '<th style="text-align:right">CDa 2026</th>'+
+    '<th style="text-align:right;color:var(--wn)">RAR 2026</th>'+
+    '<th style="text-align:right;color:var(--er)">RAR Total</th>'+
+    '<th style="text-align:right">NACRES engag\u00e9</th>'+
+    '<th style="text-align:right;color:var(--er)">NACRES reste fact.</th>'+
+    '<th style="text-align:right">Nb cdes NACRES</th>'+
+    '</tr>';
+
+  document.getElementById('pluri-tb').innerHTML=rows.map(function(r){
+    var clRar=r.rar_total>10000?'c-er':r.rar_total>5000?'c-wn':'';
+    return'<tr>'+
+      '<td style="font-weight:600">'+esc(r.prog)+'</td>'+
+      '<td>'+esc(r.nom)+'</td>'+
+      '<td>'+esc(r.fonds)+'</td>'+
+      '<td style="text-align:right;color:var(--mu)">'+fmt(r.bud25)+' \u20ac</td>'+
+      '<td style="text-align:right">'+fmt(r.cda25)+' \u20ac</td>'+
+      '<td style="text-align:right;color:var(--wn);font-weight:'+(r.rar25>0?'700':'400')+'">'+fmt(r.rar25)+' \u20ac</td>'+
+      '<td style="text-align:right;color:var(--mu)">'+fmt(r.bud26)+' \u20ac</td>'+
+      '<td style="text-align:right">'+fmt(r.cda26)+' \u20ac</td>'+
+      '<td style="text-align:right;color:var(--wn);font-weight:'+(r.rar26>0?'700':'400')+'">'+fmt(r.rar26)+' \u20ac</td>'+
+      '<td style="text-align:right;font-weight:700" class="'+clRar+'">'+fmt(r.rar_total)+' \u20ac</td>'+
+      '<td style="text-align:right">'+fmt(r.nac_engage)+' \u20ac</td>'+
+      '<td style="text-align:right;color:var(--er);font-weight:'+(r.nac_reste>0?'700':'400')+'">'+fmt(r.nac_reste)+' \u20ac</td>'+
+      '<td style="text-align:right">'+r.nac_nb+'</td>'+
+    '</tr>';
+  }).join('');
+
+  document.getElementById('pluri-tf').innerHTML=
+    '<tr>'+
+    '<td colspan="3">TOTAL ('+rows.length+' lignes)</td>'+
+    '<td style="text-align:right">'+fmt(rows.reduce(function(s,r){return s+r.bud25;},0))+' \u20ac</td>'+
+    '<td style="text-align:right">'+fmt(totCda25)+' \u20ac</td>'+
+    '<td style="text-align:right;color:var(--wn);font-weight:700">'+fmt(totRar25)+' \u20ac</td>'+
+    '<td style="text-align:right">'+fmt(rows.reduce(function(s,r){return s+r.bud26;},0))+' \u20ac</td>'+
+    '<td style="text-align:right">'+fmt(totCda26)+' \u20ac</td>'+
+    '<td style="text-align:right;color:var(--wn);font-weight:700">'+fmt(totRar26)+' \u20ac</td>'+
+    '<td style="text-align:right;color:var(--er);font-weight:700">'+fmt(totRar25+totRar26)+' \u20ac</td>'+
+    '<td style="text-align:right">'+fmt(rows.reduce(function(s,r){return s+r.nac_engage;},0))+' \u20ac</td>'+
+    '<td style="text-align:right;color:var(--er);font-weight:700">'+fmt(totNacReste)+' \u20ac</td>'+
+    '<td style="text-align:right">'+rows.reduce(function(s,r){return s+r.nac_nb;},0)+'</td>'+
+    '</tr>';
 }
 
 </script>
