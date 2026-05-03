@@ -1721,7 +1721,8 @@ function procNacres(raw, annee){
     var rawDate=dates[i],dateStr='';
     if(rawDate&&typeof rawDate==='number'&&rawDate>0){var d=new Date(rawDate*1000);dateStr=String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();}
     else if(rawDate&&typeof rawDate==='string') dateStr=rawDate;
-    window.NACRES_DATA.push({nacreCode,nacreDesc,cmd:(cmds[i]||'').toString().trim(),date:dateStr,typeDoc,surMarche,four:(fours[i]||'').toString().trim(),desig:(desigs[i]||'').toString().trim(),val:parseFloat(vals[i])||0,rest:parseFloat(rests[i])||0,fond,prog,annee:annee?String(annee):''});
+    var agenceVoyage=nacreCode.toUpperCase().startsWith('DC.01');
+    window.NACRES_DATA.push({nacreCode,nacreDesc,cmd:(cmds[i]||'').toString().trim(),date:dateStr,typeDoc,surMarche:surMarche||agenceVoyage,agenceVoyage,four:(fours[i]||'').toString().trim(),desig:(desigs[i]||'').toString().trim(),val:parseFloat(vals[i])||0,rest:parseFloat(rests[i])||0,fond,prog,annee:annee?String(annee):''});
   }
 }
 function fillNacresFilters(){
