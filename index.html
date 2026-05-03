@@ -340,10 +340,12 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <div class="pnl-t">🔢 Indicateurs budgétaires (Synthèse &amp; Histogramme)</div>
         <p style="font-size:.82rem;line-height:1.8">
           <strong>Taux de consommation</strong> : Conso AE N &divide; Budget AE N &times; 100 &mdash; Vert &ge;90% &bull; Orange &ge;50% &bull; Rouge &lt;50%<br>
-          <strong>Taux d'engagement</strong> : MIN((CDa+RAR+OM+NF) &divide; Budget AE N, 100%) &mdash; plafonné car le budget peut être révisé à la baisse après engagement<br>
-          <strong>Reste à engager</strong> : MAX(0, Budget AE N &minus; CDa &minus; RAR &minus; OM &minus; NF)<br>
-          <strong>Prévision finale (Synthèse)</strong> : MIN(Conso AE + CDa + RAR, Budget AE N)<br>
-          <strong>Alertes</strong> : programme dont la date de fin est dans &lt;4 mois avec &gt;5% de budget non consommé.<br>
+          <strong>Taux d'engagement</strong> : MIN((CDa+RAR+OM+NF) &divide; Budget AE N, 100%) &mdash; plafonné car le budget peut être révisé à la baisse après engagement. <em>Note : le taux de conso peut être 100% alors que le taux d'engagement est &lt;100% — ce sont deux comptabilités distinctes.</em><br>
+          <strong>Reste à engager</strong> : MAX(0, Budget AE N &minus; CDa &minus; RAR &minus; OM &minus; NF) — ce qu'il reste à commander. Peut être 0 même quand le taux de conso est 100%.<br>
+          <strong>Payé (CP)</strong> : colonne "Payé CP" du budget SAP. CP = Crédits de Paiement, comptabilité distincte des AE (Autorisations d'Engagement). Un montant payé supérieur au budget AE est normal : il correspond à des engagements d'années antérieures soldés sur l'exercice courant.<br>
+          <strong>Reste à payer</strong> : différence Conso AE &minus; Payé CP. Peut être négatif pour la même raison (paiements d'engagements antérieurs).<br>
+          <strong>Prévision finale</strong> : si taux de conso &ge;95% &rarr; Budget AE N (programme considéré bouclé) ; sinon MIN(Conso AE + CDa + RAR, Budget AE N).<br>
+          <strong>Alertes</strong> : 7 alertes automatiques détectées — sur-engagement, budget épuisé, RAR élevé (&gt;20%), sous-consommation à J-90, échéance proche (&lt;120j avec &gt;5% non consommé), épuisement imminent (&lt;30j au rythme actuel), inactivité (&gt;90j).<br>
           <strong>Drill-down</strong> : cliquer sur une tuile Synthèse bascule vers l'Histogramme filtré sur ce programme.
         </p>
       </div>
@@ -1291,7 +1293,7 @@ function renderSynthese(){
     var engage=g.cda+g.rar+g.om+g.nf;
     var tauxEng=g.bud>0?Math.min(engage/g.bud*100,100):0;
     var rae=Math.max(0,g.bud-engage);
-    var prev=Math.min(g.conso+g.cda+g.rar,g.bud);
+    var prev=taux>=95?g.bud:Math.min(g.conso+g.cda+g.rar,g.bud);
     var cl=taux>=90?'badge-ok':taux>=50?'badge-wn':'badge-er';
     var bc=taux>=90?'#16a34a':taux>=50?'#d97706':'#dc2626';
     var clE=tauxEng>=90?'c-ok':tauxEng>=50?'c-wn':'c-er';
