@@ -1773,7 +1773,7 @@ function renderNacres(){
   document.getElementById('nacres-kpis').innerHTML=
     '<div class="kpi"><div class="kl">Total engag\u00e9</div><div class="kv">'+fmt(totVal)+' \u20ac</div></div>'+
     '<div class="kpi"><div class="kl">Sur march\u00e9</div><div class="kv c-ok">'+fmt(totMar)+' \u20ac ('+pctMar.toFixed(1)+'%)</div></div>'+
-    '<div class="kpi"><div class="kl">Agence voyage (DC.01)</div><div class="kv" style="color:#7c3aed;font-weight:600">'+fmt(filt.filter(function(r){return r.agenceVoyage;}).reduce(function(s,r){return s+r.val;},0))+' \u20ac</div></div>'+
+    '<div class="kpi"><div class="kl">Agence voyage (DC.01)</div><div class="kv" style="color:#7c3aed;font-weight:600">'+fmt(data.filter(function(r){return r.agenceVoyage;}).reduce(function(s,r){return s+r.val;},0))+' \u20ac</div></div>'+
     '<div class="kpi"><div class="kl">Hors march\u00e9</div><div class="kv c-wn">'+fmt(totHors)+' \u20ac</div></div>'+
     '<div class="kpi"><div class="kl">Reste \u00e0 facturer</div><div class="kv '+(totRest>0?'c-wn':'')+'">'+fmt(totRest)+' \u20ac</div></div>'+
     '<div class="kpi"><div class="kl">Cdes non sold\u00e9es</div><div class="kv '+(nbOpen>0?'c-er':'c-ok')+'">'+nbOpen+' / '+data.length+' ('+pctOpen.toFixed(0)+'%)</div></div>';
