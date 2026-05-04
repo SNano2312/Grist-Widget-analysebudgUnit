@@ -2065,6 +2065,8 @@ function renderOpenOrders(){
   var prg=document.getElementById('o-prg').value;
   var fnd=document.getElementById('o-fnd').value;
   var typeF=document.getElementById('o-type').value;
+  var cf=(document.getElementById('o-cf')||{}).value||'';
+  var progsCC=cf?new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;})):null;
 
   // Filtrer NACRES_DATA sur les non soldées uniquement
   var data=(window.NACRES_DATA||[]).filter(function(r){
@@ -2074,6 +2076,7 @@ function renderOpenOrders(){
     if(fnd&&r.fond!==fnd) return false;
     if(typeF==='marche'&&!r.surMarche) return false;
     if(typeF==='hors'&&r.surMarche) return false;
+    if(progsCC&&!progsCC.has(r.prog)) return false;
     return true;
   });
 
