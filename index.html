@@ -228,7 +228,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="fg"><label>Fonds</label><select id="f-fnd2"><option value="">Tous</option></select></div>
       <div class="fg"><label>Centre de coûts</label><select id="f-cf"><option value="">Tous</option></select></div>
       <div class="fg"><label>Afficher</label><select id="f-top"><option value="10">Top 10</option><option value="20">Top 20</option><option value="50">Top 50</option></select></div>
-      <div class="fg"><label>Vue</label><select id="f-vue"><option value="table">Tableau</option><option value="pareto">Courbe de Pareto</option></select></div>
+      <div class="fg"><label>Vue</label><select id="f-vue"><option value="table">Tableau</option><option value="pareto">Courbe de Pareto</option><option value="comp">Comparatif 2025/2026</option></select></div>
     </div>
     <div id="f-table-wrap"><div class="tw"><table><thead id="f-th"></thead><tbody id="f-tb"></tbody></table></div></div>
     <div id="f-pareto-wrap" style="display:none;margin-top:16px">
@@ -1449,7 +1449,8 @@ function renderFournisseurs(){
     // Pour le Pareto : utiliser TOUS les fournisseurs (pas limité au top N)
     var allFours=Object.keys(byF).map(function(f){return{f:f,m:byF[f].m,n:byF[f].n};})
       .sort(function(a,b){return b.m-a.m;});
-    renderPareto(allFours);
+    if(vue==='comp') renderParetoComp();
+    else renderPareto(allFours);
   }
 }
 // ════════════════════════════════════════════════════════
@@ -1457,40 +1458,68 @@ function renderFournisseurs(){
 // ════════════════════════════════════════════════════════
 var _chPareto=null;
 function renderPareto(rows){
-  // rows = [{four, m, nb}] triés par montant décroissant
+  // rows = [{f, m, n}] — tous les fournisseurs
+  // Trier par montant décroissant
   var sorted=[...rows].sort(function(a,b){return b.m-a.m;});
   var total=sorted.reduce(function(s,r){return s+r.m;},0);
   var n=sorted.length;
+
   if(!total||!n){
     document.getElementById('f-pareto-kpis').innerHTML='<div class="kpi"><div class="kl">Aucune donnée</div></div>';
+    if(_chPareto){_chPareto.destroy();_chPareto=null;}
     return;
   }
 
   // Calcul cumul
-  var cumul=0, cumulPct=[], labels=[], vals=[];
-  var nb80=0, seuil80=false;
+  var cumul=0,cumulPct=[],labels=[],vals=[];
+  var nb80=0,seuil80=false;
   sorted.forEach(function(r,i){
     cumul+=r.m;
-    var pctCumul=cumul/total*100;
-    cumulPct.push(Math.round(pctCumul*10)/10);
-    labels.push(r.f.length>20?r.f.substring(0,18)+'…':r.f);
+    var p=cumul/total*100;
+    cumulPct.push(Math.round(p*10)/10);
+    labels.push(r.f.length>22?r.f.substring(0,20)+'…':r.f);
     vals.push(Math.round(r.m*100)/100);
-    if(!seuil80&&pctCumul>=80){nb80=i+1;seuil80=true;}
+    if(!seuil80&&p>=80){nb80=i+1;seuil80=true;}
   });
 
   // KPIs
-  var pctFour80=Math.round(nb80/n*100);
   document.getElementById('f-pareto-kpis').innerHTML=
-    '<div class="kpi"><div class="kl">Total fournisseurs</div><div class="kv">'+n+'</div></div>'+
-    '<div class="kpi"><div class="kl">80% des dépenses</div><div class="kv c-wn">'+nb80+' fournisseurs ('+pctFour80+'%)</div></div>'+
+    '<div class="kpi"><div class="kl">Nb fournisseurs</div><div class="kv">'+n+'</div></div>'+
+    '<div class="kpi"><div class="kl">80% des dépenses</div><div class="kv c-wn">'+nb80+' fournisseurs ('+Math.round(nb80/n*100)+'%)</div></div>'+
     '<div class="kpi"><div class="kl">Total dépenses</div><div class="kv">'+fmt(total)+' €</div></div>'+
-    '<div class="kpi"><div class="kl">Top 1 fournisseur</div><div class="kv">'+Math.round(sorted[0].m/total*100)+' % du total</div></div>';
+    '<div class="kpi"><div class="kl">Top 1 fournisseur</div><div class="kv">'+(sorted[0]?Math.round(sorted[0].m/total*100):'0')+'% du total</div></div>';
 
-  // Graphique
-  if(_chPareto) _chPareto.destroy();
+  if(_chPareto){_chPareto.destroy();_chPareto=null;}
   var ctx=document.getElementById('chPareto').getContext('2d');
+
+  // Ligne 80% via plugin inline (pas annotation)
+  var plugin80={
+    id:'line80',
+    afterDraw:function(chart){
+      var y2=chart.scales['y2'];
+      if(!y2) return;
+      var yPos=y2.getPixelForValue(80);
+      var ctx2=chart.ctx;
+      var left=chart.chartArea.left,right=chart.chartArea.right;
+      ctx2.save();
+      ctx2.beginPath();
+      ctx2.setLineDash([8,4]);
+      ctx2.strokeStyle='#dc2626';
+      ctx2.lineWidth=1.5;
+      ctx2.moveTo(left,yPos);
+      ctx2.lineTo(right,yPos);
+      ctx2.stroke();
+      ctx2.setLineDash([]);
+      ctx2.fillStyle='#dc2626';
+      ctx2.font='bold 11px sans-serif';
+      ctx2.fillText('80%',right+4,yPos+4);
+      ctx2.restore();
+    }
+  };
+
   _chPareto=new Chart(ctx,{
     type:'bar',
+    plugins:[plugin80],
     data:{
       labels:labels,
       datasets:[
@@ -1500,36 +1529,85 @@ function renderPareto(rows){
         {type:'line',label:'Cumul (%)',data:cumulPct,
          borderColor:'#dc2626',backgroundColor:'transparent',
          borderWidth:2,pointRadius:3,pointBackgroundColor:'#dc2626',
-         yAxisID:'y2',order:1}
+         tension:0.1,yAxisID:'y2',order:1}
       ]
     },
     options:{
       responsive:true,maintainAspectRatio:false,
-      plugins:{
-        legend:{position:'top'},
-        tooltip:{callbacks:{
-          label:function(c){
-            if(c.dataset.yAxisID==='y2') return 'Cumul : '+c.raw+'%';
-            return 'Montant : '+fmt(c.raw)+' €';
-          }
-        }},
-        annotation:{
-          annotations:{
-            line80:{type:'line',yScaleID:'y2',yMin:80,yMax:80,
-              borderColor:'#dc2626',borderWidth:1,borderDash:[6,3],
-              label:{content:'80%',enabled:true,position:'end',
-                     backgroundColor:'#dc2626',color:'#fff',font:{size:11}}}
-          }
-        }
+      plugins:{legend:{position:'top'},
+        tooltip:{callbacks:{label:function(c){
+          return c.dataset.yAxisID==='y2'?'Cumul : '+c.raw+'%':'Montant : '+fmt(c.raw)+' €';
+        }}}
       },
       scales:{
         x:{ticks:{maxRotation:45,font:{size:10}}},
-        y:{position:'left',title:{display:true,text:'Montant (€)'},
+        y:{position:'left',
+           title:{display:true,text:'Montant (€)'},
            ticks:{callback:function(v){return fmt(v)+' €';}}},
         y2:{position:'right',min:0,max:100,
             title:{display:true,text:'Cumul (%)'},
             ticks:{callback:function(v){return v+'%';}},
             grid:{drawOnChartArea:false}}
+      }
+    }
+  });
+}
+
+function renderParetoComp(){
+  // Comparatif 2025 vs 2026 : mêmes fournisseurs, deux séries
+  var prg=document.getElementById('f-prg2').value;
+  var fnd=document.getElementById('f-fnd2').value;
+  var cf=(document.getElementById('f-cf')||{}).value||'';
+
+  var by25={},by26={};
+  (window.CONSO_PMT||[]).forEach(function(r){
+    if(r.m<=0) return;
+    if(prg&&r.p!==prg) return;
+    if(fnd&&r.fo!==fnd) return;
+    if(cf&&r.cc!==cf) return;
+    var dest=String(r.annee)==='2025'?by25:String(r.annee)==='2026'?by26:null;
+    if(!dest) return;
+    if(!dest[r.f]) dest[r.f]=0;
+    dest[r.f]+=r.m;
+  });
+
+  // Union des fournisseurs, trier par total 2025+2026
+  var allF=new Set([...Object.keys(by25),...Object.keys(by26)]);
+  var fours=[...allF].map(function(f){return{f:f,m25:by25[f]||0,m26:by26[f]||0,tot:(by25[f]||0)+(by26[f]||0)};})
+    .sort(function(a,b){return b.tot-a.tot;}).slice(0,25);
+
+  var tot25=Object.values(by25).reduce(function(s,v){return s+v;},0);
+  var tot26=Object.values(by26).reduce(function(s,v){return s+v;},0);
+
+  document.getElementById('f-pareto-kpis').innerHTML=
+    '<div class="kpi"><div class="kl">Total payé 2025</div><div class="kv">'+fmt(tot25)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">Total payé 2026</div><div class="kv">'+fmt(tot26)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">Évolution</div><div class="kv '+(tot26>tot25?'c-ok':'c-er')+'">'+
+    (tot25>0?((tot26-tot25)/tot25*100).toFixed(1):'—')+'%</div></div>'+
+    '<div class="kpi"><div class="kl">Fournisseurs communs</div><div class="kv">'+
+    [...allF].filter(function(f){return by25[f]&&by26[f];}).length+'</div></div>';
+
+  if(_chPareto){_chPareto.destroy();_chPareto=null;}
+  var ctx=document.getElementById('chPareto').getContext('2d');
+  _chPareto=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:fours.map(function(r){return r.f.length>20?r.f.substring(0,18)+'…':r.f;}),
+      datasets:[
+        {label:'2025',data:fours.map(function(r){return Math.round(r.m25*100)/100;}),
+         backgroundColor:'#3b82f6'},
+        {label:'2026',data:fours.map(function(r){return Math.round(r.m26*100)/100;}),
+         backgroundColor:'#f97316'}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top'},
+        tooltip:{callbacks:{label:function(c){return c.dataset.label+' : '+fmt(c.raw)+' €';}}}
+      },
+      scales:{
+        x:{ticks:{maxRotation:45,font:{size:10}}},
+        y:{ticks:{callback:function(v){return fmt(v)+' €';}}}
       }
     }
   });
