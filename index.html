@@ -1473,7 +1473,7 @@ function renderPareto(rows){
     cumul+=r.m;
     var pctCumul=cumul/total*100;
     cumulPct.push(Math.round(pctCumul*10)/10);
-    labels.push(r.four.length>20?r.four.substring(0,18)+'…':r.four);
+    labels.push(r.f.length>20?r.f.substring(0,18)+'…':r.f);
     vals.push(Math.round(r.m*100)/100);
     if(!seuil80&&pctCumul>=80){nb80=i+1;seuil80=true;}
   });
