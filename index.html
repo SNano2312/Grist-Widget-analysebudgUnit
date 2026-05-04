@@ -1445,7 +1445,12 @@ function renderFournisseurs(){
   document.getElementById('f-tb').innerHTML=sorted.map(function(r,i){
     return'<tr><td>'+(i+1)+'</td><td>'+esc(r.f)+'</td><td style="text-align:right">'+fmt(r.m)+' €</td><td style="text-align:right">'+(totalAll>0?r.m/totalAll*100:0).toFixed(1)+' %</td><td style="text-align:right">'+r.n+'</td></tr>';
   }).join('');
-  if(vue==='pareto') renderPareto(rows);
+  if(vue==='pareto'){
+    // Pour le Pareto : utiliser TOUS les fournisseurs (pas limité au top N)
+    var allFours=Object.keys(byF).map(function(f){return{f:f,m:byF[f].m,n:byF[f].n};})
+      .sort(function(a,b){return b.m-a.m;});
+    renderPareto(allFours);
+  }
 }
 // ════════════════════════════════════════════════════════
 // COURBE DE PARETO — Concentration des dépenses fournisseurs
