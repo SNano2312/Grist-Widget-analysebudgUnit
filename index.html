@@ -1911,10 +1911,13 @@ function renderNacres(){
   var prg=document.getElementById('n-prg').value,fnd=document.getElementById('n-fnd').value;
   var typeF=document.getElementById('n-type').value,vue=document.getElementById('n-vue').value;
   var ann=document.getElementById('n-ann').value;
+  var cf=(document.getElementById('n-cf')||{}).value||'';
+  var progsCC_n=cf?new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;})):null;
   var data=(window.NACRES_DATA||[]).filter(function(r){
     if(ann&&r.annee&&r.annee!==ann) return false;
     if(prg&&r.prog!==prg) return false;
     if(fnd&&r.fond!==fnd) return false;
+    if(progsCC_n&&!progsCC_n.has(r.prog)) return false;
     if(typeF==='marche'&&!r.surMarche) return false;
     if(typeF==='hors'&&r.surMarche) return false;
     return true;
