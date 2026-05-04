@@ -1423,41 +1423,48 @@ function renderFournisseurs(){
   var prg=document.getElementById('f-prg2').value;
   var fnd=document.getElementById('f-fnd2').value;
   var cf=(document.getElementById('f-cf')||{}).value||'';
-  var vue=(document.getElementById('f-vue')||{}).value||'table';
   var top=parseInt(document.getElementById('f-top').value)||10;
+  var vue=(document.getElementById('f-vue')||{}).value||'table';
+
+  // Agrégation paiements par fournisseur
   var byF={};
   (window.CONSO_PMT||[]).forEach(function(r){
-    if(ann&&parseInt(r.annee)!==parseInt(ann)) return;
+    if(r.m<=0) return;
+    if(ann&&String(r.annee)!==ann) return;
     if(prg&&r.p!==prg) return;
     if(fnd&&r.fo!==fnd) return;
     if(cf&&r.cc!==cf) return;
-    if(r.m<=0) return;
     if(!byF[r.f]) byF[r.f]={m:0,n:0};
     byF[r.f].m+=r.m; byF[r.f].n++;
   });
-  var sorted=Object.keys(byF).map(function(f){return{f:f,m:byF[f].m,n:byF[f].n};})
-    .sort(function(a,b){return b.m-a.m;}).slice(0,top);
-  var totalAll=Object.values(byF).reduce(function(s,r){return s+r.m;},0);
-  document.getElementById('f-table-wrap').style.display=vue==='pareto'?'none':'';
-  document.getElementById('f-pareto-wrap').style.display=vue==='pareto'?'':'none';
 
+  var allFours=Object.keys(byF).map(function(f){return{f:f,m:byF[f].m,n:byF[f].n};})
+    .sort(function(a,b){return b.m-a.m;});
+  var sorted=allFours.slice(0,top);
+  var totalAll=allFours.reduce(function(s,r){return s+r.m;},0);
+
+  // Affichage selon vue
+  var isChart=(vue==='pareto'||vue==='comp');
+  document.getElementById('f-table-wrap').style.display=isChart?'none':'';
+  document.getElementById('f-pareto-wrap').style.display=isChart?'':'none';
+
+  if(vue==='comp'){
+    renderParetoComp();
+    return;
+  }
+  if(vue==='pareto'){
+    renderPareto(allFours);
+    return;
+  }
+
+  // Vue tableau (défaut)
+  if(_chPareto){_chPareto.destroy();_chPareto=null;}
   document.getElementById('f-th').innerHTML='<tr><th>#</th><th>Fournisseur</th><th style="text-align:right">Montant payé</th><th style="text-align:right">% total</th><th style="text-align:right">Nb</th></tr>';
   document.getElementById('f-tb').innerHTML=sorted.map(function(r,i){
     return'<tr><td>'+(i+1)+'</td><td>'+esc(r.f)+'</td><td style="text-align:right">'+fmt(r.m)+' €</td><td style="text-align:right">'+(totalAll>0?r.m/totalAll*100:0).toFixed(1)+' %</td><td style="text-align:right">'+r.n+'</td></tr>';
   }).join('');
-  if(vue==='pareto'||vue==='comp'){
-    document.getElementById('f-table-wrap').style.display='none';
-    document.getElementById('f-pareto-wrap').style.display='';
-    if(vue==='comp'){
-      renderParetoComp();
-    } else {
-      // Pour le Pareto : utiliser TOUS les fournisseurs (pas limité au top N)
-      var allFours=Object.keys(byF).map(function(f){return{f:f,m:byF[f].m,n:byF[f].n};})
-        .sort(function(a,b){return b.m-a.m;});
-      renderPareto(allFours);
-    }
-  }
 }
+
 // ════════════════════════════════════════════════════════
 // COURBE DE PARETO — Concentration des dépenses fournisseurs
 // ════════════════════════════════════════════════════════
