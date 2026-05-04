@@ -228,8 +228,13 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="fg"><label>Fonds</label><select id="f-fnd2"><option value="">Tous</option></select></div>
       <div class="fg"><label>Centre de coûts</label><select id="f-cf"><option value="">Tous</option></select></div>
       <div class="fg"><label>Afficher</label><select id="f-top"><option value="10">Top 10</option><option value="20">Top 20</option><option value="50">Top 50</option></select></div>
+      <div class="fg"><label>Vue</label><select id="f-vue"><option value="table">Tableau</option><option value="pareto">Courbe de Pareto</option></select></div>
     </div>
-    <div class="tw"><table><thead id="f-th"></thead><tbody id="f-tb"></tbody></table></div>
+    <div id="f-table-wrap"><div class="tw"><table><thead id="f-th"></thead><tbody id="f-tb"></tbody></table></div></div>
+    <div id="f-pareto-wrap" style="display:none;margin-top:16px">
+      <div class="ks" id="f-pareto-kpis"></div>
+      <div style="position:relative;height:420px"><canvas id="chPareto"></canvas></div>
+    </div>
   </div>
 
   <!-- DÉLAIS -->
@@ -552,7 +557,7 @@ function attachListeners(){
     [['h-ann','h-prg','h-fnd','h-cf','h-grp'],renderHisto],
     [['e-ann','e-prg','e-fnd','e-cf'],renderEvol],
     [['x-ann','x-prg','x-fnd','x-cf'],renderCross],
-    [['f-ann2','f-prg2','f-fnd2','f-cf','f-top'],renderFournisseurs],
+    [['f-ann2','f-prg2','f-fnd2','f-cf','f-top','f-vue'],renderFournisseurs],
     [['d-ann','d-prg','d-fnd','d-cf','d-statut','d-vue'],renderDelais],
     [['r-ann','r-prg','r-fnd','r-cf'],renderRepartition],
     [['s-ann','s-cf'],renderSynthese]
@@ -1418,6 +1423,7 @@ function renderFournisseurs(){
   var prg=document.getElementById('f-prg2').value;
   var fnd=document.getElementById('f-fnd2').value;
   var cf=(document.getElementById('f-cf')||{}).value||'';
+  var vue=(document.getElementById('f-vue')||{}).value||'table';
   var top=parseInt(document.getElementById('f-top').value)||10;
   var byF={};
   (window.CONSO_PMT||[]).forEach(function(r){
@@ -1432,34 +1438,98 @@ function renderFournisseurs(){
   var sorted=Object.keys(byF).map(function(f){return{f:f,m:byF[f].m,n:byF[f].n};})
     .sort(function(a,b){return b.m-a.m;}).slice(0,top);
   var totalAll=Object.values(byF).reduce(function(s,r){return s+r.m;},0);
+  document.getElementById('f-table-wrap').style.display=vue==='pareto'?'none':'';
+  document.getElementById('f-pareto-wrap').style.display=vue==='pareto'?'':'none';
+
   document.getElementById('f-th').innerHTML='<tr><th>#</th><th>Fournisseur</th><th style="text-align:right">Montant payé</th><th style="text-align:right">% total</th><th style="text-align:right">Nb</th></tr>';
   document.getElementById('f-tb').innerHTML=sorted.map(function(r,i){
     return'<tr><td>'+(i+1)+'</td><td>'+esc(r.f)+'</td><td style="text-align:right">'+fmt(r.m)+' €</td><td style="text-align:right">'+(totalAll>0?r.m/totalAll*100:0).toFixed(1)+' %</td><td style="text-align:right">'+r.n+'</td></tr>';
   }).join('');
+  if(vue==='pareto') renderPareto(rows);
+}
+// ════════════════════════════════════════════════════════
+// COURBE DE PARETO — Concentration des dépenses fournisseurs
+// ════════════════════════════════════════════════════════
+var _chPareto=null;
+function renderPareto(rows){
+  // rows = [{four, m, nb}] triés par montant décroissant
+  var sorted=[...rows].sort(function(a,b){return b.m-a.m;});
+  var total=sorted.reduce(function(s,r){return s+r.m;},0);
+  var n=sorted.length;
+  if(!total||!n){
+    document.getElementById('f-pareto-kpis').innerHTML='<div class="kpi"><div class="kl">Aucune donnée</div></div>';
+    return;
+  }
+
+  // Calcul cumul
+  var cumul=0, cumulPct=[], labels=[], vals=[];
+  var nb80=0, seuil80=false;
+  sorted.forEach(function(r,i){
+    cumul+=r.m;
+    var pctCumul=cumul/total*100;
+    cumulPct.push(Math.round(pctCumul*10)/10);
+    labels.push(r.four.length>20?r.four.substring(0,18)+'…':r.four);
+    vals.push(Math.round(r.m*100)/100);
+    if(!seuil80&&pctCumul>=80){nb80=i+1;seuil80=true;}
+  });
+
+  // KPIs
+  var pctFour80=Math.round(nb80/n*100);
+  document.getElementById('f-pareto-kpis').innerHTML=
+    '<div class="kpi"><div class="kl">Total fournisseurs</div><div class="kv">'+n+'</div></div>'+
+    '<div class="kpi"><div class="kl">80% des dépenses</div><div class="kv c-wn">'+nb80+' fournisseurs ('+pctFour80+'%)</div></div>'+
+    '<div class="kpi"><div class="kl">Total dépenses</div><div class="kv">'+fmt(total)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">Top 1 fournisseur</div><div class="kv">'+Math.round(sorted[0].m/total*100)+' % du total</div></div>';
+
+  // Graphique
+  if(_chPareto) _chPareto.destroy();
+  var ctx=document.getElementById('chPareto').getContext('2d');
+  _chPareto=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:labels,
+      datasets:[
+        {type:'bar',label:'Montant (€)',data:vals,
+         backgroundColor:vals.map(function(_,i){return i<nb80?'#2563eb':'#93c5fd';}),
+         yAxisID:'y',order:2},
+        {type:'line',label:'Cumul (%)',data:cumulPct,
+         borderColor:'#dc2626',backgroundColor:'transparent',
+         borderWidth:2,pointRadius:3,pointBackgroundColor:'#dc2626',
+         yAxisID:'y2',order:1}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top'},
+        tooltip:{callbacks:{
+          label:function(c){
+            if(c.dataset.yAxisID==='y2') return 'Cumul : '+c.raw+'%';
+            return 'Montant : '+fmt(c.raw)+' €';
+          }
+        }},
+        annotation:{
+          annotations:{
+            line80:{type:'line',yScaleID:'y2',yMin:80,yMax:80,
+              borderColor:'#dc2626',borderWidth:1,borderDash:[6,3],
+              label:{content:'80%',enabled:true,position:'end',
+                     backgroundColor:'#dc2626',color:'#fff',font:{size:11}}}
+          }
+        }
+      },
+      scales:{
+        x:{ticks:{maxRotation:45,font:{size:10}}},
+        y:{position:'left',title:{display:true,text:'Montant (€)'},
+           ticks:{callback:function(v){return fmt(v)+' €';}}},
+        y2:{position:'right',min:0,max:100,
+            title:{display:true,text:'Cumul (%)'},
+            ticks:{callback:function(v){return v+'%';}},
+            grid:{drawOnChartArea:false}}
+      }
+    }
+  });
 }
 
-// ════════════════════════════════════
-// DÉLAIS
-// ════════════════════════════════════
-// ════════════════════════════════════════════════════════
-// DÉLAIS DE PAIEMENT (Factures vs Paiements par fournisseur)
-// ════════════════════════════════════════════════════════
-// ════════════════════════════════════════════════════════
-// DÉLAIS DE PAIEMENT
-// Basé sur Date de mise à jour Comptabilité budgétaire
-// Lien facture→paiement via Nº pièce de paiement
-// ════════════════════════════════════════════════════════
-// ════════════════════════════════════════════════════════
-// DÉLAIS DE PAIEMENT
-// Agrégation par fournisseur : Factures Original > 0 vs Paiements > 0
-// Délai = Date MàJ comptabilité de la facture → du paiement (par fournisseur)
-// ════════════════════════════════════════════════════════
-// ════════════════════════════════════════════════════════
-// DÉLAIS DE PAIEMENT
-// Source : CONSO_PMT (paiements réels > 0)
-// Montant = total payé par fournisseur
-// Délai = dtMaj(facture liée) → dtMaj(paiement) via N° pièce de référence partagé
-// ════════════════════════════════════════════════════════
 function renderDelais(){
   var ann=document.getElementById('d-ann').value;
   var prg=document.getElementById('d-prg').value;
