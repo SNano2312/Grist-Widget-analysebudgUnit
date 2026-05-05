@@ -2255,7 +2255,10 @@ function renderOM(){
       if(r.m>0) byOM[k].paye+=r.m;
       if(Math.abs(r.m)>0.009&&Math.abs(r.m)<0.011) byOM[k].hasOMP01=true;
     });
-    Object.values(byOM).forEach(function(r){r.isOMP=r.cptBud==='FG';});
+    Object.values(byOM).forEach(function(r){
+      r.isOMP=r.cptBud==='FG';
+      console.log('[OMP] ref='+r.ref+' cptBud='+r.cptBud+' isOMP='+r.isOMP);
+    });
     var omList=Object.values(byOM).sort(function(a,b){return b.eng-a.eng;});
     document.getElementById('om-th').innerHTML='<tr><th>N° Ordre mission</th><th>Ann\u00e9e</th><th>Programme</th><th>Fonds</th><th style="text-align:right">Engag\u00e9</th><th style="text-align:right">Pay\u00e9</th><th style="text-align:right">Solde</th><th>Statut</th></tr>';
     document.getElementById('om-tb').innerHTML=omList.map(function(r){
