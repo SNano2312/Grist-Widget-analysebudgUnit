@@ -2255,16 +2255,13 @@ function renderOM(){
       if(r.m>0) byOM[k].paye+=r.m;
       if(Math.abs(r.m)>0.009&&Math.abs(r.m)<0.011) byOM[k].hasOMP01=true;
     });
-    Object.values(byOM).forEach(function(r){
-      r.isOMP=r.cptBud==='FG';
-      console.log('[OMP] ref='+r.ref+' cptBud='+r.cptBud+' isOMP='+r.isOMP);
-    });
+    Object.values(byOM).forEach(function(r){r.isOMP=r.cptBud==='FG';});
     var omList=Object.values(byOM).sort(function(a,b){return b.eng-a.eng;});
     document.getElementById('om-th').innerHTML='<tr><th>N° Ordre mission</th><th>Ann\u00e9e</th><th>Programme</th><th>Fonds</th><th style="text-align:right">Engag\u00e9</th><th style="text-align:right">Pay\u00e9</th><th style="text-align:right">Solde</th><th>Statut</th></tr>';
     document.getElementById('om-tb').innerHTML=omList.map(function(r){
       var solde=r.eng-r.paye;
       var statut=Math.abs(solde)<0.01?'<span class="rb r-ok">Sold\u00e9</span>':'<span class="rb r-wn">En cours</span>';
-      return'<tr style="cursor:pointer" onclick="openOMDrill(\'om\',this.dataset.k1,null,null)" data-k1="'+esc(r.ref)+'" ><td style="font-weight:500">'+esc(r.ref)+'</td><td>'+r.annee+'</td><td>'+esc(r.prog)+'</td><td>'+esc(r.fonds)+'</td>'+
+      return'<tr style="cursor:pointer" onclick="openOMDrill(\'om\',this.dataset.k1,this.dataset.k2,null)" data-k1="'+esc(r.ref)+'" data-k2="'+(r.isOMP?'1':'0')+'" ><td style="font-weight:500">'+esc(r.ref)+'</td><td>'+r.annee+'</td><td>'+esc(r.prog)+'</td><td>'+esc(r.fonds)+'</td>'+
         '<td style="text-align:right">'+fmt(r.eng)+' \u20ac</td>'+
         '<td style="text-align:right;color:var(--ok)">'+fmt(r.paye)+' \u20ac</td>'+
         '<td style="text-align:right;color:'+(Math.abs(solde)>0.01?'var(--wn)':'inherit')+'">'+fmt(solde)+' \u20ac</td>'+
