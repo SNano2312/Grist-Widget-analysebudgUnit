@@ -844,6 +844,7 @@ function procConso(raw, annee){
         m:N(monts[i]),
         p:(!pP||pP==='NA')?'Non Applicable':pP,
         fo:fP,
+        cptBud:(col('Compte_budgetaire','Compte_budg_taire','Compte budgétaire')[i]||'').toString().trim(),
         saisiPar:(col('Saisi_par','Saisi par')[i]||'').toString().trim(),
         refOM:(col('Reference','R\u00e9f\u00e9rence')[i]||'').toString().trim(),
         cmd:(cmds[i]||'').toString().trim(),
@@ -881,6 +882,7 @@ function procConso(raw, annee){
     const saisiPar=(col('Saisi_par','Saisi par')[i]||'').toString().trim();
     const refOM=(col('Reference','Référence')[i]||'').toString().trim();
     const cc=(col('Centre_de_couts')[i]||'').toString().trim();
+    const cptBud=(col('Compte_budgetaire','Compte_budg_taire','Compte budg\u00e9taire')[i]||'').toString().trim();
     const pmtNum=(function(){var v=col('N_piece_de_paiement','Nº_pièce_de_paiement','No_piece_de_paiement')[i];if(!v&&v!==0)return'';var n=parseFloat(v);return isNaN(n)?String(v).trim():String(Math.round(n));})();
     const cmdRef=(function(){var v=col('Numero_de_piece_de_la_piece_de_reference')[i];if(!v&&v!==0)return'';var n=parseFloat(v);return isNaN(n)?String(v).trim():String(Math.round(n));})();
     CONSO.push({
@@ -889,7 +891,7 @@ function procConso(raw, annee){
       piecePrec,
       f:(fours[i]||'').toString().trim(),
       cmd:(cmds[i]||'').toString().trim(),
-      saisiPar, refOM, cc, cmdRef, pmtNum,
+      saisiPar, refOM, cc, cmdRef, pmtNum, cptBud,
       dtMaj:(function(){var rawD=col('Date_de_mise_a_jour_Comptabilite_budgeta')[i];if(typeof rawD==='number'&&rawD>0){var dd=new Date(rawD*1000);return String(dd.getDate()).padStart(2,'0')+'/'+String(dd.getMonth()+1).padStart(2,'0')+'/'+dd.getFullYear();}return(rawD||'').toString().trim();})(),
       d:(desigs[i]||'').toString().trim(),
       dt, dtMois,
@@ -2237,19 +2239,23 @@ function renderOM(){
     var byOM={};
     omRows.forEach(function(r){
       var k=r.refOM||'⚠️ CDA sans réf. OM';
-      if(!byOM[k]) byOM[k]={ref:k,prog:r.p,fonds:r.fo,annee:r.annee,eng:0,paye:0,fac:0,hasOMP:false};
+      if(!byOM[k]) byOM[k]={ref:k,prog:r.p,fonds:r.fo,annee:r.annee,eng:0,paye:0,fac:0,cptBud:''};
+      if(r.cptBud) byOM[k].cptBud=r.cptBud;
+      if(r.cptBud) byOM[k].cptBud=r.cptBud;
       if(r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0&&r.tm==='Original') byOM[k].eng+=r.m;
-      if(Math.abs(r.m)===0.01) byOM[k].hasOMP=true;
+      if(Math.abs(r.m)>0.009&&Math.abs(r.m)<0.011) byOM[k].hasOMP01=true;
       if(r.tv==='Factures') byOM[k].fac+=r.m;
     });
     // Ajouter paiements depuis CONSO_PMT dans byOM
     omPMT.forEach(function(r){
       var k=r.refOM||'(sans r\u00e9f\u00e9rence)';
-      if(!byOM[k]) byOM[k]={ref:k,prog:r.p,fonds:r.fo,annee:r.annee,eng:0,paye:0,fac:0,hasOMP:false};
+      if(!byOM[k]) byOM[k]={ref:k,prog:r.p,fonds:r.fo,annee:r.annee,eng:0,paye:0,fac:0,cptBud:''};
+      if(r.cptBud) byOM[k].cptBud=r.cptBud;
+      if(r.cptBud) byOM[k].cptBud=r.cptBud;
       if(r.m>0) byOM[k].paye+=r.m;
-      if(Math.abs(r.m)===0.01) byOM[k].hasOMP=true;
+      if(Math.abs(r.m)>0.009&&Math.abs(r.m)<0.011) byOM[k].hasOMP01=true;
     });
-    Object.values(byOM).forEach(function(r){r.isOMP=r.hasOMP===true;});
+    Object.values(byOM).forEach(function(r){r.isOMP=r.cptBud==='FG';});
     var omList=Object.values(byOM).sort(function(a,b){return b.eng-a.eng;});
     document.getElementById('om-th').innerHTML='<tr><th>N° Ordre mission</th><th>Ann\u00e9e</th><th>Programme</th><th>Fonds</th><th style="text-align:right">Engag\u00e9</th><th style="text-align:right">Pay\u00e9</th><th style="text-align:right">Solde</th><th>Statut</th></tr>';
     document.getElementById('om-tb').innerHTML=omList.map(function(r){
