@@ -2324,10 +2324,9 @@ function openOMDrill(type, key1, key2, anneeF){
   } else {
     // Drill par ordre de mission (refOM = key1)
     var refOM=key1;
-    title='Détail ordre de mission : '+refOM;
-    var refOM=key1;
-    title='Détail ordre de mission : '+refOM;
-    // Factures et autres lignes avec le refOM
+    var isOMPFlag=(key2==='1');
+    window._omDrIsOMP=isOMPFlag;
+    title=(isOMPFlag?'Ordre de mission permanent (OMP)':'Ordre de mission')+' : '+refOM;
     var conso=CONSO.filter(function(r){return r.saisiPar==='NOTILUSBUS'&&r.refOM===refOM;});
     var pmt=(window.CONSO_PMT||[]).filter(function(r){return r.saisiPar==='NOTILUSBUS'&&r.refOM===refOM;});
     _omDrRows=conso.concat(pmt);
@@ -2378,7 +2377,7 @@ function renderOMDrill(rows, sc, sd){
       if(c.n) return'<td style="text-align:right;font-weight:'+(r.m<0?'700':'400')+';color:'+(r.m<0?'var(--er)':'inherit')+'">'+fmt(r.m)+' \u20ac</td>';
       var v=r[c.k]||'';
       if(c.link==='sifac'){if(!v)return'<td>-</td>';var url=sapBase+encodeURIComponent(v)+sapSuf;return'<td><a href="'+url+'" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">'+esc(v)+'</a></td>';}
-      if(c.link==='notilus'){if(!v)return'<td>-</td>';var numOM=v.replace(/^[A-Z]+-/i,'');var engTotalOM=_omDrRows.filter(function(x){return x.tv&&x.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0&&x.tm==='Original';}).reduce(function(s,x){return s+x.m;},0);console.log('[OMP] refOM='+(_omDrRows[0]&&_omDrRows[0].refOM)+' engTotalOM='+engTotalOM+' rows='+_omDrRows.length);var isOMP=Math.abs(engTotalOM)<=0.01&&engTotalOM>0;var omPath=isOMP?'OMP':'OD';var url='https://esr-inrae.notilus-pio.cegid.cloud/#/'+omPath+'/'+encodeURIComponent(numOM);return'<td><a href="'+url+'" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">'+esc(v)+(isOMP?' <small style="color:var(--mu)">(OMP)</small>':'')+'</a></td>';}
+      if(c.link==='notilus'){if(!v)return'<td>-</td>';var numOM=v.replace(/^[A-Z]+-/i,'');var isOMP=(window._omDrIsOMP===true);var omPath=isOMP?'OMP':'OD';var url='https://esr-inrae.notilus-pio.cegid.cloud/#/'+omPath+'/'+encodeURIComponent(numOM);return'<td><a href="'+url+'" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">'+esc(v)+(isOMP?' <small style="color:var(--mu)">(OMP)</small>':'')+'</a></td>';}
       return'<td>'+esc(String(v||'-'))+'</td>';
     }).join('')+'</tr>';
   }).join('');
