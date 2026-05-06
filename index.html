@@ -1349,8 +1349,10 @@ function renderSynthese(){
     if(!byProg[b.prog]) byProg[b.prog]={bud:0,conso:0,nconso:0,cda:0,rar:0,om:0,nf:0,paye:0,rap:0};
     var g=byProg[b.prog];
     var budVCC=getBudgetCC(b.prog,b.fonds,cfF);
-    g.bud+=(budVCC!==null?budVCC:b.bud);g.conso+=b.conso;g.nconso+=b.nconso;
-    g.cda+=b.cda;g.rar+=b.rar;g.om+=b.om;g.nf+=b.nf;g.paye+=b.paye;g.rap+=b.rap;
+    g.bud+=(budVCC!==null?budVCC:b.bud);
+    g.conso+=b.conso;g.nconso+=b.nconso;
+    g.cda+=b.cda;g.rar+=b.rar;g.om+=b.om;g.nf+=b.nf;
+    g.paye+=b.paye;g.rap+=b.rap;
   });
 
   // Rythme mensuel : 3 derniers mois de CdA Original par programme
