@@ -754,7 +754,11 @@ async function lanceAnalyse(){
           if(kl.includes('programme')) row.prog=String(v||'').trim();
           else if(kl==='fonds') row.fonds=String(v||'').trim();
           else if(kl.includes('budget')) row.budget=parseFloat(v)||0;
-          else if(k!=='id'&&k!=='manualSort') row.cc[k]=parseFloat(v)||0;
+          else if(k!=='id'&&k!=='manualSort'){
+            // Grist préfixe les colonnes numériques avec 'c' (ex: c0496C001 → 0496C001)
+            var ccKey=k.replace(/^c(\d)/, '$1');
+            row.cc[ccKey]=parseFloat(v)||0;
+          }
         });
         if(row.prog&&row.fonds) window.VENTILATION_CC.push(row);
       }
