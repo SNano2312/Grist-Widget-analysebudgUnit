@@ -762,7 +762,7 @@ async function lanceAnalyse(){
         window.VENTILATION_CC[0]?Object.keys(window.VENTILATION_CC[0].cc).join(','):'');
     }catch(e){console.warn('[VCC] Erreur:',e.message);}
   }
-    fillFilters();
+    // fillFilters appelé après NACRES
     hideLd();
     document.getElementById('cfg-screen').style.display='none';
     document.getElementById('dash').style.display='block';
@@ -783,6 +783,7 @@ async function lanceAnalyse(){
       }catch(e){console.log('NACRES 2026:',e.message);}
     }
     fillNacresFilters();
+    fillFilters();
     switchTab('s');
   }catch(e){
     hideLd();
