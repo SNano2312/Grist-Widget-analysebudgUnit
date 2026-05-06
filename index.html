@@ -515,6 +515,15 @@ async function showCols(){
         txt += '1ere ligne: '+JSON.stringify(row)+'\n';
       }
     }
+    txt += '\n';
+    if(window.VENTILATION_CC&&window.VENTILATION_CC.length){
+      txt += '=== VENTILATION_CC ===\n';
+      txt += 'Lignes: '+window.VENTILATION_CC.length+'\n';
+      txt += 'CC disponibles: '+Object.keys(window.VENTILATION_CC[0].cc).join(', ')+'\n';
+      txt += '1ere ligne: '+JSON.stringify(window.VENTILATION_CC[0])+'\n';
+    } else {
+      txt += '=== VENTILATION_CC ===\nNon chargée (sélectionnez la table dans la config)\n';
+    }
     out.textContent = txt;
   }catch(e){
     out.textContent = 'Erreur: '+e.message;
@@ -728,6 +737,31 @@ async function lanceAnalyse(){
     procConso(rawC26, 2026);
 
 
+  // Charger Ventilation CC
+  const tVCC=document.getElementById('sel-vcc').value;
+  window.VENTILATION_CC=[];
+  if(tVCC){
+    try{
+      const vccRaw=await grist.docApi.fetchTable(tVCC);
+      const vccKeys=Object.keys(vccRaw);
+      const vccN=(vccRaw[vccKeys[0]]||[]).length;
+      const skipL=['id','manualsort','budget_ae_n','budget_aen'];
+      for(let ii=0;ii<vccN;ii++){
+        const row={prog:'',fonds:'',budget:0,cc:{}};
+        vccKeys.forEach(k=>{
+          const kl=k.toLowerCase().replace(/[_\s]/g,'');
+          const v=vccRaw[k][ii];
+          if(kl.includes('programme')) row.prog=String(v||'').trim();
+          else if(kl==='fonds') row.fonds=String(v||'').trim();
+          else if(kl.includes('budget')) row.budget=parseFloat(v)||0;
+          else if(k!=='id'&&k!=='manualSort') row.cc[k]=parseFloat(v)||0;
+        });
+        if(row.prog&&row.fonds) window.VENTILATION_CC.push(row);
+      }
+      console.log('[VCC] OK:',window.VENTILATION_CC.length,'lignes, CC:',
+        window.VENTILATION_CC[0]?Object.keys(window.VENTILATION_CC[0].cc).join(','):'');
+    }catch(e){console.warn('[VCC] Erreur:',e.message);}
+  }
     fillFilters();
     hideLd();
     document.getElementById('cfg-screen').style.display='none';
