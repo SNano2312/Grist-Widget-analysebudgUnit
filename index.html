@@ -1015,13 +1015,13 @@ function fb(f){
     if(hasVCC2){_pcCC3=new Set((window.VENTILATION_CC).filter(function(r){return r.cc[f.cf]!==undefined&&r.cc[f.cf]>0;}).map(function(r){return r.prog;}));}
     else{_pcCC3=new Set(CONSO.filter(function(r){return r.cc===f.cf;}).map(function(r){return r.p;}));}
   }
-  var consoIdxH=f.cf?getConsoCC(f.ann,f.cf):null;
+  var consoIdxH=f.cf?getIndicateursCC(f.ann,f.cf):null;
   const rows=BUDGET.filter(b=>(!f.ann||parseInt(b.annee)===parseInt(f.ann))&&(!f.prg||b.prog===f.prg)&&(!f.fnd||b.fonds===f.fnd)&&(!_pcCC3||_pcCC3.has(b.prog)))
     .map(b=>{
       var bv=getBudgetCC(b.prog,b.fonds,f.cf);
-      var cv=consoIdxH?((consoIdxH[b.prog]||0)):b.conso;
       var budEff=bv!==null?bv:b.bud;
-      return Object.assign({},b,{bud:budEff,conso:cv,nconso:Math.max(0,budEff-cv)});
+      if(consoIdxH){var ih=consoIdxH[b.prog]||{conso:0,cda:0,paye:0};return Object.assign({},b,{bud:budEff,conso:ih.conso,nconso:Math.max(0,budEff-ih.conso),cda:ih.cda,rar:Math.max(0,budEff-ih.cda),paye:ih.paye,rap:Math.max(0,ih.conso-ih.paye),om:0,nf:0});}
+      return Object.assign({},b,{bud:budEff,conso:b.conso,nconso:Math.max(0,budEff-b.conso)});
     });
   if(f.prg||f.fnd) console.log('[FILTER] prg='+f.prg+' fnd='+f.fnd+' -> '+rows.length+' lignes budget');
   if(f.prg&&BUDGET.length) console.log('[FILTER] BUDGET[0].prog='+JSON.stringify(BUDGET[0].prog)+' vs f.prg='+JSON.stringify(f.prg));
@@ -1132,12 +1132,12 @@ function renderEvol(){
   var _pcCCe=null;
   if(cf){if(hasVCC4){_pcCCe=new Set((window.VENTILATION_CC).filter(function(r){return r.cc[cf]!==undefined&&r.cc[cf]>0;}).map(function(r){return r.prog;}));}
   else{_pcCCe=new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;}));}}
-  var consoIdxE=cf?getConsoCC(ann,cf):null;
+  var consoIdxE=cf?getIndicateursCC(ann,cf):null;
   const budRows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCCe||_pcCCe.has(b.prog))).map(b=>{
     var bv=getBudgetCC(b.prog,b.fonds,cf);
-    var cv=consoIdxE?((consoIdxE[b.prog]||0)):b.conso;
     var budEff=bv!==null?bv:b.bud;
-    return Object.assign({},b,{bud:budEff,conso:cv,nconso:Math.max(0,budEff-cv)});
+    if(consoIdxE){var ie=consoIdxE[b.prog]||{conso:0,cda:0,paye:0};return Object.assign({},b,{bud:budEff,conso:ie.conso,nconso:Math.max(0,budEff-ie.conso),cda:ie.cda,rar:Math.max(0,budEff-ie.cda),paye:ie.paye,rap:Math.max(0,ie.conso-ie.paye),om:0,nf:0});}
+    return Object.assign({},b,{bud:budEff,conso:b.conso,nconso:Math.max(0,budEff-b.conso)});
   });
   const totBud=budRows.reduce((s,r)=>s+r.bud,0);
   const totCDA=budRows.reduce((s,r)=>s+r.cda,0);
@@ -1231,7 +1231,7 @@ function renderCross(){
     return;
   }
 
-  var consoIdxX=cf?getConsoCC(ann,cf):null;
+  var consoIdxX=cf?getIndicateursCC(ann,cf):null;
   const rows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCC||_pcCC.has(b.prog))).map(b=>{
     var bv=getBudgetCC(b.prog,b.fonds,cf);
     var cv=consoIdxX?((consoIdxX[b.prog]||0)):b.conso;
@@ -1374,13 +1374,8 @@ function renderSynthese(){
   if(cfF){if(hasVCC){progsCC=new Set((window.VENTILATION_CC).filter(function(r){return r.cc[cfF]!==undefined&&r.cc[cfF]>0;}).map(function(r){return r.prog;}));}
   else{progsCC=new Set(CONSO.filter(function(r){return r.cc===cfF;}).map(function(r){return r.p;}));}}
   // Calculer la conso réelle depuis CONSO filtrée par CC
-  var consoByProg={};
-  CONSO.forEach(function(r){
-    if(ann&&String(r.annee)!==ann) return;
-    if(cfF&&r.cc!==cfF) return;
-    if(!consoByProg[r.p]) consoByProg[r.p]=0;
-    consoByProg[r.p]+=r.m;
-  });
+  // Calculer indicateurs depuis CONSO filtrée par CC
+  var indCC=cfF?getIndicateursCC(ann,cfF):null;
 
   BUDGET.forEach(function(b){
     if(ann&&parseInt(b.annee)!==parseInt(ann)) return;
@@ -1390,12 +1385,19 @@ function renderSynthese(){
     var budVCC=getBudgetCC(b.prog,b.fonds,cfF);
     var budEff=budVCC!==null?budVCC:b.bud;
     g.bud+=budEff;
-    // Conso depuis CONSO filtré par CC (pas depuis le fichier Budget)
-    var consoCC=cfF?(consoByProg[b.prog]||0):b.conso;
-    g.conso+=consoCC;
-    g.nconso+=Math.max(0,budEff-consoCC);
-    g.cda+=b.cda;g.rar+=b.rar;g.om+=b.om;g.nf+=b.nf;
-    g.paye+=b.paye;g.rap+=b.rap;
+    if(indCC){
+      var ind=indCC[b.prog]||{conso:0,cda:0,paye:0};
+      g.conso+=ind.conso;
+      g.nconso+=Math.max(0,budEff-ind.conso);
+      g.cda+=ind.cda;
+      g.rar+=Math.max(0,budEff-ind.cda);
+      g.paye+=ind.paye;
+      g.rap+=Math.max(0,ind.conso-ind.paye);
+    } else {
+      g.conso+=b.conso;g.nconso+=b.nconso;
+      g.cda+=b.cda;g.rar+=b.rar;g.om+=b.om;g.nf+=b.nf;
+      g.paye+=b.paye;g.rap+=b.rap;
+    }
   });
 
   // Rythme mensuel : 3 derniers mois de CdA Original par programme
@@ -1882,7 +1884,7 @@ function renderRepartition(){
     if(ann&&parseInt(r.annee)!==parseInt(ann)) return;
     if(prg&&r.p!==prg) return;
     if(fnd&&r.fo!==fnd) return;
-    if(cf&&r.cc&&r.cc!==cf) return;  // exclure si CC renseigné et différent
+    if(cf&&r.cc!==cf) return;
     if(cf&&!r.cc&&r.tv==='Paiements') return;  // exclure paiements sans CC si filtre actif
     var cat=TV_RESS.indexOf(r.tv)>=0?'_ress':(TV_CATS[r.tv]?r.tv:null);
     if(!cat) return;
