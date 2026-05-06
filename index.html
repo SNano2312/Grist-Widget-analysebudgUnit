@@ -1015,8 +1015,14 @@ function fb(f){
     if(hasVCC2){_pcCC3=new Set((window.VENTILATION_CC).filter(function(r){return r.cc[f.cf]!==undefined&&r.cc[f.cf]>0;}).map(function(r){return r.prog;}));}
     else{_pcCC3=new Set(CONSO.filter(function(r){return r.cc===f.cf;}).map(function(r){return r.p;}));}
   }
+  var consoIdxH=f.cf?getConsoCC(f.ann,f.cf):null;
   const rows=BUDGET.filter(b=>(!f.ann||parseInt(b.annee)===parseInt(f.ann))&&(!f.prg||b.prog===f.prg)&&(!f.fnd||b.fonds===f.fnd)&&(!_pcCC3||_pcCC3.has(b.prog)))
-    .map(b=>{var bv=getBudgetCC(b.prog,b.fonds,f.cf);return bv!==null?Object.assign({},b,{bud:bv}):b;});
+    .map(b=>{
+      var bv=getBudgetCC(b.prog,b.fonds,f.cf);
+      var cv=consoIdxH?((consoIdxH[b.prog]||0)):b.conso;
+      var budEff=bv!==null?bv:b.bud;
+      return Object.assign({},b,{bud:budEff,conso:cv,nconso:Math.max(0,budEff-cv)});
+    });
   if(f.prg||f.fnd) console.log('[FILTER] prg='+f.prg+' fnd='+f.fnd+' -> '+rows.length+' lignes budget');
   if(f.prg&&BUDGET.length) console.log('[FILTER] BUDGET[0].prog='+JSON.stringify(BUDGET[0].prog)+' vs f.prg='+JSON.stringify(f.prg));
   return rows;
@@ -1126,7 +1132,13 @@ function renderEvol(){
   var _pcCCe=null;
   if(cf){if(hasVCC4){_pcCCe=new Set((window.VENTILATION_CC).filter(function(r){return r.cc[cf]!==undefined&&r.cc[cf]>0;}).map(function(r){return r.prog;}));}
   else{_pcCCe=new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;}));}}
-  const budRows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCCe||_pcCCe.has(b.prog))).map(b=>{var bv=getBudgetCC(b.prog,b.fonds,cf);return bv!==null?Object.assign({},b,{bud:bv}):b;});
+  var consoIdxE=cf?getConsoCC(ann,cf):null;
+  const budRows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCCe||_pcCCe.has(b.prog))).map(b=>{
+    var bv=getBudgetCC(b.prog,b.fonds,cf);
+    var cv=consoIdxE?((consoIdxE[b.prog]||0)):b.conso;
+    var budEff=bv!==null?bv:b.bud;
+    return Object.assign({},b,{bud:budEff,conso:cv,nconso:Math.max(0,budEff-cv)});
+  });
   const totBud=budRows.reduce((s,r)=>s+r.bud,0);
   const totCDA=budRows.reduce((s,r)=>s+r.cda,0);
   const totRAR=budRows.reduce((s,r)=>s+r.rar,0);
@@ -1219,7 +1231,13 @@ function renderCross(){
     return;
   }
 
-  const rows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCC||_pcCC.has(b.prog))).map(b=>{var bv=getBudgetCC(b.prog,b.fonds,cf);return bv!==null?Object.assign({},b,{bud:bv}):b;});
+  var consoIdxX=cf?getConsoCC(ann,cf):null;
+  const rows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCC||_pcCC.has(b.prog))).map(b=>{
+    var bv=getBudgetCC(b.prog,b.fonds,cf);
+    var cv=consoIdxX?((consoIdxX[b.prog]||0)):b.conso;
+    var budEff=bv!==null?bv:b.bud;
+    return Object.assign({},b,{bud:budEff,conso:cv,nconso:Math.max(0,budEff-cv)});
+  });
   var _piX=pi;
   const cols=[
     {k:'cf',l:'Centre fin.'},{k:'annee',l:'Année'},{k:'prog',l:'Programme'},{k:'_nom',l:'Nom'},{k:'fonds',l:'Fonds'},
@@ -1326,6 +1344,17 @@ function renderCrossComp(prg, fnd, pcCC, pi){
 // ════════════════════════════════════
 // VENTILATION CC
 // ════════════════════════════════════
+function getConsoCC(ann, cc){
+  // Retourne un index {prog: montant_conso} filtré par année et CC
+  var idx={};
+  CONSO.forEach(function(r){
+    if(ann&&String(r.annee)!==ann) return;
+    if(cc&&r.cc!==cc) return;
+    if(!idx[r.p]) idx[r.p]=0;
+    idx[r.p]+=r.m;
+  });
+  return idx;
+}
 function getBudgetCC(prog, fonds, cc){
   if(!cc||!(window.VENTILATION_CC||[]).length) return null;
   var row=(window.VENTILATION_CC).find(function(r){return r.prog===prog&&r.fonds===fonds;});
