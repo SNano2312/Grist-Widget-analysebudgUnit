@@ -1021,10 +1021,7 @@ function fb(f){
       var bv=getBudgetCC(b.prog,b.fonds,f.cf);
       var cv=consoIdxH?((consoIdxH[b.prog]||0)):b.conso;
       var budEff=bv!==null?bv:b.bud;
-      var hasVCC_h=bv!==null;
-      return Object.assign({},b,{bud:budEff,conso:cv,nconso:Math.max(0,budEff-cv),
-        cda:hasVCC_h?0:b.cda,rar:hasVCC_h?0:b.rar,om:hasVCC_h?0:b.om,nf:hasVCC_h?0:b.nf,
-        paye:hasVCC_h?0:b.paye,rap:hasVCC_h?0:b.rap});
+      return Object.assign({},b,{bud:budEff,conso:cv,nconso:Math.max(0,budEff-cv)});
     });
   if(f.prg||f.fnd) console.log('[FILTER] prg='+f.prg+' fnd='+f.fnd+' -> '+rows.length+' lignes budget');
   if(f.prg&&BUDGET.length) console.log('[FILTER] BUDGET[0].prog='+JSON.stringify(BUDGET[0].prog)+' vs f.prg='+JSON.stringify(f.prg));
@@ -1140,9 +1137,7 @@ function renderEvol(){
     var bv=getBudgetCC(b.prog,b.fonds,cf);
     var cv=consoIdxE?((consoIdxE[b.prog]||0)):b.conso;
     var budEff=bv!==null?bv:b.bud;
-    var hasVCC_e=bv!==null;
-    return Object.assign({},b,{bud:budEff,conso:cv,nconso:Math.max(0,budEff-cv),
-      cda:hasVCC_e?0:b.cda,rar:hasVCC_e?0:b.rar});
+    return Object.assign({},b,{bud:budEff,conso:cv,nconso:Math.max(0,budEff-cv)});
   });
   const totBud=budRows.reduce((s,r)=>s+r.bud,0);
   const totCDA=budRows.reduce((s,r)=>s+r.cda,0);
@@ -1242,10 +1237,7 @@ function renderCross(){
     var cv=consoIdxX?((consoIdxX[b.prog]||0)):b.conso;
     var budEff=bv!==null?bv:b.bud;
     // Si VCC actif : CDa/RAR/OM/NF/Payé/RAP non ventilables par CC → 0
-    var hasVCC_=bv!==null;
-    return Object.assign({},b,{bud:budEff,conso:cv,nconso:Math.max(0,budEff-cv),
-      cda:hasVCC_?0:b.cda,rar:hasVCC_?0:b.rar,om:hasVCC_?0:b.om,nf:hasVCC_?0:b.nf,
-      paye:hasVCC_?0:b.paye,rap:hasVCC_?0:b.rap});
+    return Object.assign({},b,{bud:budEff,conso:cv,nconso:Math.max(0,budEff-cv)});
   });
   var _piX=pi;
   const cols=[
@@ -1884,14 +1876,14 @@ function renderRepartition(){
   var prg=document.getElementById('r-prg').value;
   var fnd=document.getElementById('r-fnd').value;
   var cf=(document.getElementById('r-cf')||{}).value||'';
-  // Si filtre CC actif : exclure CONSO_PMT (pas de CC sur paiements)
-  var all=cf?CONSO:(CONSO.concat(window.CONSO_PMT||[]));
+  var all=CONSO.concat(window.CONSO_PMT||[]);
   var byCat={},byPC={};
   all.forEach(function(r){
     if(ann&&parseInt(r.annee)!==parseInt(ann)) return;
     if(prg&&r.p!==prg) return;
     if(fnd&&r.fo!==fnd) return;
-    if(cf&&r.cc!==cf) return;
+    if(cf&&r.cc&&r.cc!==cf) return;  // exclure si CC renseigné et différent
+    if(cf&&!r.cc&&r.tv==='Paiements') return;  // exclure paiements sans CC si filtre actif
     var cat=TV_RESS.indexOf(r.tv)>=0?'_ress':(TV_CATS[r.tv]?r.tv:null);
     if(!cat) return;
     byCat[cat]=(byCat[cat]||0)+r.m;
