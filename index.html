@@ -1343,14 +1343,27 @@ function renderSynthese(){
   var progsCC=null;
   if(cfF){if(hasVCC){progsCC=new Set((window.VENTILATION_CC).filter(function(r){return r.cc[cfF]!==undefined&&r.cc[cfF]>0;}).map(function(r){return r.prog;}));}
   else{progsCC=new Set(CONSO.filter(function(r){return r.cc===cfF;}).map(function(r){return r.p;}));}}
+  // Calculer la conso réelle depuis CONSO filtrée par CC
+  var consoByProg={};
+  CONSO.forEach(function(r){
+    if(ann&&String(r.annee)!==ann) return;
+    if(cfF&&r.cc!==cfF) return;
+    if(!consoByProg[r.p]) consoByProg[r.p]=0;
+    consoByProg[r.p]+=r.m;
+  });
+
   BUDGET.forEach(function(b){
     if(ann&&parseInt(b.annee)!==parseInt(ann)) return;
     if(progsCC&&!progsCC.has(b.prog)) return;
     if(!byProg[b.prog]) byProg[b.prog]={bud:0,conso:0,nconso:0,cda:0,rar:0,om:0,nf:0,paye:0,rap:0};
     var g=byProg[b.prog];
     var budVCC=getBudgetCC(b.prog,b.fonds,cfF);
-    g.bud+=(budVCC!==null?budVCC:b.bud);
-    g.conso+=b.conso;g.nconso+=b.nconso;
+    var budEff=budVCC!==null?budVCC:b.bud;
+    g.bud+=budEff;
+    // Conso depuis CONSO filtré par CC (pas depuis le fichier Budget)
+    var consoCC=cfF?(consoByProg[b.prog]||0):b.conso;
+    g.conso+=consoCC;
+    g.nconso+=Math.max(0,budEff-consoCC);
     g.cda+=b.cda;g.rar+=b.rar;g.om+=b.om;g.nf+=b.nf;
     g.paye+=b.paye;g.rap+=b.rap;
   });
