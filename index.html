@@ -756,7 +756,7 @@ async function lanceAnalyse(){
           else if(kl.includes('budget')) row.budget=parseFloat(v)||0;
           else if(k!=='id'&&k!=='manualSort'){
             // Grist préfixe les colonnes numériques avec 'c' (ex: c0496C001 → 0496C001)
-            var ccKey=k.replace(/^c(\d)/, '$1');
+            var ccKey=(k.length>1&&k[0]==='c'&&k[1]>='0'&&k[1]<='9')?k.slice(1):k;
             row.cc[ccKey]=parseFloat(v)||0;
           }
         });
