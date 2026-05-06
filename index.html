@@ -1009,8 +1009,14 @@ function switchTab(t){
 // ════════════════════════════════════════
 function gf(){return{ann:document.getElementById('h-ann').value,prg:document.getElementById('h-prg').value,fnd:document.getElementById('h-fnd').value,cf:(document.getElementById('h-cf')||{}).value||'',grp:document.getElementById('h-grp').value}}
 function fb(f){
-  const _pcCC3=f.cf?new Set(CONSO.filter(function(r){return r.cc===f.cf;}).map(function(r){return r.p;})):null;
-  const rows=BUDGET.filter(b=>(!f.ann||parseInt(b.annee)===parseInt(f.ann))&&(!f.prg||b.prog===f.prg)&&(!f.fnd||b.fonds===f.fnd)&&(!_pcCC3||_pcCC3.has(b.prog)));
+  var hasVCC2=(window.VENTILATION_CC||[]).length>0;
+  var _pcCC3=null;
+  if(f.cf){
+    if(hasVCC2){_pcCC3=new Set((window.VENTILATION_CC).filter(function(r){return r.cc[f.cf]!==undefined&&r.cc[f.cf]>0;}).map(function(r){return r.prog;}));}
+    else{_pcCC3=new Set(CONSO.filter(function(r){return r.cc===f.cf;}).map(function(r){return r.p;}));}
+  }
+  const rows=BUDGET.filter(b=>(!f.ann||parseInt(b.annee)===parseInt(f.ann))&&(!f.prg||b.prog===f.prg)&&(!f.fnd||b.fonds===f.fnd)&&(!_pcCC3||_pcCC3.has(b.prog)))
+    .map(b=>{var bv=getBudgetCC(b.prog,b.fonds,f.cf);return bv!==null?Object.assign({},b,{bud:bv}):b;});
   if(f.prg||f.fnd) console.log('[FILTER] prg='+f.prg+' fnd='+f.fnd+' -> '+rows.length+' lignes budget');
   if(f.prg&&BUDGET.length) console.log('[FILTER] BUDGET[0].prog='+JSON.stringify(BUDGET[0].prog)+' vs f.prg='+JSON.stringify(f.prg));
   return rows;
@@ -1116,7 +1122,11 @@ function renderEvol(){
   const fnd=document.getElementById('e-fnd').value;
   const cf=(document.getElementById('e-cf')||{}).value||'';
   if(ann==='multi'){renderEvolMulti(prg,fnd);return;}
-  const budRows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!cf||b.cf===cf));
+  var hasVCC4=(window.VENTILATION_CC||[]).length>0;
+  var _pcCCe=null;
+  if(cf){if(hasVCC4){_pcCCe=new Set((window.VENTILATION_CC).filter(function(r){return r.cc[cf]!==undefined&&r.cc[cf]>0;}).map(function(r){return r.prog;}));}
+  else{_pcCCe=new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;}));}}
+  const budRows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCCe||_pcCCe.has(b.prog))).map(b=>{var bv=getBudgetCC(b.prog,b.fonds,cf);return bv!==null?Object.assign({},b,{bud:bv}):b;});
   const totBud=budRows.reduce((s,r)=>s+r.bud,0);
   const totCDA=budRows.reduce((s,r)=>s+r.cda,0);
   const totRAR=budRows.reduce((s,r)=>s+r.rar,0);
@@ -1197,7 +1207,10 @@ function renderCross(){
   const prg=document.getElementById('x-prg').value;
   const fnd=document.getElementById('x-fnd').value;
   const cf=(document.getElementById('x-cf')||{}).value||'';
-  const _pcCC=cf?new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;})):null;
+  var hasVCC3=(window.VENTILATION_CC||[]).length>0;
+  var _pcCC=null;
+  if(cf){if(hasVCC3){_pcCC=new Set((window.VENTILATION_CC).filter(function(r){return r.cc[cf]!==undefined&&r.cc[cf]>0;}).map(function(r){return r.prog;}));}
+  else{_pcCC=new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;}));}}
   const pi=window._PROG_INFO||{};
 
   if(ann==='comp'){
@@ -1206,7 +1219,7 @@ function renderCross(){
     return;
   }
 
-  const rows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCC||_pcCC.has(b.prog)));
+  const rows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCC||_pcCC.has(b.prog))).map(b=>{var bv=getBudgetCC(b.prog,b.fonds,cf);return bv!==null?Object.assign({},b,{bud:bv}):b;});
   var _piX=pi;
   const cols=[
     {k:'cf',l:'Centre fin.'},{k:'annee',l:'Année'},{k:'prog',l:'Programme'},{k:'_nom',l:'Nom'},{k:'fonds',l:'Fonds'},
@@ -1326,7 +1339,10 @@ function renderSynthese(){
   var pi=window._PROG_INFO||{}, today=new Date(), byProg={};
 
   // Filtrer BUDGET
-  var progsCC=cfF?new Set(CONSO.filter(function(r){return r.cc===cfF;}).map(function(r){return r.p;})):null;
+  var hasVCC=(window.VENTILATION_CC||[]).length>0;
+  var progsCC=null;
+  if(cfF){if(hasVCC){progsCC=new Set((window.VENTILATION_CC).filter(function(r){return r.cc[cfF]!==undefined&&r.cc[cfF]>0;}).map(function(r){return r.prog;}));}
+  else{progsCC=new Set(CONSO.filter(function(r){return r.cc===cfF;}).map(function(r){return r.p;}));}}
   BUDGET.forEach(function(b){
     if(ann&&parseInt(b.annee)!==parseInt(ann)) return;
     if(progsCC&&!progsCC.has(b.prog)) return;
