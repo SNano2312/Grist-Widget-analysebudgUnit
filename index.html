@@ -622,7 +622,7 @@ grist.ready({
       });
       sel.addEventListener('change', checkSelections);
     });
-    ['sel-t1','sel-nacres25','sel-nacres'].forEach(function(sid){
+    ['sel-t1','sel-nacres25','sel-nacres','sel-vcc'].forEach(function(sid){
       const sel=document.getElementById(sid); if(!sel) return;
       tables.forEach(function(t){const opt=document.createElement('option');opt.value=t;opt.textContent=t;sel.appendChild(opt);});
     });
@@ -637,6 +637,7 @@ grist.ready({
     if(saved.t1 && saved.t1!=='') document.getElementById('sel-t1').value=saved.t1;
     if(saved.nacres25 && saved.nacres25!=='') document.getElementById('sel-nacres25').value=saved.nacres25;
     if(saved.nacres && saved.nacres!=='') document.getElementById('sel-nacres').value=saved.nacres;
+    if(saved.vcc && saved.vcc!=='') document.getElementById('sel-vcc').value=saved.vcc;
     checkSelections();
 
     // Relance automatique si toutes les tables sont configurées
@@ -674,7 +675,7 @@ async function lanceAnalyse(){
   const tT1=document.getElementById('sel-t1').value;
   const tNacres25=document.getElementById('sel-nacres25').value;
   const tNacres=document.getElementById('sel-nacres').value;
-  try{localStorage.setItem('budgetCfg',JSON.stringify({b25:tB25,b26:tB26,c25:tC25,c26:tC26,t1:tT1,nacres25:tNacres25,nacres:tNacres}));}catch(e){}
+  try{localStorage.setItem('budgetCfg',JSON.stringify({b25:tB25,b26:tB26,c25:tC25,c26:tC26,t1:tT1,nacres25:tNacres25,nacres:tNacres,vcc:document.getElementById('sel-vcc').value}));}catch(e){}
 
   showLd('Lecture des données…');
   try{
@@ -926,8 +927,10 @@ function fillFilters(){
     s.innerHTML='<option value="">Tous</option>';
     fonds.forEach(f=>s.innerHTML+=`<option value="${esc(f)}">${esc(f)}</option>`);
   });
-  // Centre de coûts (CC) - format 0496C0001
-  const cfs=[...new Set(CONSO.map(r=>r.cc).filter(Boolean))].sort();
+  // Centre de coûts (CC) - union CONSO + VCC
+  const cfsSet=new Set(CONSO.map(r=>r.cc).filter(Boolean));
+  (window.VENTILATION_CC||[]).forEach(function(r){Object.keys(r.cc).forEach(function(k){cfsSet.add(k);});});
+  const cfs=[...cfsSet].sort();
   ['s-cf','h-cf','e-cf','x-cf','f-cf','d-cf','r-cf','om-cf','n-cf','o-cf'].forEach(id=>{
     const el=document.getElementById(id); if(!el) return;
     el.innerHTML='<option value="">Tous</option>';
@@ -1264,6 +1267,16 @@ function renderCrossComp(prg, fnd, pcCC, pi){
 // ════════════════════════
 // SYNTHÈSE
 // ════════════════════════
+// ════════════════════════════════════
+// VENTILATION CC
+// ════════════════════════════════════
+function getBudgetCC(prog, fonds, cc){
+  if(!cc||!(window.VENTILATION_CC||[]).length) return null;
+  var row=(window.VENTILATION_CC).find(function(r){return r.prog===prog&&r.fonds===fonds;});
+  if(!row) return null;
+  return (row.cc[cc]!==undefined)?row.cc[cc]:null;
+}
+
 function renderSynthese(){
   var ann=document.getElementById('s-ann').value;
   var cfF=(document.getElementById('s-cf')||{}).value||'';
@@ -1276,7 +1289,8 @@ function renderSynthese(){
     if(progsCC&&!progsCC.has(b.prog)) return;
     if(!byProg[b.prog]) byProg[b.prog]={bud:0,conso:0,nconso:0,cda:0,rar:0,om:0,nf:0,paye:0,rap:0};
     var g=byProg[b.prog];
-    g.bud+=b.bud;g.conso+=b.conso;g.nconso+=b.nconso;
+    var budVCC=getBudgetCC(b.prog,b.fonds,cfF);
+    g.bud+=(budVCC!==null?budVCC:b.bud);g.conso+=b.conso;g.nconso+=b.nconso;
     g.cda+=b.cda;g.rar+=b.rar;g.om+=b.om;g.nf+=b.nf;g.paye+=b.paye;g.rap+=b.rap;
   });
 
