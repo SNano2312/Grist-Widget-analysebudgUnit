@@ -1083,6 +1083,8 @@ function fb(f){
     }
   }
 
+  var consoByProgH={};
+  if(f.cf){ CONSO.forEach(function(r){ if(f.ann&&String(r.annee)!==f.ann) return; if(r.cc!==f.cf) return; if(!consoByProgH[r.p]) consoByProgH[r.p]=0; consoByProgH[r.p]+=r.m; }); }
   const rows=BUDGET
     .filter(b=>(!f.ann||parseInt(b.annee)===parseInt(f.ann))
       &&(!f.prg||b.prog===f.prg)
@@ -1093,7 +1095,8 @@ function fb(f){
       if(bv===null) return b;
       var budEff=bv;
       var cdaCC=getCdaCC(b.prog,b.fonds,f.cf,f.ann);
-      return Object.assign({},b,{bud:budEff,conso:b.conso,nconso:Math.max(0,budEff-(cdaCC?cdaCC.cda:b.cda)),cda:cdaCC?cdaCC.cda:b.cda,rar:cdaCC?cdaCC.rar:b.rar,om:0,nf:0,paye:b.paye,rap:b.rap});
+      var consoCC=f.cf?(consoByProgH[b.prog]||0):b.conso;
+      return Object.assign({},b,{bud:budEff,conso:consoCC,nconso:Math.max(0,budEff-(cdaCC?cdaCC.cda:b.cda)),cda:cdaCC?cdaCC.cda:b.cda,rar:cdaCC?cdaCC.rar:b.rar,om:0,nf:0,paye:b.paye,rap:b.rap});
     });
   return rows;
 }
@@ -1202,11 +1205,14 @@ function renderEvol(){
   if(cf){if(hasVCC4){_pcCCe=new Set((window.VENTILATION_CC).filter(function(r){return r.cc[cf]!==undefined&&r.cc[cf]>0;}).map(function(r){return r.prog;}));}
   else{_pcCCe=new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;}));}}
   var consoIdxE=cf?getIndicateursCC(ann,cf):null;
+  var consoByProgE={};
+  if(cf){ CONSO.forEach(function(r){ if(ann&&String(r.annee)!==ann) return; if(r.cc!==cf) return; if(!consoByProgE[r.p]) consoByProgE[r.p]=0; consoByProgE[r.p]+=r.m; }); }
   const budRows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCCe||_pcCCe.has(b.prog))).map(b=>{
     var bv=getBudgetCC(b.prog,b.fonds,cf);
     if(bv===null) return b;
     var cdaCC3=getCdaCC(b.prog,b.fonds,cf,ann);
-    return Object.assign({},b,{bud:bv,cda:cdaCC3?cdaCC3.cda:b.cda,rar:cdaCC3?cdaCC3.rar:b.rar,om:0,nf:0});
+    var consoCCe=cf?(consoByProgE[b.prog]||0):b.conso;
+    return Object.assign({},b,{bud:bv,conso:consoCCe,cda:cdaCC3?cdaCC3.cda:b.cda,rar:cdaCC3?cdaCC3.rar:b.rar,om:0,nf:0});
   });
   const totCDA=budRows.reduce((s,r)=>s+r.cda,0);
   const totRAR=budRows.reduce((s,r)=>s+r.rar,0);
@@ -1299,11 +1305,14 @@ function renderCross(){
     return;
   }
 
+  var consoByProgX={};
+  if(cf){ CONSO.forEach(function(r){ if(ann&&String(r.annee)!==ann) return; if(r.cc!==cf) return; if(!consoByProgX[r.p]) consoByProgX[r.p]=0; consoByProgX[r.p]+=r.m; }); }
   const rows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCC||_pcCC.has(b.prog))).map(b=>{
     var bv=getBudgetCC(b.prog,b.fonds,cf);
     if(bv===null) return b;
     var cdaCC2=getCdaCC(b.prog,b.fonds,cf,ann);
-    return Object.assign({},b,{bud:bv,nconso:Math.max(0,bv-(cdaCC2?cdaCC2.cda:b.cda)),cda:cdaCC2?cdaCC2.cda:b.cda,rar:cdaCC2?cdaCC2.rar:b.rar,om:0,nf:0});
+    var consoCCx=cf?(consoByProgX[b.prog]||0):b.conso;
+    return Object.assign({},b,{bud:bv,conso:consoCCx,nconso:Math.max(0,bv-(cdaCC2?cdaCC2.cda:b.cda)),cda:cdaCC2?cdaCC2.cda:b.cda,rar:cdaCC2?cdaCC2.rar:b.rar,om:0,nf:0});
   });
   var _piX=pi;
   const cols=[
