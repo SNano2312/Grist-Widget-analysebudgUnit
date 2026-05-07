@@ -2804,6 +2804,7 @@ function renderCC(){
   CONSO.forEach(r=>{if(r.cc) cfsSet.add(r.cc);});
   const allCC=cf?[cf]:[...cfsSet].sort();
 
+  console.log('[CC] allCC='+JSON.stringify([...allCC])+' VCC='+( window.VENTILATION_CC||[]).length+' CONSO='+CONSO.length);
   if(!allCC.length){
     document.getElementById('cc-cards').innerHTML='<div style="color:var(--mu);padding:20px">Aucun CC disponible. Configurez Ventilation_CC ou chargez les données Conso.</div>';
     document.getElementById('cc-th').innerHTML=''; document.getElementById('cc-tb').innerHTML=''; document.getElementById('cc-tf').innerHTML='';
