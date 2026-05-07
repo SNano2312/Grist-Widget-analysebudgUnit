@@ -1009,22 +1009,36 @@ function switchTab(t){
 // ════════════════════════════════════════
 function gf(){return{ann:document.getElementById('h-ann').value,prg:document.getElementById('h-prg').value,fnd:document.getElementById('h-fnd').value,cf:(document.getElementById('h-cf')||{}).value||'',grp:document.getElementById('h-grp').value}}
 function fb(f){
+  // Construire progsCC : programmes éligibles selon le CC sélectionné
   var hasVCC2=(window.VENTILATION_CC||[]).length>0;
   var _pcCC3=null;
   if(f.cf){
-    if(hasVCC2){_pcCC3=new Set((window.VENTILATION_CC).filter(function(r){return r.cc[f.cf]!==undefined&&r.cc[f.cf]>0;}).map(function(r){return r.prog;}));}
-    else{_pcCC3=new Set(CONSO.filter(function(r){return r.cc===f.cf;}).map(function(r){return r.p;}));}
+    if(hasVCC2){
+      _pcCC3=new Set((window.VENTILATION_CC)
+        .filter(function(r){return r.cc[f.cf]!==undefined&&r.cc[f.cf]>0;})
+        .map(function(r){return r.prog;}));
+    } else {
+      _pcCC3=new Set(CONSO.filter(function(r){return r.cc===f.cf;}).map(function(r){return r.p;}));
+    }
   }
-  var consoIdxH=f.cf?getIndicateursCC(f.ann,f.cf):null;
-  const rows=BUDGET.filter(b=>(!f.ann||parseInt(b.annee)===parseInt(f.ann))&&(!f.prg||b.prog===f.prg)&&(!f.fnd||b.fonds===f.fnd)&&(!_pcCC3||_pcCC3.has(b.prog)))
+
+  const rows=BUDGET
+    .filter(b=>(!f.ann||parseInt(b.annee)===parseInt(f.ann))
+      &&(!f.prg||b.prog===f.prg)
+      &&(!f.fnd||b.fonds===f.fnd)
+      &&(!_pcCC3||_pcCC3.has(b.prog)))
     .map(b=>{
       var bv=getBudgetCC(b.prog,b.fonds,f.cf);
-      var budEff=bv!==null?bv:b.bud;
-      return Object.assign({},b,{bud:budEff,conso:b.conso,nconso:Math.max(0,budEff-b.conso)});
+      if(bv===null) return b; // pas de filtre CC → Budget normal
+      // Filtre CC actif : budget=VCC, autres depuis CONSO filtré CC
+      var budEff=bv;
+      return Object.assign({},b,{
+        bud:budEff,
+        conso:'?',nconso:'?',
+        cda:'?',rar:'?',om:'?',nf:'?',
+        paye:'?',rap:'?'
+      });
     });
-      return Object.assign({},b,{bud:budEff,conso:b.conso,nconso:Math.max(0,budEff-b.conso)});
-  if(f.prg||f.fnd) console.log('[FILTER] prg='+f.prg+' fnd='+f.fnd+' -> '+rows.length+' lignes budget');
-  if(f.prg&&BUDGET.length) console.log('[FILTER] BUDGET[0].prog='+JSON.stringify(BUDGET[0].prog)+' vs f.prg='+JSON.stringify(f.prg));
   return rows;
 }
 
