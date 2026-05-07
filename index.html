@@ -840,6 +840,8 @@ async function lanceAnalyse(){
             }
           });
           if(row.nacreCode.toUpperCase().startsWith('DC.01')){row.surMarche=true;row.agenceVoyage=true;}
+          if(row.nacreCode.toUpperCase().startsWith('DC.01')){row.surMarche=true;row.agenceVoyage=true;}
+          else if(row.typeDoc==='OSMA'){row.surMarche=true;}
           if(row.cc&&row.prog) window.CDA_CC.push(row);
         }
       }catch(e){console.warn('[CDA_CC '+anneeStr+'] Erreur:',e.message);}
@@ -1083,8 +1085,6 @@ function fb(f){
     }
   }
 
-  var consoByProgH={};
-  if(f.cf){ CONSO.forEach(function(r){ if(f.ann&&String(r.annee)!==f.ann) return; if(r.cc!==f.cf) return; if(!consoByProgH[r.p]) consoByProgH[r.p]=0; consoByProgH[r.p]+=r.m; }); }
   const rows=BUDGET
     .filter(b=>(!f.ann||parseInt(b.annee)===parseInt(f.ann))
       &&(!f.prg||b.prog===f.prg)
@@ -1095,7 +1095,7 @@ function fb(f){
       if(bv===null) return b;
       var budEff=bv;
       var cdaCC=getCdaCC(b.prog,b.fonds,f.cf,f.ann);
-      var consoCC=f.cf?(consoByProgH[b.prog]||0):b.conso;
+      var consoCC=f.cf&&cdaCC?cdaCC.cda:b.conso;
       return Object.assign({},b,{bud:budEff,conso:consoCC,nconso:Math.max(0,budEff-(cdaCC?cdaCC.cda:b.cda)),cda:cdaCC?cdaCC.cda:b.cda,rar:cdaCC?cdaCC.rar:b.rar,om:0,nf:0,paye:b.paye,rap:b.rap});
     });
   return rows;
@@ -1204,14 +1204,11 @@ function renderEvol(){
   var _pcCCe=null;
   if(cf){if(hasVCC4){_pcCCe=new Set((window.VENTILATION_CC).filter(function(r){return r.cc[cf]!==undefined&&r.cc[cf]>0;}).map(function(r){return r.prog;}));}
   else{_pcCCe=new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;}));}}
-  var consoIdxE=cf?getIndicateursCC(ann,cf):null;
-  var consoByProgE={};
-  if(cf){ CONSO.forEach(function(r){ if(ann&&String(r.annee)!==ann) return; if(r.cc!==cf) return; if(!consoByProgE[r.p]) consoByProgE[r.p]=0; consoByProgE[r.p]+=r.m; }); }
   const budRows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCCe||_pcCCe.has(b.prog))).map(b=>{
     var bv=getBudgetCC(b.prog,b.fonds,cf);
     if(bv===null) return b;
     var cdaCC3=getCdaCC(b.prog,b.fonds,cf,ann);
-    var consoCCe=cf?(consoByProgE[b.prog]||0):b.conso;
+    var consoCCe=cf&&cdaCC3?cdaCC3.cda:b.conso;
     return Object.assign({},b,{bud:bv,conso:consoCCe,cda:cdaCC3?cdaCC3.cda:b.cda,rar:cdaCC3?cdaCC3.rar:b.rar,om:0,nf:0});
   });
   const totCDA=budRows.reduce((s,r)=>s+r.cda,0);
@@ -1305,13 +1302,11 @@ function renderCross(){
     return;
   }
 
-  var consoByProgX={};
-  if(cf){ CONSO.forEach(function(r){ if(ann&&String(r.annee)!==ann) return; if(r.cc!==cf) return; if(!consoByProgX[r.p]) consoByProgX[r.p]=0; consoByProgX[r.p]+=r.m; }); }
   const rows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCC||_pcCC.has(b.prog))).map(b=>{
     var bv=getBudgetCC(b.prog,b.fonds,cf);
     if(bv===null) return b;
     var cdaCC2=getCdaCC(b.prog,b.fonds,cf,ann);
-    var consoCCx=cf?(consoByProgX[b.prog]||0):b.conso;
+    var consoCCx=cf&&cdaCC2?cdaCC2.cda:b.conso;
     return Object.assign({},b,{bud:bv,conso:consoCCx,nconso:Math.max(0,bv-(cdaCC2?cdaCC2.cda:b.cda)),cda:cdaCC2?cdaCC2.cda:b.cda,rar:cdaCC2?cdaCC2.rar:b.rar,om:0,nf:0});
   });
   var _piX=pi;
@@ -1467,16 +1462,7 @@ function renderSynthese(){
   // Calculer la conso réelle depuis CONSO filtrée par CC
   // Calculer indicateurs depuis CONSO filtrée par CC
 
-  // Conso filtrée par CC depuis CONSO
-  var consoByProgCC={};
-  if(cfF){
-    CONSO.forEach(function(r){
-      if(ann&&String(r.annee)!==ann) return;
-      if(r.cc!==cfF) return;
-      if(!consoByProgCC[r.p]) consoByProgCC[r.p]=0;
-      consoByProgCC[r.p]+=r.m;
-    });
-  }
+  // Conso filtrée par CC : Factures nettes uniquement
   BUDGET.forEach(function(b){
     if(ann&&parseInt(b.annee)!==parseInt(ann)) return;
     if(progsCC&&!progsCC.has(b.prog)) return;
@@ -1490,7 +1476,8 @@ function renderSynthese(){
       var cdaCC=getCdaCC(b.prog,b.fonds,cfF,ann);
       if(cdaCC){g.cda+=cdaCC.cda;g.rar+=cdaCC.rar;g.nconso+=Math.max(0,budEff-cdaCC.cda);}
       else{g.cda+=b.cda;g.rar+=b.rar;g.nconso+=Math.max(0,budEff-b.cda);}
-      var consoCC=cfF?(consoByProgCC[b.prog]||0):b.conso;
+      var cdaData=cfF?getCdaCC(b.prog,b.fonds,cfF,ann):null;
+      var consoCC=cdaData?cdaData.cda:b.conso;
       g.conso+=consoCC;g.om+=0;g.nf+=0;g.paye+=b.paye;g.rap+=b.rap;
     } else {
       g.conso+=b.conso;g.nconso+=b.nconso;g.cda+=b.cda;g.rar+=b.rar;g.om+=b.om;g.nf+=b.nf;g.paye+=b.paye;g.rap+=b.rap;
