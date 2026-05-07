@@ -347,9 +347,23 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <div class="pnl-t">📂 Sources de données</div>
         <p style="font-size:.82rem;line-height:1.8">
           <strong>Budget_2025 / Budget_2026</strong> : données budgétaires par CF/Programme/Fonds (Budget AE N, Conso AE N, CDa engagées N, RAR, OM, Payé CP…).<br>
-          <strong>Conso_2025 / Conso_2026</strong> : opérations SAP ligne à ligne (type de valeur, montant, fournisseur, date, centre de coûts…).<br>
+          <strong>Conso_2025 / Conso_2026</strong> : opérations SAP ligne à ligne (type de valeur, montant, fournisseur, date, centre de coûts, compte budgétaire…).<br>
           <strong>Table Programmes</strong> (optionnel) : Col. A = N° programme &bull; Col. B = Acronyme &bull; Col. C = Date de fin.<br>
-          <strong>Table NACRES 2025 / NACRES 2026</strong> (optionnel) : postes de commande SAP par année. Col. A = Code NACRES &bull; Col. E = Type document (OSMA=sur marché) &bull; Col. I = Valeur nette répartie &bull; Col. M = Reste à facturer &bull; Col. S = Fonds.
+          <strong>CDA par CC 2025 / CDA par CC 2026</strong> (optionnel, remplace NACRES) : postes de commandes d'achat SAP par CC. Colonnes clés : <em>Centre de coûts, Grpe de marchandises, Commande d'achat, Type de document d'achat, Fournisseur, Désignation, Valeur nette répartie, Valeur restante à livrer, Valeur restante à facturer, Élément d'OTP, Fonds</em>.<br>
+          <strong>Ventilation_CC</strong> (optionnel) : ventilation du budget par Centre de coûts. Colonnes : <em>Programme de financement, Fonds, Budget AE N</em>, puis une colonne par CC (ex : 0496C0001, 0496C0002…).
+        </p>
+      </div>
+
+      <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">🏦 Centres de coûts (CC) et ventilation budgétaire</div>
+        <p style="font-size:.82rem;line-height:1.8">
+          Le filtre <strong>Centre de coûts</strong> est disponible dans tous les onglets.<br>
+          Quand la table <strong>Ventilation_CC</strong> est configurée et qu'un CC est sélectionné :<br>
+          &bull; <strong>Budget AE</strong> → montant alloué à ce CC dans Ventilation_CC<br>
+          &bull; <strong>CDa engagées / RAR</strong> → depuis CDA par CC filtré sur ce CC<br>
+          &bull; <strong>Conso AE</strong> → depuis Conso filtré sur ce CC (colonne Centre de coûts de SAP)<br>
+          &bull; <strong>Payé / Reste à payer</strong> → 0 (les paiements SAP ne sont pas ventilés par CC dans l'export)<br>
+          Si aucun engagement n'existe encore sur un CC, toutes les valeurs sont 0 sauf le budget — c'est normal et se mettra à jour automatiquement dès que des commandes seront imputées sur ce CC dans SAP.
         </p>
       </div>
 
@@ -357,107 +371,103 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <div class="pnl-t">🔢 Indicateurs budgétaires (Synthèse &amp; Histogramme)</div>
         <p style="font-size:.82rem;line-height:1.8">
           <strong>Taux de consommation</strong> : Conso AE N &divide; Budget AE N &times; 100 &mdash; Vert &ge;90% &bull; Orange &ge;50% &bull; Rouge &lt;50%<br>
-          <strong>Taux d'engagement</strong> : MIN((CDa+RAR+OM+NF) &divide; Budget AE N, 100%) &mdash; plafonné car le budget peut être révisé à la baisse après engagement. <em>Note : le taux de conso peut être 100% alors que le taux d'engagement est &lt;100% — ce sont deux comptabilités distinctes.</em><br>
-          <strong>Reste à engager</strong> : MAX(0, Budget AE N &minus; CDa &minus; RAR &minus; OM &minus; NF) — ce qu'il reste à commander. Peut être 0 même quand le taux de conso est 100%.<br>
-          <strong>Payé (CP)</strong> : colonne "Payé CP" du budget SAP. CP = Crédits de Paiement, comptabilité distincte des AE (Autorisations d'Engagement). Un montant payé supérieur au budget AE est normal : il correspond à des engagements d'années antérieures soldés sur l'exercice courant.<br>
-          <strong>Reste à payer</strong> : différence Conso AE &minus; Payé CP. Peut être négatif pour la même raison (paiements d'engagements antérieurs).<br>
-          <strong>Prévision finale</strong> : si taux de conso &ge;95% &rarr; Budget AE N (programme considéré bouclé) ; sinon MIN(Conso AE + CDa + RAR, Budget AE N).<br>
-          <strong>Alertes</strong> : 7 alertes automatiques détectées — sur-engagement, budget épuisé, RAR élevé (&gt;20%), sous-consommation à J-90, échéance proche (&lt;120j avec &gt;5% non consommé), épuisement imminent (&lt;30j au rythme actuel), inactivité (&gt;90j).<br>
-          <strong>Drill-down</strong> : cliquer sur une tuile Synthèse bascule vers l'Histogramme filtré sur ce programme.
+          <strong>Taux d'engagement</strong> : MIN((CDa+RAR+OM+NF) &divide; Budget AE N, 100%) &mdash; plafonné car le budget peut être révisé à la baisse après engagement.<br>
+          <strong>Reste à engager</strong> : MAX(0, Budget AE N &minus; CDa &minus; RAR &minus; OM &minus; NF).<br>
+          <strong>Payé (CP)</strong> : Crédits de Paiement — comptabilité distincte des AE. Un montant payé supérieur au budget AE est normal (paiements d'engagements d'années antérieures).<br>
+          <strong>Prévision finale</strong> : si taux &ge;95% → Budget AE N ; sinon MIN(Conso + CDa + RAR, Budget AE N).<br>
+          <strong>Alertes</strong> : 7 alertes automatiques — sur-engagement, budget épuisé, RAR élevé (&gt;20%), sous-consommation critique J-90, échéance proche, épuisement imminent (&lt;30j), inactivité &gt;90j.<br>
+          <strong>Drill-down</strong> : cliquer sur une barre ou une tuile Synthèse affiche le détail des opérations CONSO avec liens SIFAC+.
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
-        <div class="pnl-t">📈 Courbe d'évolution</div>
+        <div class="pnl-t">📊 Histogramme</div>
         <p style="font-size:.82rem;line-height:1.8">
-          <strong style="color:#2563eb">Commandes engagées</strong> : cumul mensuel des <em>Commandes d'achat + Type montant Original</em>, plafonné au budget.<br>
-          Fallback automatique sur <em>Factures Original</em> si aucune Commande d'achat pour ce fonds (ex : fonds consommé directement par factures).<br>
-          <strong style="color:#d97706">Prévision</strong> : MIN(dernier cumul + CDa + RAR, Budget). Si CDa+RAR&asymp;0 : projection par rythme mensuel moyen des 3 derniers mois jusqu'à la date de fin du programme.<br>
-          <strong>Comparaison 2025/2026</strong> : courbes superposées par mois calendaire. Fallback Factures par année si pas de CdA.
+          Barres Budget / Conso / Non consommé par Programme, Fonds ou Année.<br>
+          <strong>Comparaison 2025/2026</strong> : barres groupées Budget+Conso côte à côte pour les deux années.<br>
+          <strong>Drill-down</strong> : clic sur une barre → détail des lignes CONSO avec N° Commande (lien SIFAC+).
+        </p>
+      </div>
+
+      <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">📈 Évolution mensuelle</div>
+        <p style="font-size:.82rem;line-height:1.8">
+          <strong style="color:#2563eb">Commandes engagées</strong> : cumul mensuel des Commandes d'achat Original, plafonné au budget.<br>
+          Fallback automatique sur Factures Original si aucune commande pour ce fonds.<br>
+          <strong style="color:#d97706">Prévision</strong> : MIN(dernier cumul + CDa + RAR, Budget). Projection par rythme mensuel si pas d'engagements formels.<br>
+          <strong>Comparaison 2025/2026</strong> : courbes superposées par mois calendaire.
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">🔀 Tableau croisé</div>
         <p style="font-size:.82rem;line-height:1.8">
-          Vue tabulaire de toutes les lignes budgétaires avec Budget AE, Conso AE, CDa, RAR, Payé, Reste à payer, Taux de conso.<br>
-          <strong>Drill-down</strong> : cliquer sur une ligne affiche le détail des opérations de consommation (CONSO) avec liens SIFAC+.<br>
-          <strong>Comparaison 2025/2026</strong> : sélectionner "Comparaison 2025/2026" dans le filtre Année pour afficher Budget, Conso, Taux et Payé côte à côte avec évolution en %.
+          Vue tabulaire : Budget AE, Conso AE, CDa, RAR, Payé, Reste à payer, Taux de conso.<br>
+          <strong>Drill-down</strong> : clic sur une ligne → détail des opérations CONSO avec liens SIFAC+.<br>
+          <strong>Comparaison 2025/2026</strong> : Budget, Conso, Taux, Payé côte à côte avec évolution %.
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
-        <div class="pnl-t">📊 Répartition — Montants nets SAP</div>
+        <div class="pnl-t">🧪 NACRES / Postes de commande</div>
         <p style="font-size:.82rem;line-height:1.8">
-          <strong>💳 Paiements</strong> : décaissements effectifs &bull; <strong>📄 Factures en cours</strong> : factures reçues non encore payées &bull;
-          <strong>🛒 Commandes en cours</strong> : solde résiduel des commandes ouvertes &bull; <strong>📝 Pièces préenregistrées</strong> : saisies en attente de validation.<br>
-          Les types "Réservation de fonds" et "Blocage de fonds" sont exclus (pas de dépenses réelles).
-        </p>
-      </div>
-
-      <div class="pnl" style="margin-bottom:16px">
-        <div class="pnl-t">⏱ Délais de paiement</div>
-        <p style="font-size:.82rem;line-height:1.8">
-          Source : paiements effectifs (CONSO_PMT, montant &gt; 0).<br>
-          <strong>Montant payé</strong> : total des paiements par fournisseur.<br>
-          <strong>Délai</strong> : Date MàJ Comptabilité budgétaire de la facture liée &rarr; Date MàJ du paiement, via le N° de pièce de référence partagé dans SAP.<br>
-          <strong>Vue par fournisseur</strong> : Nb paiements / Montant payé / Délai moyen / Délai max (rouge si &gt;60j, orange si &gt;30j).<br>
-          <strong>Vue détail</strong> : ligne par ligne triée par délai décroissant.
-        </p>
-      </div>
-
-      <div class="pnl" style="margin-bottom:16px">
-        <div class="pnl-t">✈️ Missions (NOTILUSBUS)</div>
-        <p style="font-size:.82rem;line-height:1.8">
-          Détection des frais de mission via <code>Saisi par = NOTILUSBUS</code> dans les tables de conso.<br>
-          <strong>Engagé</strong> : Commandes d'achat + Type montant Original uniquement (exclut les réductions).<br>
-          <strong>Payé</strong> : depuis CONSO_PMT où <code>Saisi par = NOTILUSBUS</code>.<br>
-          <strong>Vue par programme</strong> : Engagé / Payé / Solde / Nb ordres de mission.<br>
-          <strong>Vue par ordre de mission</strong> : une ligne par référence NOTILUS-XXXX avec statut Soldé/En cours.<br>
-          <strong>Drill-down</strong> : cliquer sur une ligne affiche le détail des opérations avec N° CDA (lien SIFAC+) et N° OM (lien Notilus).<br>
-          <strong>N° OM</strong> : lien vers <code>/#/OD/XXX</code> (ordre de mission) ou <code>/#/OMP/XXX</code> si montant = 0,01€ (ordre permanent).
-        </p>
-      </div>
-
-      <div class="pnl" style="margin-bottom:16px">
-        <div class="pnl-t">🧪 Onglet NACRES</div>
-        <p style="font-size:.82rem;line-height:1.8">
-          <strong>Sur marché</strong> : type document commence par <code>OSMA</code> &bull; <strong>Hors marché</strong> : OSBC, CA, CAMA…<br>
+          Source : tables <strong>CDA par CC 2025/2026</strong> si configurées, sinon tables NACRES 2025/2026.<br>
+          <strong>Sur marché</strong> : type document OSMA &bull; <strong>Agence voyage (DC.01)</strong> : carte logée CAMA sur NACRES DC.01, affiché en violet &bull; <strong>Hors marché</strong> : OSBC, CA, CAMA (hors DC.01).<br>
           <strong>Valeur nette répartie</strong> : montant total engagé &bull; <strong>Reste à facturer</strong> : part non encore facturée.<br>
-          <strong>Commande non soldée</strong> : Reste &gt; 0 &mdash; surlignée en orange dans la vue Détail. Filtre "Non soldées" disponible.<br>
-          <strong>KPI "Cdes non soldées"</strong> : nb / total sur le filtre actif.<br>
-          Données 2025 et 2026 fusionnées si les deux tables sont configurées. Filtre Année pour distinguer.
+          Avec le filtre Centre de coûts, seules les lignes de ce CC sont affichées (filtrage direct sur la colonne CC de la table CDA).
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">🔴 Commandes non soldées</div>
         <p style="font-size:.82rem;line-height:1.8">
-          Liste toutes les lignes NACRES dont le <strong>Reste à facturer &gt; 0</strong>, triées par reste décroissant.<br>
-          <strong>KPIs</strong> : Nb commandes non soldées / Reste total / dont marché / dont hors marché.<br>
-          <strong>Colonne Reste</strong> : en rouge avec le % non facturé (ex : <em>1 250 € (45%)</em>).<br>
-          N° Commande cliquable vers SIFAC+. Filtres : Année / Programme / Fonds / Type. Export CSV disponible.
+          Lignes CDA avec <strong>Reste à facturer &gt; 0</strong>, triées par reste décroissant.<br>
+          N° Commande cliquable vers SIFAC+. Filtres : Année / Programme / Fonds / CC / Type.
+        </p>
+      </div>
+
+      <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">📊 Répartition</div>
+        <p style="font-size:.82rem;line-height:1.8">
+          <strong>💳 Paiements</strong> : décaissements effectifs &bull; <strong>📄 Factures en cours</strong> : factures reçues non payées &bull;
+          <strong>🛒 Commandes en cours</strong> : solde résiduel des commandes &bull; <strong>📝 Pièces préenregistrées</strong> : saisies en attente.<br>
+          Les Réservations et Blocages de fonds sont exclus (pas de dépenses réelles).
+        </p>
+      </div>
+
+      <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">⏱ Délais de paiement</div>
+        <p style="font-size:.82rem;line-height:1.8">
+          Délai calculé entre la date de la facture et la date du paiement via le N° de pièce de référence SAP.<br>
+          Vue par fournisseur (délai moyen/max) ou détail ligne par ligne. Rouge &gt;60j, orange &gt;30j.
+        </p>
+      </div>
+
+      <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">✈️ Missions (NOTILUSBUS)</div>
+        <p style="font-size:.82rem;line-height:1.8">
+          Détection via <code>Saisi par = NOTILUSBUS</code>.<br>
+          <strong>OMP</strong> (Ordre de Mission Permanent) : détecté via <code>Compte budgétaire = FG</code> → lien Notilus <code>/#/OMP/XXX</code>.<br>
+          <strong>OM</strong> (Ordre de Mission) : <code>Compte budgétaire = FF</code> → lien Notilus <code>/#/OD/XXX</code>.<br>
+          Vue par programme, par ordre de mission, ou évolution mensuelle.
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">📋 Engagements pluriannuels</div>
         <p style="font-size:.82rem;line-height:1.8">
-          Vue consolidée <strong>Budget + NACRES</strong> par Programme/Fonds.<br>
-          <strong>Budget</strong> : CDa engagées et RAR (Reste à réceptionner) pour 2025 et 2026 côte à côte.<br>
-          <strong>NACRES</strong> : commandes non soldées (Reste à facturer) rattachées au même Programme/Fonds.<br>
-          <strong>RAR Total</strong> : somme 2025+2026 — rouge si &gt;10 000€, orange si &gt;5 000€.<br>
-          N'affiche que les lignes ayant un RAR &gt; 0 ou un reste NACRES &gt; 0, triées par RAR décroissant.
+          Consolidation Budget (CDa + RAR 2025 + 2026) + NACRES/CDA non soldées par Programme/Fonds.<br>
+          N'affiche que les lignes ayant un RAR &gt; 0 ou un reste à facturer &gt; 0.
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">🔗 Hyperliens</div>
         <p style="font-size:.82rem;line-height:1.8">
-          <strong>SIFAC+</strong> (N° Commande dans drill-down Histogramme, Tableau croisé, NACRES, Missions) :<br>
+          <strong>SIFAC+</strong> (N° Commande dans drill-downs) :<br>
           <code style="font-size:.74rem;background:#f7f8fb;padding:2px 6px;border-radius:4px;display:block;word-break:break-all;margin:4px 0">https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&amp;/C_PurchaseOrderTP(PurchaseOrder='&lt;N°&gt;',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)</code>
-          <strong>Notilus</strong> (N° Ordre de mission dans drill-down Missions) :<br>
-          <code style="font-size:.74rem;background:#f7f8fb;padding:2px 6px;border-radius:4px;display:block;word-break:break-all;margin:4px 0">https://esr-inrae.notilus-pio.cegid.cloud/#/OD/&lt;N°&gt; &nbsp;ou&nbsp; /#/OMP/&lt;N°&gt; (ordre permanent)</code>
+          <strong>Notilus</strong> (N° OM dans Missions) :<br>
+          <code style="font-size:.74rem;background:#f7f8fb;padding:2px 6px;border-radius:4px;display:block;word-break:break-all;margin:4px 0">https://esr-inrae.notilus-pio.cegid.cloud/#/OD/&lt;N°&gt; &nbsp;ou&nbsp; /#/OMP/&lt;N°&gt;</code>
         </p>
       </div>
 
@@ -465,16 +475,14 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <div class="pnl-t">⚙️ Configuration</div>
         <p style="font-size:.82rem;line-height:1.8">
           <strong>Tables obligatoires</strong> : Budget 2025, Budget 2026, Conso AE 2025, Conso AE 2026.<br>
-          <strong>Tables optionnelles</strong> : Table Programmes (dates de fin, acronymes), NACRES 2025, NACRES 2026.<br>
-          La configuration est mémorisée dans le navigateur (localStorage) et rechargée automatiquement.<br>
-          <strong>Filtre Centre de coûts</strong> : disponible dans tous les onglets &mdash; format XXXXAXXXX (ex : 0496C0001).<br>
-          <strong>Export CSV</strong> : disponible dans Tableau croisé, Top fournisseurs, Délais, Missions, NACRES, Commandes non soldées.
+          <strong>Tables optionnelles</strong> : Programmes (dates de fin, acronymes) &bull; CDA par CC 2025/2026 (remplace NACRES) &bull; Ventilation_CC (budget par centre de coûts).<br>
+          La configuration est mémorisée dans le navigateur (localStorage).<br>
+          <strong>Actualiser</strong> : recharge toutes les données sans repasser par la configuration.
         </p>
       </div>
 
     </div>
-  </div>
-</div>
+  </div></div>
 
 <script>
 // ════════════════════════════════════════
