@@ -163,6 +163,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <div class="tab" id="tab-om" onclick="switchTab('om')">✈️ Missions</div>
     <div class="tab" id="tab-pluri" onclick="switchTab('pluri')">📋 Engagements pluriannuels</div>
     <div class="tab" id="tab-open" onclick="switchTab('open')">🔴 Cdes non soldées</div>
+    <div class="tab" id="tab-cc" onclick="switchTab('cc')">🏦 Centres de coûts</div>
     <div class="tab" id="tab-doc" onclick="switchTab('doc')">📖 Documentation</div>
   </div>
 
@@ -337,6 +338,33 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     </div>
     <div class="ks" id="open-kpis"></div>
     <div class="tw"><table><thead id="open-th"></thead><tbody id="open-tb"></tbody><tfoot id="open-tf"></tfoot></table></div>
+  </div>
+
+  <!-- CENTRES DE COÛTS -->
+  <div id="vw-cc" style="display:none">
+    <div class="flt">
+      <div class="fg"><label>Année</label><select id="cc-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Centre de coûts</label><select id="cc-cf"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Programme</label><select id="cc-prg"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label><select id="cc-fnd"><option value="">Tous</option></select></div>
+    </div>
+    <div id="cc-cards" style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px"></div>
+    <div class="tw" id="cc-table-wrap">
+      <table><thead id="cc-th"></thead><tbody id="cc-tb"></tbody><tfoot id="cc-tf"></tfoot></table>
+    </div>
+    <div id="cc-drv" style="display:none;margin-top:16px">
+      <div class="drh">
+        <button class="btn" onclick="closeCCDrill()">← Retour</button>
+        <span id="cc-dr-title" style="font-weight:600;font-size:.95rem"></span>
+      </div>
+      <div class="dk" id="cc-dr-kpis"></div>
+      <!-- CDA_CC -->
+      <div style="font-weight:700;font-size:.82rem;color:var(--mu);text-transform:uppercase;letter-spacing:.04em;margin:12px 0 6px">Commandes (CDA)</div>
+      <div class="tw" style="margin-bottom:16px"><table><thead id="cc-dr-cda-th"></thead><tbody id="cc-dr-cda-tb"></tbody><tfoot id="cc-dr-cda-tf"></tfoot></table></div>
+      <!-- CONSO -->
+      <div style="font-weight:700;font-size:.82rem;color:var(--mu);text-transform:uppercase;letter-spacing:.04em;margin:12px 0 6px">Opérations SAP (CONSO)</div>
+      <div class="tw"><table><thead id="cc-dr-conso-th"></thead><tbody id="cc-dr-conso-tb"></tbody><tfoot id="cc-dr-conso-tf"></tfoot></table></div>
+    </div>
   </div>
 
   <!-- DOCUMENTATION -->
@@ -603,6 +631,9 @@ window.drillFromSynthese = drillFromSynthese;
 window.renderEvolMulti = renderEvolMulti;
 window.renderNacres = renderNacres;
 window.renderOpenOrders = renderOpenOrders;
+window.renderCC=renderCC;
+window.openCCDrill=openCCDrill;
+window.closeCCDrill=closeCCDrill;
 window.renderOM = renderOM;
 window.openOMDrill = openOMDrill;
 window.closeOMDrill = closeOMDrill;
@@ -846,7 +877,7 @@ async function lanceAnalyse(){
     // Enrichir filtre CC depuis VCC
     const cfsSet=new Set(CONSO.map(r=>r.cc).filter(Boolean));
     (window.VENTILATION_CC||[]).forEach(r=>Object.keys(r.cc).forEach(k=>cfsSet.add(k)));
-    ['s-cf','h-cf','e-cf','x-cf','f-cf','d-cf','r-cf','om-cf','n-cf','o-cf'].forEach(id=>{
+    ['s-cf','h-cf','e-cf','x-cf','f-cf','d-cf','r-cf','om-cf','n-cf','o-cf','cc-cf'].forEach(id=>{
       const el=document.getElementById(id); if(!el) return;
       const cur=el.value;
       el.innerHTML='<option value="">Tous</option>';
@@ -1040,17 +1071,22 @@ function fillFilters(){
   const _cfsSet=new Set(CONSO.map(r=>r.cc).filter(Boolean));
   (window.VENTILATION_CC||[]).forEach(r=>Object.keys(r.cc).forEach(k=>_cfsSet.add(k)));
   const cfs=[..._cfsSet].sort();
-  ['s-cf','h-cf','e-cf','x-cf','f-cf','d-cf','r-cf','om-cf','n-cf','o-cf'].forEach(id=>{
+  ['s-cf','h-cf','e-cf','x-cf','f-cf','d-cf','r-cf','om-cf','n-cf','o-cf','cc-cf'].forEach(id=>{
     const el=document.getElementById(id); if(!el) return;
     el.innerHTML='<option value="">Tous</option>';
     cfs.forEach(c=>el.innerHTML+=`<option value="${esc(c)}">${esc(c)}</option>`);
   });
+  // Peupler cc-prg et cc-fnd
+  const ccPrg=document.getElementById('cc-prg');
+  const ccFnd=document.getElementById('cc-fnd');
+  if(ccPrg){ccPrg.innerHTML='<option value="">Tous</option>';progs.forEach(p=>ccPrg.innerHTML+=`<option value="${esc(p)}">${esc(p)}</option>`);}
+  if(ccFnd){ccFnd.innerHTML='<option value="">Tous</option>';fonds.forEach(f=>ccFnd.innerHTML+=`<option value="${esc(f)}">${esc(f)}</option>`);}
   attachListeners();
 }
 
 function switchTab(t){
   _currentTab=t;
-  ['s','h','e','x','f','d','r','om','nacres','pluri','open','doc'].forEach(function(k){
+  ['s','h','e','x','f','d','r','om','nacres','pluri','open','cc','doc'].forEach(function(k){
     var tab=document.getElementById('tab-'+k);
     var vw=document.getElementById('vw-'+k);
     if(tab) tab.classList.toggle('on',k===t);
@@ -1066,6 +1102,7 @@ function switchTab(t){
   if(t==='r') renderRepartition();
   if(t==='om') renderOM();
   if(t==='nacres') renderNacres();
+  if(t==='cc') renderCC();
   if(t==='pluri') renderPluri();
   if(t==='open') renderOpenOrders();
 }
@@ -2746,6 +2783,166 @@ function renderPluri(){
     '<td style="text-align:right">'+rows.reduce(function(s,r){return s+r.nac_nb;},0)+'</td>'+
     '</tr>';
 }
+
+
+// ════════════════════════════════════════════════════════
+// ONGLET CENTRES DE COÛTS
+// ════════════════════════════════════════════════════════
+function renderCC(){
+  const ann=document.getElementById('cc-ann').value;
+  const cf=(document.getElementById('cc-cf')||{}).value||'';
+  const prg=(document.getElementById('cc-prg')||{}).value||'';
+  const fnd=(document.getElementById('cc-fnd')||{}).value||'';
+  const pi=window._PROG_INFO||{};
+  const sapBase="https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&/C_PurchaseOrderTP(PurchaseOrder='";
+  const sapSuf="',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)";
+
+  // Liste des CC à afficher
+  const cfsSet=new Set([
+    ...(window.VENTILATION_CC||[]).flatMap(r=>Object.keys(r.cc)),
+    ...CONSO.map(r=>r.cc).filter(Boolean)
+  ]);
+  const allCC=cf?[cf]:[...cfsSet].sort();
+
+  if(!allCC.length){
+    document.getElementById('cc-cards').innerHTML='<div style="color:var(--mu);padding:20px">Aucun CC disponible. Configurez Ventilation_CC ou chargez les données Conso.</div>';
+    document.getElementById('cc-th').innerHTML=''; document.getElementById('cc-tb').innerHTML=''; document.getElementById('cc-tf').innerHTML='';
+    return;
+  }
+
+  // Construire lignes CC × Prog × Fonds depuis VCC
+  const rows=[];
+  allCC.forEach(function(ccKey){
+    const vccLines=(window.VENTILATION_CC||[]).filter(r=>r.cc[ccKey]!==undefined&&r.cc[ccKey]>0&&(!prg||r.prog===prg)&&(!fnd||r.fonds===fnd));
+    if(vccLines.length){
+      vccLines.forEach(function(vr){
+        const bud=vr.cc[ccKey]||0;
+        const cda=getCdaCC(vr.prog,vr.fonds,ccKey,ann||null)||{cda:0,rar:0,resteFact:0};
+        const conso=CONSO.filter(r=>r.cc===ccKey&&(!ann||String(r.annee)===ann)&&r.p===vr.prog&&r.fo===vr.fonds).reduce((s,r)=>s+r.m,0);
+        const pEng=bud>0?Math.min(cda.cda/bud*100,100):0;
+        const pConso=bud>0?conso/bud*100:0;
+        rows.push({cc:ccKey,prog:vr.prog,fonds:vr.fonds,nom:(pi[vr.prog]&&pi[vr.prog].nom)||'-',bud,cda:cda.cda,rar:cda.rar,resteFact:cda.resteFact,conso,pEng,pConso});
+      });
+    } else {
+      // Pas de VCC : agréger depuis CONSO
+      const consoRows=CONSO.filter(r=>r.cc===ccKey&&(!ann||String(r.annee)===ann)&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd));
+      const byP={};
+      consoRows.forEach(r=>{const k=r.p+'||'+r.fo;if(!byP[k])byP[k]={prog:r.p,fonds:r.fo,conso:0};byP[k].conso+=r.m;});
+      Object.values(byP).forEach(r=>rows.push({cc:ccKey,prog:r.prog,fonds:r.fonds,nom:(pi[r.prog]&&pi[r.prog].nom)||'-',bud:0,cda:0,rar:0,resteFact:0,conso:r.conso,pEng:0,pConso:0}));
+    }
+  });
+
+  // ── Cartes synthèse par CC ──
+  const byCC={};
+  rows.forEach(r=>{if(!byCC[r.cc])byCC[r.cc]={bud:0,cda:0,rar:0,conso:0};byCC[r.cc].bud+=r.bud;byCC[r.cc].cda+=r.cda;byCC[r.cc].rar+=r.rar;byCC[r.cc].conso+=r.conso;});
+  document.getElementById('cc-cards').innerHTML=Object.entries(byCC).map(([ccKey,g])=>{
+    const pE=g.bud>0?Math.min(g.cda/g.bud*100,100):0;
+    const pC=g.bud>0?g.conso/g.bud*100:0;
+    const clE=pE>=90?'#16a34a':pE>=50?'#d97706':'#2563eb';
+    const clC=pC>=90?'#16a34a':pC>=50?'#d97706':'#dc2626';
+    const nconso=Math.max(0,g.bud-g.conso);
+    return`<div style="background:#fff;border:2px solid var(--bd);border-radius:10px;padding:18px;min-width:230px;flex:1">
+      <div style="font-size:1rem;font-weight:700;color:var(--pr);margin-bottom:14px">🏦 ${esc(ccKey)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.8rem;margin-bottom:12px">
+        <div><div style="color:var(--mu)">Budget alloué</div><div style="font-weight:700;font-size:.95rem">${fmt(g.bud)} €</div></div>
+        <div><div style="color:var(--mu)">Non consommé</div><div style="font-weight:700;font-size:.95rem;color:var(--wn)">${fmt(nconso)} €</div></div>
+      </div>
+      <div style="font-size:.72rem;color:var(--mu);margin-bottom:2px">Engagement (CDa / Budget)</div>
+      <div style="height:7px;background:#f0f1f5;border-radius:4px;margin-bottom:4px;overflow:hidden">
+        <div style="height:100%;width:${pE.toFixed(1)}%;background:${clE};border-radius:4px"></div>
+      </div>
+      <div style="font-size:.8rem;margin-bottom:10px">CDa <strong style="color:${clE}">${fmt(g.cda)} €</strong> &nbsp;RAR <strong>${fmt(g.rar)} €</strong> &nbsp;<span style="color:var(--mu)">${pE.toFixed(1)}%</span></div>
+      <div style="font-size:.72rem;color:var(--mu);margin-bottom:2px">Consommation SAP</div>
+      <div style="height:7px;background:#f0f1f5;border-radius:4px;margin-bottom:4px;overflow:hidden">
+        <div style="height:100%;width:${Math.min(pC,100).toFixed(1)}%;background:${clC};border-radius:4px"></div>
+      </div>
+      <div style="font-size:.8rem">Conso <strong style="color:${clC}">${fmt(g.conso)} €</strong> &nbsp;<span style="color:var(--mu)">${pC.toFixed(1)}%</span></div>
+    </div>`;
+  }).join('');
+
+  // ── Tableau détaillé ──
+  document.getElementById('cc-th').innerHTML=
+    '<tr><th>CC</th><th>Programme</th><th>Nom</th><th>Fonds</th>'+
+    '<th style="text-align:right">Budget</th><th style="text-align:right">CDa</th>'+
+    '<th style="text-align:right">RAR</th><th style="text-align:right">Reste fact.</th>'+
+    '<th style="text-align:right">Conso SAP</th><th style="text-align:right">Non conso</th>'+
+    '<th style="text-align:right">% engagé</th><th style="text-align:right">% conso</th></tr>';
+
+  document.getElementById('cc-tb').innerHTML=rows.map(r=>{
+    const clE=r.pEng>=90?'r-ok':r.pEng>=50?'r-wn':'r-er';
+    const clC=r.pConso>=90?'r-ok':r.pConso>=50?'r-wn':'r-er';
+    const nconso=Math.max(0,r.bud-r.conso);
+    return`<tr style="cursor:pointer" onclick="openCCDrill('${esc(r.cc)}','${esc(r.prog)}','${esc(r.fonds)}','${esc(ann)}')" title="Voir le détail">
+      <td style="font-weight:600;color:var(--pr)">${esc(r.cc)}</td>
+      <td style="font-weight:500">${esc(r.prog)}</td><td>${esc(r.nom)}</td><td>${esc(r.fonds)}</td>
+      <td style="text-align:right">${fmt(r.bud)} €</td>
+      <td style="text-align:right">${fmt(r.cda)} €</td>
+      <td style="text-align:right">${fmt(r.rar)} €</td>
+      <td style="text-align:right">${fmt(r.resteFact)} €</td>
+      <td style="text-align:right">${fmt(r.conso)} €</td>
+      <td style="text-align:right">${fmt(nconso)} €</td>
+      <td style="text-align:right"><span class="rb ${clE}">${r.pEng.toFixed(1)}%</span></td>
+      <td style="text-align:right"><span class="rb ${clC}">${r.pConso.toFixed(1)}%</span></td>
+    </tr>`;
+  }).join('');
+
+  const tot={bud:0,cda:0,rar:0,resteFact:0,conso:0};
+  rows.forEach(r=>{tot.bud+=r.bud;tot.cda+=r.cda;tot.rar+=r.rar;tot.resteFact+=r.resteFact;tot.conso+=r.conso;});
+  document.getElementById('cc-tf').innerHTML=
+    `<tr><td colspan="4">TOTAL (${rows.length} lignes)</td>`+
+    `<td style="text-align:right">${fmt(tot.bud)} €</td>`+
+    `<td style="text-align:right">${fmt(tot.cda)} €</td>`+
+    `<td style="text-align:right">${fmt(tot.rar)} €</td>`+
+    `<td style="text-align:right">${fmt(tot.resteFact)} €</td>`+
+    `<td style="text-align:right">${fmt(tot.conso)} €</td>`+
+    `<td style="text-align:right">${fmt(Math.max(0,tot.bud-tot.conso))} €</td>`+
+    `<td colspan="2"></td></tr>`;
+}
+
+function openCCDrill(ccKey,prog,fonds,ann){
+  document.getElementById('cc-drv').style.display='block';
+  document.getElementById('cc-drv').scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('cc-dr-title').textContent=ccKey+' — '+prog+' / '+fonds+(ann?' ('+ann+')':'');
+  const sapBase="https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&/C_PurchaseOrderTP(PurchaseOrder='";
+  const sapSuf="',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)";
+
+  // KPIs
+  const bud=getBudgetCC(prog,fonds,ccKey)||0;
+  const cdaObj=getCdaCC(prog,fonds,ccKey,ann||null)||{cda:0,rar:0,resteFact:0};
+  const conso=CONSO.filter(r=>r.cc===ccKey&&(!ann||String(r.annee)===ann)&&r.p===prog&&r.fo===fonds).reduce((s,r)=>s+r.m,0);
+  const pE=bud>0?Math.min(cdaObj.cda/bud*100,100):0;
+  const clE=pE>=90?'c-ok':pE>=50?'c-wn':'c-er';
+  document.getElementById('cc-dr-kpis').innerHTML=
+    `<div class="kpi"><div class="kl">Budget alloué</div><div class="kv">${fmt(bud)} €</div></div>`+
+    `<div class="kpi"><div class="kl">CDa engagées</div><div class="kv ${clE}">${fmt(cdaObj.cda)} €</div></div>`+
+    `<div class="kpi"><div class="kl">RAR</div><div class="kv">${fmt(cdaObj.rar)} €</div></div>`+
+    `<div class="kpi"><div class="kl">Reste à facturer</div><div class="kv c-wn">${fmt(cdaObj.resteFact)} €</div></div>`+
+    `<div class="kpi"><div class="kl">Conso SAP</div><div class="kv">${fmt(conso)} €</div></div>`+
+    `<div class="kpi"><div class="kl">% engagé</div><div class="kv ${clE}">${pE.toFixed(1)} %</div></div>`;
+
+  // Détail CDA
+  const cdaRows=(window.CDA_CC||[]).filter(r=>r.cc===ccKey&&(!ann||r.annee===ann)&&(!prog||r.prog===prog||!r.prog)&&(!fonds||r.fonds===fonds||!r.fonds)).sort((a,b)=>b.val-a.val);
+  document.getElementById('cc-dr-cda-th').innerHTML='<tr><th>Année</th><th>NACRES</th><th>Description</th><th>N° Cde</th><th>Fournisseur</th><th>Désignation</th><th>Type</th><th style="text-align:right">Valeur</th><th style="text-align:right">RAR</th><th style="text-align:right">Reste fact.</th></tr>';
+  document.getElementById('cc-dr-cda-tb').innerHTML=cdaRows.length?cdaRows.map(r=>{
+    const cl=r.agenceVoyage?'#7c3aed':r.surMarche?'var(--ok)':'var(--wn)';
+    const cmdLink=r.cmd?`<a href="${sapBase}${encodeURIComponent(r.cmd)}${sapSuf}" target="_blank" style="color:var(--pr);font-weight:500;text-decoration:none">${esc(r.cmd)}</a>`:'-';
+    return`<tr style="${r.resteFact>0?'background:#fff7ed':''}"><td>${r.annee}</td><td>${esc(r.nacreCode)}</td><td>${esc(r.nacreDesc)}</td><td>${cmdLink}</td><td>${esc(r.four)}</td><td>${esc(r.desig)}</td><td style="color:${cl}">${esc(r.typeDoc)}</td><td style="text-align:right">${fmt(r.val)} €</td><td style="text-align:right">${fmt(r.resteLivr)} €</td><td style="text-align:right;font-weight:${r.resteFact>0?700:400}">${fmt(r.resteFact)} €</td></tr>`;
+  }).join(''):'<tr><td colspan="10" style="text-align:center;padding:16px;color:var(--mu)">Aucune commande CDA pour ce CC/programme</td></tr>';
+  const tCda=cdaRows.reduce((s,r)=>s+r.val,0),tRf=cdaRows.reduce((s,r)=>s+r.resteFact,0);
+  document.getElementById('cc-dr-cda-tf').innerHTML=`<tr><td colspan="7">TOTAL (${cdaRows.length})</td><td style="text-align:right">${fmt(tCda)} €</td><td></td><td style="text-align:right">${fmt(tRf)} €</td></tr>`;
+
+  // Détail CONSO
+  const consoRows=CONSO.filter(r=>r.cc===ccKey&&(!ann||String(r.annee)===ann)&&r.p===prog&&r.fo===fonds).sort((a,b)=>b.m-a.m);
+  document.getElementById('cc-dr-conso-th').innerHTML='<tr><th>Année</th><th>Date</th><th>Type valeur</th><th>N° Cde</th><th>Fournisseur</th><th>Désignation</th><th>Type montant</th><th style="text-align:right">Montant</th></tr>';
+  document.getElementById('cc-dr-conso-tb').innerHTML=consoRows.length?consoRows.map(r=>{
+    const cmdLink=r.cmd?`<a href="${sapBase}${encodeURIComponent(r.cmd)}${sapSuf}" target="_blank" style="color:var(--pr);font-weight:500;text-decoration:none">${esc(r.cmd)}</a>`:'-';
+    return`<tr><td>${r.annee}</td><td style="color:var(--mu)">${esc(r.dt)}</td><td>${esc(r.tv)}</td><td>${cmdLink}</td><td>${esc(r.f)}</td><td>${esc(r.d)}</td><td>${esc(r.tm)}</td><td style="text-align:right;color:${r.m<0?'var(--er)':'inherit'}">${fmt(r.m)} €</td></tr>`;
+  }).join(''):'<tr><td colspan="8" style="text-align:center;padding:16px;color:var(--mu)">Aucune opération CONSO pour ce CC/programme</td></tr>';
+  const tConso=consoRows.reduce((s,r)=>s+r.m,0);
+  document.getElementById('cc-dr-conso-tf').innerHTML=`<tr><td colspan="7">TOTAL (${consoRows.length})</td><td style="text-align:right">${fmt(tConso)} €</td></tr>`;
+}
+
+function closeCCDrill(){document.getElementById('cc-drv').style.display='none';}
 
 </script>
 </body>
