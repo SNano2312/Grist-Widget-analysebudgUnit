@@ -1427,6 +1427,7 @@ function getConsoCC(ann, cc){
   return idx;
 }
 function getCdaCC(prog, fonds, cc, ann){
+  // Si CDA_CC non configuré : pas de données CC disponibles
   if(!(window.CDA_CC||[]).length) return null;
   var rows=(window.CDA_CC).filter(function(r){
     if(ann&&r.annee!==String(ann)) return false;
@@ -1435,7 +1436,7 @@ function getCdaCC(prog, fonds, cc, ann){
     if(fonds&&r.fonds!==fonds) return false;
     return true;
   });
-  if(!rows.length) return null;
+  // Si CDA_CC configuré : retourner 0 si pas de lignes (pas de fallback Budget)
   return {
     cda:rows.reduce(function(s,r){return s+r.val;},0),
     rar:rows.reduce(function(s,r){return s+r.resteLivr;},0),
@@ -1474,10 +1475,10 @@ function renderSynthese(){
     g.bud+=budEff;
     if(budVCC!==null){
       var cdaCC=getCdaCC(b.prog,b.fonds,cfF,ann);
-      if(cdaCC){g.cda+=cdaCC.cda;g.rar+=cdaCC.rar;g.nconso+=Math.max(0,budEff-cdaCC.cda);}
+      if(cdaCC!==null){g.cda+=cdaCC.cda;g.rar+=cdaCC.rar;g.nconso+=Math.max(0,budEff-cdaCC.cda);}
       else{g.cda+=b.cda;g.rar+=b.rar;g.nconso+=Math.max(0,budEff-b.cda);}
       var cdaData=cfF?getCdaCC(b.prog,b.fonds,cfF,ann):null;
-      var consoCC=cdaData?cdaData.cda:b.conso;
+      var consoCC=cdaData!==null?cdaData.cda:b.conso;
       g.conso+=consoCC;g.om+=0;g.nf+=0;g.paye+=b.paye;g.rap+=b.rap;
     } else {
       g.conso+=b.conso;g.nconso+=b.nconso;g.cda+=b.cda;g.rar+=b.rar;g.om+=b.om;g.nf+=b.nf;g.paye+=b.paye;g.rap+=b.rap;
