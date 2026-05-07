@@ -2818,17 +2818,18 @@ function renderCC(){
       vccLines.forEach(function(vr){
         const bud=vr.cc[ccKey]||0;
         const cda=getCdaCC(vr.prog,vr.fonds,ccKey,ann||null)||{cda:0,rar:0,resteFact:0};
-        const paye=CONSO.filter(r=>r.cc===ccKey&&(!ann||String(r.annee)===ann)&&r.p===vr.prog&&r.fo===vr.fonds&&r.tv==='Paiements'&&r.m>0).reduce((s,r)=>s+r.m,0);
+        const paye=(window.CONSO_PMT||[]).filter(r=>r.cc===ccKey&&(!ann||String(r.annee)===ann)&&r.p===vr.prog&&r.fo===vr.fonds&&r.m>0).reduce((s,r)=>s+r.m,0);
         const pEng=bud>0?Math.min(cda.cda/bud*100,100):0;
         const pPaye=bud>0?paye/bud*100:0;
         rows.push({cc:ccKey,prog:vr.prog,fonds:vr.fonds,nom:(pi[vr.prog]&&pi[vr.prog].nom)||'-',bud,cda:cda.cda,rar:cda.rar,resteFact:cda.resteFact,paye,pEng,pPaye});
       });
     } else {
-      // Pas de VCC : agréger depuis CONSO
-      const consoRows=CONSO.filter(r=>r.cc===ccKey&&(!ann||String(r.annee)===ann)&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd));
-      const byP={};
-      consoRows.forEach(r=>{const k=r.p+'||'+r.fo;if(!byP[k])byP[k]={prog:r.p,fonds:r.fo,paye:0};if(r.tv==='Paiements'&&r.m>0) byP[k].paye+=r.m;});
-      Object.values(byP).forEach(r=>rows.push({cc:ccKey,prog:r.prog,fonds:r.fonds,nom:(pi[r.prog]&&pi[r.prog].nom)||'-',bud:0,cda:0,rar:0,resteFact:0,paye:r.paye,pEng:0,pPaye:0}));
+      // Pas de VCC : agréger depuis CONSO_PMT
+      const pmtRows2=(window.CONSO_PMT||[]).filter(r=>r.cc===ccKey&&(!ann||String(r.annee)===ann)&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&r.m>0);
+      const byP2={};
+      pmtRows2.forEach(r=>{const k=r.p+'||'+r.fo;if(!byP2[k])byP2[k]={prog:r.p,fonds:r.fo,paye:0};byP2[k].paye+=r.m;});
+      
+      Object.values(byP2).forEach(r=>rows.push({cc:ccKey,prog:r.prog,fonds:r.fonds,nom:(pi[r.prog]&&pi[r.prog].nom)||'-',bud:0,cda:0,rar:0,resteFact:0,paye:r.paye,pEng:0,pPaye:0}));
     }
   });
 
