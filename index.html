@@ -1171,6 +1171,7 @@ function sortD(col){if(_dSC===col)_dSD*=-1;else{_dSC=col;_dSD=1;}renderDrill(_dR
 // ÉVOLUTION — 3 courbes
 // ════════════════════════════════════════
 function renderHistoComp(f){
+  closeDrill();
   // Barres groupées 2025/2026 par programme/fonds
   const pc=f.cf?getProgsCC(f.cf):null;
   const rows25=BUDGET.filter(b=>parseInt(b.annee)===2025&&(!f.prg||b.prog===f.prg)&&(!f.fnd||b.fonds===f.fnd)&&(!pc||pc.has(b.prog))).map(b=>f.cf?applyVCC(b,f.cf,'2025'):b);
