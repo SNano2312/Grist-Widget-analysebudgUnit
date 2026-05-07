@@ -2145,6 +2145,7 @@ var _chNacres=null;
 function renderNacres(){
   var prg=document.getElementById('n-prg').value,fnd=document.getElementById('n-fnd').value;
   var typeF=document.getElementById('n-type').value,vue=document.getElementById('n-vue').value;
+  var statut=document.getElementById('n-statut').value;
   var ann=document.getElementById('n-ann').value;
   var cf=(document.getElementById('n-cf')||{}).value||'';
   // Si CDA_CC dispo : filtrer directement sur r.cc, sinon via progsCC
@@ -2159,6 +2160,8 @@ function renderNacres(){
     if(cf&&hasCdaCC&&r.cc&&r.cc!==cf) return false;
     if(typeF==='marche'&&!r.surMarche) return false;
     if(typeF==='hors'&&r.surMarche) return false;
+    if(statut==='open'&&r.rest<=0) return false;
+    if(statut==='closed'&&r.rest>0) return false;
     return true;
   });
   if(!data.length){
@@ -2172,6 +2175,7 @@ function renderNacres(){
     document.getElementById('nacres-tf').innerHTML='';
     return;
   }
+  var byAnn={}; data.forEach(function(r){byAnn[r.annee]=(byAnn[r.annee]||0)+r.val;}); console.log('[NACRES] ann='+ann+' total='+totVal+' byAnn='+JSON.stringify(byAnn)+' DC01='+data.filter(function(r){return r.agenceVoyage;}).reduce(function(s,r){return s+r.val;},0));
   var totVal=data.reduce(function(s,r){return s+r.val;},0);
   var totMar=data.filter(function(r){return r.surMarche;}).reduce(function(s,r){return s+r.val;},0);
   var totHors=totVal-totMar,totRest=data.reduce(function(s,r){return s+r.rest;},0);
