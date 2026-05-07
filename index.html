@@ -2171,6 +2171,8 @@ function renderNacres(){
     document.getElementById('nacres-tf').innerHTML='';
     return;
   }
+  var dc01data=data.filter(function(r){return r.agenceVoyage;});
+  console.log('[NACRES render] data total:',data.length,' DC.01:',dc01data.length,' vals:',dc01data.map(function(r){return r.val;}));
   var totVal=data.reduce(function(s,r){return s+r.val;},0);
   var totMar=data.filter(function(r){return r.surMarche;}).reduce(function(s,r){return s+r.val;},0);
   var totHors=totVal-totMar,totRest=data.reduce(function(s,r){return s+r.rest;},0);
