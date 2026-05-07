@@ -1313,7 +1313,7 @@ function renderCross(){
     if(bv===null) return b;
     var cdaCC2=getCdaCC(b.prog,b.fonds,cf,ann);
     var consoCCx=cf&&cdaCC2?cdaCC2.cda:b.conso;
-    return Object.assign({},b,{bud:bv,conso:consoCCx,nconso:Math.max(0,bv-(cdaCC2?cdaCC2.cda:b.cda)),cda:cdaCC2?cdaCC2.cda:b.cda,rar:cdaCC2?cdaCC2.rar:b.rar,om:0,nf:0});
+    return Object.assign({},b,{bud:bv,conso:consoCCx,nconso:Math.max(0,bv-(cdaCC2?cdaCC2.cda:b.cda)),cda:cdaCC2?cdaCC2.cda:b.cda,rar:cdaCC2?cdaCC2.rar:b.rar,om:0,nf:0,paye:0,rap:0});
   });
   var _piX=pi;
   const cols=[
@@ -2147,12 +2147,15 @@ function renderNacres(){
   var typeF=document.getElementById('n-type').value,vue=document.getElementById('n-vue').value;
   var ann=document.getElementById('n-ann').value;
   var cf=(document.getElementById('n-cf')||{}).value||'';
-  var progsCC_n=cf?new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;})):null;
+  // Si CDA_CC dispo : filtrer directement sur r.cc, sinon via progsCC
+  var hasCdaCC=(window.CDA_CC||[]).length>0;
+  var progsCC_n=cf&&!hasCdaCC?new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;})):null;
   var data=(window.NACRES_DATA||[]).filter(function(r){
-    if(ann&&r.annee&&r.annee!==ann) return false;
+    if(ann&&r.annee&&r.annee!==ann&&!hasCdaCC) return false;
     if(prg&&r.prog!==prg) return false;
     if(fnd&&r.fond!==fnd) return false;
     if(progsCC_n&&!progsCC_n.has(r.prog)) return false;
+    if(cf&&hasCdaCC&&r.cc&&r.cc!==cf) return false;
     if(typeF==='marche'&&!r.surMarche) return false;
     if(typeF==='hors'&&r.surMarche) return false;
     return true;
@@ -2301,17 +2304,19 @@ function renderOpenOrders(){
   var fnd=document.getElementById('o-fnd').value;
   var typeF=document.getElementById('o-type').value;
   var cf=(document.getElementById('o-cf')||{}).value||'';
-  var progsCC=cf?new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;})):null;
+  var hasCdaCCo=(window.CDA_CC||[]).length>0;
+  var progsCC=cf&&!hasCdaCCo?new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;})):null;
 
   // Filtrer NACRES_DATA sur les non soldées uniquement
   var data=(window.NACRES_DATA||[]).filter(function(r){
     if(r.rest<=0) return false;  // soldées exclues
-    if(ann&&r.annee&&r.annee!==ann) return false;
+    if(ann&&r.annee&&r.annee!==ann&&!hasCdaCCo) return false;
     if(prg&&r.prog!==prg) return false;
     if(fnd&&r.fond!==fnd) return false;
     if(typeF==='marche'&&!r.surMarche) return false;
     if(typeF==='hors'&&r.surMarche) return false;
     if(progsCC&&!progsCC.has(r.prog)) return false;
+    if(cf&&hasCdaCCo&&r.cc&&r.cc!==cf) return false;
     return true;
   });
 
