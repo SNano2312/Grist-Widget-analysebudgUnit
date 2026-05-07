@@ -804,6 +804,8 @@ async function lanceAnalyse(){
       if(!tCDA) continue;
       try{
         const raw=await grist.docApi.fetchTable(tCDA);
+        console.log('[CDA_CC] Colonnes Grist:',JSON.stringify(Object.keys(raw)));
+        if(raw[Object.keys(raw)[0]].length>0){var sample={};Object.keys(raw).forEach(function(k){sample[k]=raw[k][0];});console.log('[CDA_CC] 1ere ligne brute:',JSON.stringify(sample));}
         const keys=Object.keys(raw);
         const n=(raw[keys[0]]||[]).length;
         for(let ii=0;ii<n;ii++){
