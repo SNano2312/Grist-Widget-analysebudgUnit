@@ -2879,15 +2879,15 @@ function renderCC(){
       <td style="text-align:right">${fmt(r.cda)} €</td>
       <td style="text-align:right">${fmt(r.rar)} €</td>
       <td style="text-align:right">${fmt(r.resteFact)} €</td>
-      <td style="text-align:right">${fmt(r.conso)} €</td>
+      <td style="text-align:right">${fmt(r.paye)} €</td>
       <td style="text-align:right">${fmt(nconso)} €</td>
       <td style="text-align:right"><span class="rb ${clE}">${r.pEng.toFixed(1)}%</span></td>
       <td style="text-align:right"><span class="rb ${clC}">${r.pPaye.toFixed(1)}%</span></td>
     </tr>`;
   }).join('');
 
-  const tot={bud:0,cda:0,rar:0,resteFact:0,conso:0};
-  rows.forEach(r=>{tot.bud+=r.bud;tot.cda+=r.cda;tot.rar+=r.rar;tot.resteFact+=r.resteFact;tot.paye+=r.conso;});
+  const tot={bud:0,cda:0,rar:0,resteFact:0,paye:0};
+  rows.forEach(r=>{tot.bud+=r.bud;tot.cda+=r.cda;tot.rar+=r.rar;tot.resteFact+=r.resteFact;tot.paye+=r.paye;});
   document.getElementById('cc-tf').innerHTML=
     `<tr><td colspan="4">TOTAL (${rows.length} lignes)</td>`+
     `<td style="text-align:right">${fmt(tot.bud)} €</td>`+
