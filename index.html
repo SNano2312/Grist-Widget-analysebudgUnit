@@ -2832,10 +2832,10 @@ function renderCC(){
     }
   });
 
-  console.log('[CC] rows='+rows.length+' ex:'+JSON.stringify(rows[0]));
   // ── Cartes synthèse par CC ──
   const byCC={};
   rows.forEach(r=>{if(!byCC[r.cc])byCC[r.cc]={bud:0,cda:0,rar:0,paye:0};byCC[r.cc].bud+=r.bud;byCC[r.cc].cda+=r.cda;byCC[r.cc].rar+=r.rar;byCC[r.cc].paye+=r.paye;});
+  console.log('[CC] byCC='+JSON.stringify(Object.keys(byCC)));
   document.getElementById('cc-cards').innerHTML=Object.entries(byCC).map(([ccKey,g])=>{
     const pE=g.bud>0?Math.min(g.cda/g.bud*100,100):0;
     const pC=g.bud>0?g.paye/g.bud*100:0;
@@ -2860,6 +2860,7 @@ function renderCC(){
       <div style="font-size:.8rem">Payé <strong style="color:${clC}">${fmt(g.conso)} €</strong> &nbsp;<span style="color:var(--mu)">${pC.toFixed(1)}%</span></div>
     </div>`;
   }).join('');
+  console.log('[CC] cards innerHTML length:',document.getElementById('cc-cards').innerHTML.length);
 
   // ── Tableau détaillé ──
   document.getElementById('cc-th').innerHTML=
