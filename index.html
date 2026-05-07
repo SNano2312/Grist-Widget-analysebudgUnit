@@ -2827,7 +2827,7 @@ function renderCC(){
       // Pas de VCC : agréger depuis CONSO
       const consoRows=CONSO.filter(r=>r.cc===ccKey&&(!ann||String(r.annee)===ann)&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd));
       const byP={};
-      consoRows.forEach(r=>{const k=r.p+'||'+r.fo;if(!byP[k])byP[k]={prog:r.p,fonds:r.fo,conso:0};byP[k].conso+=r.m;});
+      consoRows.forEach(r=>{const k=r.p+'||'+r.fo;if(!byP[k])byP[k]={prog:r.p,fonds:r.fo,paye:0};if(r.tv==='Paiements'&&r.m>0) byP[k].paye+=r.m;});
       Object.values(byP).forEach(r=>rows.push({cc:ccKey,prog:r.prog,fonds:r.fonds,nom:(pi[r.prog]&&pi[r.prog].nom)||'-',bud:0,cda:0,rar:0,resteFact:0,paye:r.paye,pEng:0,pPaye:0}));
     }
   });
@@ -2845,7 +2845,7 @@ function renderCC(){
       <div style="font-size:1rem;font-weight:700;color:var(--pr);margin-bottom:14px">🏦 ${esc(ccKey)}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.8rem;margin-bottom:12px">
         <div><div style="color:var(--mu)">Budget alloué</div><div style="font-weight:700;font-size:.95rem">${fmt(g.bud)} €</div></div>
-        <div><div style="color:var(--mu)">Non engagémmé</div><div style="font-weight:700;font-size:.95rem;color:var(--wn)">${fmt(nconso)} €</div></div>
+        <div><div style="color:var(--mu)">Non engagé</div><div style="font-weight:700;font-size:.95rem;color:var(--wn)">${fmt(nconso)} €</div></div>
       </div>
       <div style="font-size:.72rem;color:var(--mu);margin-bottom:2px">Engagement (CDa / Budget)</div>
       <div style="height:7px;background:#f0f1f5;border-radius:4px;margin-bottom:4px;overflow:hidden">
@@ -2856,7 +2856,7 @@ function renderCC(){
       <div style="height:7px;background:#f0f1f5;border-radius:4px;margin-bottom:4px;overflow:hidden">
         <div style="height:100%;width:${Math.min(pC,100).toFixed(1)}%;background:${clC};border-radius:4px"></div>
       </div>
-      <div style="font-size:.8rem">Payé <strong style="color:${clC}">${fmt(g.conso)} €</strong> &nbsp;<span style="color:var(--mu)">${pC.toFixed(1)}%</span></div>
+      <div style="font-size:.8rem">Payé <strong style="color:${clC}">${fmt(g.paye)} €</strong> &nbsp;<span style="color:var(--mu)">${pC.toFixed(1)}%</span></div>
     </div>`;
   }).join('');
 
@@ -2865,7 +2865,7 @@ function renderCC(){
     '<tr><th>CC</th><th>Programme</th><th>Nom</th><th>Fonds</th>'+
     '<th style="text-align:right">Budget</th><th style="text-align:right">CDa</th>'+
     '<th style="text-align:right">RAR</th><th style="text-align:right">Reste fact.</th>'+
-    '<th style="text-align:right">Conso SAP</th><th style="text-align:right">Non engagé</th>'+
+    '<th style="text-align:right">Payé (CP)</th><th style="text-align:right">Non engagé</th>'+
     '<th style="text-align:right">% engagé</th><th style="text-align:right">% conso</th></tr>';
 
   document.getElementById('cc-tb').innerHTML=rows.map(r=>{
