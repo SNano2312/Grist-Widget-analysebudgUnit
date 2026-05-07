@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Analyse budgétaire v1778167181</title>
+<title>Analyse budgétaire</title>
 <!-- SDK Grist : gère l'auth et l'accès aux tables automatiquement -->
 <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -120,20 +120,20 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <select id="sel-nacres"><option value="">-- Pas de table NACRES 2026 --</option></select>
     </div>
     <div class="cfg-row">
-      <label>Ventilation par Centre de coûts (optionnel)</label>
-      <select id="sel-vcc"><option value="">-- Pas de ventilation CC --</option></select>
-    </div>
-    <div class="cfg-row">
-      <label>CDA par CC 2025 (optionnel)</label>
+      <label>CDA par CC 2025 (optionnel — remplace NACRES 2025)</label>
       <select id="sel-cda25"><option value="">-- Pas de table --</option></select>
     </div>
     <div class="cfg-row">
-      <label>CDA par CC 2026 (optionnel)</label>
+      <label>CDA par CC 2026 (optionnel — remplace NACRES 2026)</label>
       <select id="sel-cda26"><option value="">-- Pas de table --</option></select>
+    </div>
+    <div class="cfg-row">
+      <label>Ventilation par Centre de coûts (optionnel)</label>
+      <select id="sel-vcc"><option value="">-- Pas de ventilation CC --</option></select>
     </div>
     <div id="cfg-err"></div>
     <button id="btn-analyse" disabled >Lancer l'analyse →</button>
-    <button id="btn-debug-inner"
+    <button id="btn-debug" id="btn-debug-inner"
       style="width:100%;margin-top:8px;padding:8px;background:#f0f2f7;border:1px solid #dde2ec;border-radius:6px;cursor:pointer;font-size:.8rem;color:#6b7280">
       🔍 Voir les noms de colonnes (debug)
     </button>
@@ -523,15 +523,6 @@ async function showCols(){
         txt += '1ere ligne: '+JSON.stringify(row)+'\n';
       }
     }
-    txt += '\n';
-    if(window.VENTILATION_CC&&window.VENTILATION_CC.length){
-      txt += '=== VENTILATION_CC ===\n';
-      txt += 'Lignes: '+window.VENTILATION_CC.length+'\n';
-      txt += 'CC disponibles: '+Object.keys(window.VENTILATION_CC[0].cc).join(', ')+'\n';
-      txt += '1ere ligne: '+JSON.stringify(window.VENTILATION_CC[0])+'\n';
-    } else {
-      txt += '=== VENTILATION_CC ===\nNon chargée (sélectionnez la table dans la config)\n';
-    }
     out.textContent = txt;
   }catch(e){
     out.textContent = 'Erreur: '+e.message;
@@ -643,7 +634,7 @@ grist.ready({
       });
       sel.addEventListener('change', checkSelections);
     });
-    ['sel-t1','sel-nacres25','sel-nacres','sel-vcc','sel-cda25','sel-cda26'].forEach(function(sid){
+    ['sel-t1','sel-nacres25','sel-nacres','sel-cda25','sel-cda26','sel-vcc'].forEach(function(sid){
       const sel=document.getElementById(sid); if(!sel) return;
       tables.forEach(function(t){const opt=document.createElement('option');opt.value=t;opt.textContent=t;sel.appendChild(opt);});
     });
@@ -658,9 +649,9 @@ grist.ready({
     if(saved.t1 && saved.t1!=='') document.getElementById('sel-t1').value=saved.t1;
     if(saved.nacres25 && saved.nacres25!=='') document.getElementById('sel-nacres25').value=saved.nacres25;
     if(saved.nacres && saved.nacres!=='') document.getElementById('sel-nacres').value=saved.nacres;
-    if(saved.vcc && saved.vcc!=='') document.getElementById('sel-vcc').value=saved.vcc;
     if(saved.cda25) document.getElementById('sel-cda25').value=saved.cda25;
     if(saved.cda26) document.getElementById('sel-cda26').value=saved.cda26;
+    if(saved.vcc) document.getElementById('sel-vcc').value=saved.vcc;
     checkSelections();
 
     // Relance automatique si toutes les tables sont configurées
@@ -698,7 +689,7 @@ async function lanceAnalyse(){
   const tT1=document.getElementById('sel-t1').value;
   const tNacres25=document.getElementById('sel-nacres25').value;
   const tNacres=document.getElementById('sel-nacres').value;
-  try{localStorage.setItem('budgetCfg',JSON.stringify({b25:tB25,b26:tB26,c25:tC25,c26:tC26,t1:tT1,nacres25:tNacres25,nacres:tNacres,vcc:document.getElementById('sel-vcc').value,cda25:document.getElementById('sel-cda25').value,cda26:document.getElementById('sel-cda26').value}));}catch(e){}
+  try{localStorage.setItem('budgetCfg',JSON.stringify({b25:tB25,b26:tB26,c25:tC25,c26:tC26,t1:tT1,nacres25:tNacres25,nacres:tNacres,cda25:document.getElementById('sel-cda25').value,cda26:document.getElementById('sel-cda26').value,vcc:document.getElementById('sel-vcc').value}));}catch(e){}
 
   showLd('Lecture des données…');
   try{
@@ -747,36 +738,7 @@ async function lanceAnalyse(){
     procConso(rawC26, 2026);
 
 
-  // Charger Ventilation CC
-  const tVCC=document.getElementById('sel-vcc').value;
-  window.VENTILATION_CC=[];
-  if(tVCC){
-    try{
-      const vccRaw=await grist.docApi.fetchTable(tVCC);
-      const vccKeys=Object.keys(vccRaw);
-      const vccN=(vccRaw[vccKeys[0]]||[]).length;
-      const skipL=['id','manualsort','budget_ae_n','budget_aen'];
-      for(let ii=0;ii<vccN;ii++){
-        const row={prog:'',fonds:'',budget:0,cc:{}};
-        vccKeys.forEach(k=>{
-          const kl=k.toLowerCase().replace(/[_\s]/g,'');
-          const v=vccRaw[k][ii];
-          if(kl.includes('programme')) row.prog=String(v||'').trim();
-          else if(kl==='fonds') row.fonds=String(v||'').trim();
-          else if(kl.includes('budget')) row.budget=parseFloat(v)||0;
-          else if(k!=='id'&&k!=='manualSort'){
-            // Grist préfixe les colonnes numériques avec 'c' (ex: c0496C001 → 0496C001)
-            var ccKey=(k.length>1&&k[0]==='c'&&k[1]>='0'&&k[1]<='9')?k.slice(1):k;
-            row.cc[ccKey]=parseFloat(v)||0;
-          }
-        });
-        if(row.prog&&row.fonds) window.VENTILATION_CC.push(row);
-      }
-      console.log('[VCC] OK:',window.VENTILATION_CC.length,'lignes, CC:',
-        window.VENTILATION_CC[0]?Object.keys(window.VENTILATION_CC[0].cc).join(','):'');
-    }catch(e){console.warn('[VCC] Erreur:',e.message);}
-  }
-    // fillFilters appelé après NACRES
+    fillFilters();
     hideLd();
     document.getElementById('cfg-screen').style.display='none';
     document.getElementById('dash').style.display='block';
@@ -796,65 +758,93 @@ async function lanceAnalyse(){
         procNacres(rawN, 2026);
       }catch(e){console.log('NACRES 2026:',e.message);}
     }
-    fillNacresFilters();
-    // Charger CDA par CC
+    // ── Charger Ventilation CC ──
+    window.VENTILATION_CC=[];
+    const tVCC=document.getElementById('sel-vcc').value;
+    if(tVCC){try{
+      const vccRaw=await grist.docApi.fetchTable(tVCC);
+      const vccKeys=Object.keys(vccRaw);
+      const vccN=(vccRaw[vccKeys[0]]||[]).length;
+      for(let ii=0;ii<vccN;ii++){
+        const row={prog:'',fonds:'',budget:0,cc:{}};
+        vccKeys.forEach(k=>{
+          const v=vccRaw[k][ii];
+          const kl=k.toLowerCase().replace(/[_\s]/g,'');
+          if(kl.includes('programme')) row.prog=String(v||'').trim();
+          else if(kl==='fonds') row.fonds=String(v||'').trim();
+          else if(kl.includes('budget')) row.budget=parseFloat(v)||0;
+          else if(k!=='id'&&k!=='manualSort'){
+            const ccKey=(k.length>1&&k[0]==='c'&&k[1]>='0'&&k[1]<='9')?k.slice(1):k;
+            row.cc[ccKey]=parseFloat(v)||0;
+          }
+        });
+        if(row.prog&&row.fonds) window.VENTILATION_CC.push(row);
+      }
+      console.log('[VCC]',window.VENTILATION_CC.length,'lignes');
+    }catch(e){console.warn('[VCC]',e.message);}}
+
+    // ── Charger CDA par CC ──
     window.CDA_CC=[];
-    for(const [anneeStr,selId] of [['2025','sel-cda25'],['2026','sel-cda26']]){
+    for(const [yr,selId] of [['2025','sel-cda25'],['2026','sel-cda26']]){
       const tCDA=document.getElementById(selId).value;
       if(!tCDA) continue;
       try{
         const raw=await grist.docApi.fetchTable(tCDA);
         const n=(raw[Object.keys(raw)[0]]||[]).length;
         for(let ii=0;ii<n;ii++){
-          // Extraction directe par nom de colonne Grist connu
-          const getS=k=>(raw[k]&&raw[k][ii]!=null)?String(raw[k][ii]).trim():'';
-          const getN=k=>(raw[k]&&raw[k][ii]!=null)?parseFloat(raw[k][ii])||0:0;
-          // Centre de coûts : prendre le début avant la parenthèse
-          const ccFull=getS('Centre_de_couts');
+          const G=k=>(raw[k]&&raw[k][ii]!=null)?String(raw[k][ii]).trim():'';
+          const N=k=>(raw[k]&&raw[k][ii]!=null)?parseFloat(raw[k][ii])||0:0;
+          const ccFull=G('Centre_de_couts');
           const cc=ccFull.replace(/\s*\(.*$/,'').trim();
-          // NACRES
-          const gmFull=getS('Grpe_de_marchandises');
-          const gmMatch=gmFull.match(/^([A-Za-z0-9.]+)/);
-          const nacreCode=gmMatch?gmMatch[1]:'';
+          const gmFull=G('Grpe_de_marchandises');
+          const gmM=gmFull.match(/^([A-Za-z0-9.]+)/);
+          const nacreCode=gmM?gmM[1]:'';
           const nacreDesc=gmFull.replace(/^[A-Za-z0-9.]+\s*\(?/,'').replace(/\)$/,'').trim();
-          // Programme (Élément d'OTP)
-          const otpFull=getS('Element_d_OTP');
-          const otpMatch=otpFull.match(/^([A-Z0-9_]+)/i);
-          const prog=otpMatch?otpMatch[1]:'';
-          // Fonds
-          const fondsFull=getS('Fonds');
-          const fondsMatch=fondsFull.match(/^([A-Z0-9_]+)/i);
-          const fonds=fondsMatch?fondsMatch[1]:'';
-          // Type document
-          const tdFull=getS('Type_de_document_d_achat');
-          const tdMatch=tdFull.match(/^([A-Z]+)/);
-          const typeDoc=tdMatch?tdMatch[1]:'';
-          // Fournisseur : enlever le code avant la parenthèse
-          const fourFull=getS('Fournisseur');
+          const otpFull=G('Element_d_OTP');
+          const prog=(otpFull.match(/^([A-Z0-9_]+)/i)||[])[1]||'';
+          const fondsFull=G('Fonds');
+          const fonds=(fondsFull.match(/^([A-Z0-9_]+)/i)||[])[1]||'';
+          const tdFull=G('Type_de_document_d_achat');
+          const typeDoc=(tdFull.match(/^([A-Z]+)/)||[])[1]||'';
+          const fourFull=G('Fournisseur');
           const four=fourFull.replace(/^\d+\s*\(/,'').replace(/\)$/,'').trim()||fourFull;
-          // Commande (entier)
           const cmd=String(raw['Commande_d_achat']?raw['Commande_d_achat'][ii]||'':'');
-          // Valeurs
-          const val=getN('Valeur_nette_repartie');
-          const resteLivr=getN('Valeur_restante_a_livrer');
-          const resteFact=getN('Valeur_restante_a_facturer');
-          // DC.01 = agence voyage
+          const val=N('Valeur_nette_repartie');
+          const resteLivr=N('Valeur_restante_a_livrer');
+          const resteFact=N('Valeur_restante_a_facturer');
           const agenceVoyage=nacreCode.toUpperCase().startsWith('DC.01');
           const surMarche=agenceVoyage||(typeDoc==='OSMA');
-          if(cc&&prog) window.CDA_CC.push({
-            annee:anneeStr,cc,nacreCode,nacreDesc,cmd,typeDoc,
-            four,desig:getS('Designation'),val,resteLivr,resteFact,
-            prog,fonds,surMarche,agenceVoyage
-          });
+          if(cc) window.CDA_CC.push({annee:yr,cc,nacreCode,nacreDesc,cmd,typeDoc,
+            four,desig:G('Designation'),val,resteLivr,resteFact,
+            prog,fonds,surMarche,agenceVoyage});
         }
-      }catch(e){console.warn('[CDA_CC '+anneeStr+'] Erreur:',e.message);}
+      }catch(e){console.warn('[CDA'+yr+']',e.message);}
     }
-    var dc01x=(window.CDA_CC||[]).filter(function(r){return r.agenceVoyage;});
-    console.log('[CDA_CC] Charg\u00e9:',window.CDA_CC.length,'lignes, DC.01:',dc01x.length);
-    console.log('[CDA_CC] Chargé:',window.CDA_CC.length,'lignes');
-    // Si CDA_CC chargé : reconstruire NACRES_DATA depuis CDA_CC
-    if((window.CDA_CC||[]).length) buildNacresFromCdaCC();
+    console.log('[CDA_CC]',window.CDA_CC.length,'lignes');
+
+    // CDA_CC remplace NACRES si configuré
+    if(window.CDA_CC.length){
+      window.NACRES_DATA=[];
+      window.CDA_CC.forEach(r=>{window.NACRES_DATA.push({
+        nacreCode:r.nacreCode,nacreDesc:r.nacreDesc,cmd:r.cmd,date:'',
+        typeDoc:r.typeDoc,surMarche:r.surMarche,agenceVoyage:r.agenceVoyage,
+        four:r.four,desig:r.desig,val:r.val,
+        rest:r.resteFact,resteLivr:r.resteLivr,
+        fond:r.fonds,prog:r.prog,annee:r.annee,cc:r.cc
+      });});
+    }
+
     fillNacresFilters();
+    // Enrichir filtre CC depuis VCC
+    const cfsSet=new Set(CONSO.map(r=>r.cc).filter(Boolean));
+    (window.VENTILATION_CC||[]).forEach(r=>Object.keys(r.cc).forEach(k=>cfsSet.add(k)));
+    ['s-cf','h-cf','e-cf','x-cf','f-cf','d-cf','r-cf','om-cf','n-cf','o-cf'].forEach(id=>{
+      const el=document.getElementById(id); if(!el) return;
+      const cur=el.value;
+      el.innerHTML='<option value="">Tous</option>';
+      [...cfsSet].sort().forEach(c=>el.innerHTML+=`<option value="${esc(c)}">${esc(c)}</option>`);
+      if(cur) el.value=cur;
+    });
     fillFilters();
     switchTab('s');
   }catch(e){
@@ -1038,10 +1028,10 @@ function fillFilters(){
     s.innerHTML='<option value="">Tous</option>';
     fonds.forEach(f=>s.innerHTML+=`<option value="${esc(f)}">${esc(f)}</option>`);
   });
-  // Centre de coûts (CC) - union CONSO + VCC
-  const cfsSet=new Set(CONSO.map(r=>r.cc).filter(Boolean));
-  (window.VENTILATION_CC||[]).forEach(function(r){Object.keys(r.cc).forEach(function(k){cfsSet.add(k);});});
-  const cfs=[...cfsSet].sort();
+  // Centre de coûts : union CONSO + VCC
+  const _cfsSet=new Set(CONSO.map(r=>r.cc).filter(Boolean));
+  (window.VENTILATION_CC||[]).forEach(r=>Object.keys(r.cc).forEach(k=>_cfsSet.add(k)));
+  const cfs=[..._cfsSet].sort();
   ['s-cf','h-cf','e-cf','x-cf','f-cf','d-cf','r-cf','om-cf','n-cf','o-cf'].forEach(id=>{
     const el=document.getElementById(id); if(!el) return;
     el.innerHTML='<option value="">Tous</option>';
@@ -1077,34 +1067,14 @@ function switchTab(t){
 // ════════════════════════════════════════
 function gf(){return{ann:document.getElementById('h-ann').value,prg:document.getElementById('h-prg').value,fnd:document.getElementById('h-fnd').value,cf:(document.getElementById('h-cf')||{}).value||'',grp:document.getElementById('h-grp').value}}
 function fb(f){
-  // Construire progsCC : programmes éligibles selon le CC sélectionné
-  var hasVCC2=(window.VENTILATION_CC||[]).length>0;
-  var _pcCC3=null;
-  if(f.cf){
-    if(hasVCC2){
-      _pcCC3=new Set((window.VENTILATION_CC)
-        .filter(function(r){return r.cc[f.cf]!==undefined&&r.cc[f.cf]>0;})
-        .map(function(r){return r.prog;}));
-    } else {
-      _pcCC3=new Set(CONSO.filter(function(r){return r.cc===f.cf;}).map(function(r){return r.p;}));
-    }
-  }
-
-  const rows=BUDGET
-    .filter(b=>(!f.ann||parseInt(b.annee)===parseInt(f.ann))
-      &&(!f.prg||b.prog===f.prg)
-      &&(!f.fnd||b.fonds===f.fnd)
-      &&(!_pcCC3||_pcCC3.has(b.prog)))
-    .map(b=>{
-      var bv=getBudgetCC(b.prog,b.fonds,f.cf);
-      if(bv===null) return b;
-      var budEff=bv;
-      var cdaCC=getCdaCC(b.prog,b.fonds,f.cf,f.ann);
-      var consoCC=f.cf&&cdaCC?cdaCC.cda:b.conso;
-      return Object.assign({},b,{bud:budEff,conso:consoCC,nconso:Math.max(0,budEff-(cdaCC?cdaCC.cda:b.cda)),cda:cdaCC?cdaCC.cda:b.cda,rar:cdaCC?cdaCC.rar:b.rar,om:0,nf:0,paye:b.paye,rap:b.rap});
-    });
+  const _pcCC3=f.cf?getProgsCC(f.cf):null;
+  const rows=BUDGET.filter(b=>(!f.ann||parseInt(b.annee)===parseInt(f.ann))&&(!f.prg||b.prog===f.prg)&&(!f.fnd||b.fonds===f.fnd)&&(!_pcCC3||_pcCC3.has(b.prog)))
+    .map(b=>f.cf?applyVCC(b,f.cf,f.ann):b);
+  if(f.prg||f.fnd) console.log('[FILTER] prg='+f.prg+' fnd='+f.fnd+' -> '+rows.length+' lignes budget');
+  if(f.prg&&BUDGET.length) console.log('[FILTER] BUDGET[0].prog='+JSON.stringify(BUDGET[0].prog)+' vs f.prg='+JSON.stringify(f.prg));
   return rows;
 }
+
 function renderHisto(){
   closeDrill();
   const f=gf(); _grp=f.grp;
@@ -1205,17 +1175,7 @@ function renderEvol(){
   const fnd=document.getElementById('e-fnd').value;
   const cf=(document.getElementById('e-cf')||{}).value||'';
   if(ann==='multi'){renderEvolMulti(prg,fnd);return;}
-  var hasVCC4=(window.VENTILATION_CC||[]).length>0;
-  var _pcCCe=null;
-  if(cf){if(hasVCC4){_pcCCe=new Set((window.VENTILATION_CC).filter(function(r){return r.cc[cf]!==undefined&&r.cc[cf]>0;}).map(function(r){return r.prog;}));}
-  else{_pcCCe=new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;}));}}
-  const budRows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCCe||_pcCCe.has(b.prog))).map(b=>{
-    var bv=getBudgetCC(b.prog,b.fonds,cf);
-    if(bv===null) return b;
-    var cdaCC3=getCdaCC(b.prog,b.fonds,cf,ann);
-    var consoCCe=cf&&cdaCC3?cdaCC3.cda:b.conso;
-    return Object.assign({},b,{bud:bv,conso:consoCCe,cda:cdaCC3?cdaCC3.cda:b.cda,rar:cdaCC3?cdaCC3.rar:b.rar,om:0,nf:0});
-  });
+  const budRows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!cf||b.cf===cf));
   const totBud=budRows.reduce((s,r)=>s+r.bud,0);
   const totCDA=budRows.reduce((s,r)=>s+r.cda,0);
   const totRAR=budRows.reduce((s,r)=>s+r.rar,0);
@@ -1296,10 +1256,7 @@ function renderCross(){
   const prg=document.getElementById('x-prg').value;
   const fnd=document.getElementById('x-fnd').value;
   const cf=(document.getElementById('x-cf')||{}).value||'';
-  var hasVCC3=(window.VENTILATION_CC||[]).length>0;
-  var _pcCC=null;
-  if(cf){if(hasVCC3){_pcCC=new Set((window.VENTILATION_CC).filter(function(r){return r.cc[cf]!==undefined&&r.cc[cf]>0;}).map(function(r){return r.prog;}));}
-  else{_pcCC=new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;}));}}
+  const _pcCC=cf?getProgsCC(cf):null;
   const pi=window._PROG_INFO||{};
 
   if(ann==='comp'){
@@ -1308,13 +1265,7 @@ function renderCross(){
     return;
   }
 
-  const rows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCC||_pcCC.has(b.prog))).map(b=>{
-    var bv=getBudgetCC(b.prog,b.fonds,cf);
-    if(bv===null) return b;
-    var cdaCC2=getCdaCC(b.prog,b.fonds,cf,ann);
-    var consoCCx=cf&&cdaCC2?cdaCC2.cda:b.conso;
-    return Object.assign({},b,{bud:bv,conso:consoCCx,nconso:Math.max(0,bv-(cdaCC2?cdaCC2.cda:b.cda)),cda:cdaCC2?cdaCC2.cda:b.cda,rar:cdaCC2?cdaCC2.rar:b.rar,om:0,nf:0,paye:0,rap:0});
-  });
+  const rows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCC||_pcCC.has(b.prog))).map(b=>cf?applyVCC(b,cf,ann):b);
   var _piX=pi;
   const cols=[
     {k:'cf',l:'Centre fin.'},{k:'annee',l:'Année'},{k:'prog',l:'Programme'},{k:'_nom',l:'Nom'},{k:'fonds',l:'Fonds'},
@@ -1418,42 +1369,62 @@ function renderCrossComp(prg, fnd, pcCC, pi){
 // ════════════════════════
 // SYNTHÈSE
 // ════════════════════════
-// ════════════════════════════════════
-// VENTILATION CC
-// ════════════════════════════════════
-function getConsoCC(ann, cc){
-  // Retourne un index {prog: montant_conso} filtré par année et CC
-  var idx={};
-  CONSO.forEach(function(r){
-    if(ann&&String(r.annee)!==ann) return;
-    if(cc&&r.cc!==cc) return;
-    if(!idx[r.p]) idx[r.p]=0;
-    idx[r.p]+=r.m;
-  });
-  return idx;
-}
-function getCdaCC(prog, fonds, cc, ann){
-  // Si CDA_CC non configuré : pas de données CC disponibles
-  if(!(window.CDA_CC||[]).length) return null;
-  var rows=(window.CDA_CC).filter(function(r){
-    if(ann&&r.annee!==String(ann)) return false;
-    if(cc&&r.cc!==cc) return false;
-    if(prog&&r.prog!==prog) return false;
-    if(fonds&&r.fonds!==fonds) return false;
-    return true;
-  });
-  // Si CDA_CC configuré : retourner 0 si pas de lignes (pas de fallback Budget)
-  return {
-    cda:rows.reduce(function(s,r){return s+r.val;},0),
-    rar:rows.reduce(function(s,r){return s+r.resteLivr;},0),
-    resteFact:rows.reduce(function(s,r){return s+r.resteFact;},0)
-  };
-}
+// ══════════════════════════════════════════
+// VENTILATION CC — Helpers
+// ══════════════════════════════════════════
 function getBudgetCC(prog, fonds, cc){
   if(!cc||!(window.VENTILATION_CC||[]).length) return null;
-  var row=(window.VENTILATION_CC).find(function(r){return r.prog===prog&&r.fonds===fonds;});
+  const row=(window.VENTILATION_CC).find(r=>r.prog===prog&&r.fonds===fonds);
   if(!row) return null;
-  return (row.cc[cc]!==undefined)?row.cc[cc]:null;
+  return row.cc[cc]!==undefined?row.cc[cc]:null;
+}
+function getCdaCC(prog, fonds, cc, ann){
+  // Retourne {cda,rar,resteFact} depuis CDA_CC
+  // Si CDA_CC non chargé → null (fallback Budget)
+  if(!(window.CDA_CC||[]).length) return null;
+  const rows=(window.CDA_CC).filter(r=>
+    (!ann||r.annee===String(ann))&&
+    (!cc||r.cc===cc)&&
+    (!prog||r.prog===prog||!r.prog)&&
+    (!fonds||r.fonds===fonds||!r.fonds)
+  );
+  return {
+    cda:rows.reduce((s,r)=>s+r.val,0),
+    rar:rows.reduce((s,r)=>s+r.resteLivr,0),
+    resteFact:rows.reduce((s,r)=>s+r.resteFact,0)
+  };
+}
+function getProgsCCfromVCC(cf){
+  // Programmes ayant une allocation VCC > 0 pour ce CC
+  if(!cf||!(window.VENTILATION_CC||[]).length) return null;
+  return new Set((window.VENTILATION_CC)
+    .filter(r=>r.cc[cf]!==undefined&&r.cc[cf]>0)
+    .map(r=>r.prog));
+}
+function getProgsCCfromConso(cf){
+  if(!cf) return null;
+  return new Set(CONSO.filter(r=>r.cc===cf).map(r=>r.p));
+}
+function getProgsCC(cf){
+  // Priorité VCC, sinon CONSO
+  return (window.VENTILATION_CC||[]).length?getProgsCCfromVCC(cf):getProgsCCfromConso(cf);
+}
+function applyVCC(b, cf, ann){
+  // Retourne la ligne Budget avec budget/conso/cda/rar corrigés pour le CC
+  const bv=getBudgetCC(b.prog,b.fonds,cf);
+  if(bv===null) return b; // pas de VCC → Budget global
+  const cda=getCdaCC(b.prog,b.fonds,cf,ann);
+  // Conso CC = CDa depuis CDA_CC (engagement réel)
+  const consoCC=cda?cda.cda:0;
+  return Object.assign({},b,{
+    bud:bv,
+    conso:consoCC,
+    nconso:Math.max(0,bv-consoCC),
+    cda:cda?cda.cda:0,
+    rar:cda?cda.rar:0,
+    om:0,nf:0,
+    paye:0,rap:0  // non ventilables par CC
+  });
 }
 
 function renderSynthese(){
@@ -1462,33 +1433,15 @@ function renderSynthese(){
   var pi=window._PROG_INFO||{}, today=new Date(), byProg={};
 
   // Filtrer BUDGET
-  var hasVCC=(window.VENTILATION_CC||[]).length>0;
-  var progsCC=null;
-  if(cfF){if(hasVCC){progsCC=new Set((window.VENTILATION_CC).filter(function(r){return r.cc[cfF]!==undefined&&r.cc[cfF]>0;}).map(function(r){return r.prog;}));}
-  else{progsCC=new Set(CONSO.filter(function(r){return r.cc===cfF;}).map(function(r){return r.p;}));}}
-  // Calculer la conso réelle depuis CONSO filtrée par CC
-  // Calculer indicateurs depuis CONSO filtrée par CC
-
-  // Conso filtrée par CC : Factures nettes uniquement
+  var progsCC=cfF?getProgsCC(cfF):null;
   BUDGET.forEach(function(b){
     if(ann&&parseInt(b.annee)!==parseInt(ann)) return;
     if(progsCC&&!progsCC.has(b.prog)) return;
     if(!byProg[b.prog]) byProg[b.prog]={bud:0,conso:0,nconso:0,cda:0,rar:0,om:0,nf:0,paye:0,rap:0};
     var g=byProg[b.prog];
-    var budVCC=getBudgetCC(b.prog,b.fonds,cfF);
-    var budVCC=getBudgetCC(b.prog,b.fonds,cfF);
-    var budEff=budVCC!==null?budVCC:b.bud;
-    g.bud+=budEff;
-    if(budVCC!==null){
-      var cdaCC=getCdaCC(b.prog,b.fonds,cfF,ann);
-      if(cdaCC!==null){g.cda+=cdaCC.cda;g.rar+=cdaCC.rar;g.nconso+=Math.max(0,budEff-cdaCC.cda);}
-      else{g.cda+=b.cda;g.rar+=b.rar;g.nconso+=Math.max(0,budEff-b.cda);}
-      var cdaData=cfF?getCdaCC(b.prog,b.fonds,cfF,ann):null;
-      var consoCC=cdaData!==null?cdaData.cda:b.conso;
-      g.conso+=consoCC;g.om+=0;g.nf+=0;g.paye+=b.paye;g.rap+=b.rap;
-    } else {
-      g.conso+=b.conso;g.nconso+=b.nconso;g.cda+=b.cda;g.rar+=b.rar;g.om+=b.om;g.nf+=b.nf;g.paye+=b.paye;g.rap+=b.rap;
-    }
+    var bb=cfF?applyVCC(b,cfF,ann):b;
+    g.bud+=bb.bud;g.conso+=bb.conso;g.nconso+=bb.nconso;
+    g.cda+=bb.cda;g.rar+=bb.rar;g.om+=bb.om;g.nf+=bb.nf;g.paye+=bb.paye;g.rap+=bb.rap;
   });
 
   // Rythme mensuel : 3 derniers mois de CdA Original par programme
@@ -1976,7 +1929,6 @@ function renderRepartition(){
     if(prg&&r.p!==prg) return;
     if(fnd&&r.fo!==fnd) return;
     if(cf&&r.cc!==cf) return;
-    if(cf&&!r.cc&&r.tv==='Paiements') return;  // exclure paiements sans CC si filtre actif
     var cat=TV_RESS.indexOf(r.tv)>=0?'_ress':(TV_CATS[r.tv]?r.tv:null);
     if(!cat) return;
     byCat[cat]=(byCat[cat]||0)+r.m;
@@ -2085,27 +2037,6 @@ function renderEvolMulti(prg,fnd){
 // ════════════════════════
 // NACRES — Traitement
 // ════════════════════════
-// ════════════════════════════════════════════════════════
-// Conversion CDA_CC → NACRES_DATA
-// ════════════════════════════════════════════════════════
-function buildNacresFromCdaCC(){
-  if(!(window.CDA_CC||[]).length) return false;
-  window.NACRES_DATA=[];
-  (window.CDA_CC).forEach(function(r){
-    window.NACRES_DATA.push({
-      nacreCode:r.nacreCode,nacreDesc:r.nacreDesc,cmd:r.cmd,date:'',
-      typeDoc:r.typeDoc,surMarche:r.surMarche,agenceVoyage:r.agenceVoyage,
-      four:r.four,desig:r.desig,val:r.val,
-      rest:r.resteFact,resteLivr:r.resteLivr,
-      fond:r.fonds,prog:r.prog,annee:r.annee,cc:r.cc
-    });
-  });
-  var dc01=window.NACRES_DATA.filter(function(r){return r.nacreCode.toUpperCase().startsWith('DC.01');});
-  console.log('[NACRES] DC.01 lignes:',dc01.length,'agenceVoyage:',dc01.map(function(r){return r.agenceVoyage;}));
-  console.log('[NACRES] Construit depuis CDA_CC:',window.NACRES_DATA.length,'lignes');
-  return true;
-}
-
 function procNacres(raw, annee){
   // Accumuler (ne pas réinitialiser si déjà des données)
   if(!window.NACRES_DATA) window.NACRES_DATA=[];
@@ -2145,13 +2076,11 @@ var _chNacres=null;
 function renderNacres(){
   var prg=document.getElementById('n-prg').value,fnd=document.getElementById('n-fnd').value;
   var typeF=document.getElementById('n-type').value,vue=document.getElementById('n-vue').value;
-  var statut=document.getElementById('n-statut').value;
   var ann=document.getElementById('n-ann').value;
   var cf=(document.getElementById('n-cf')||{}).value||'';
-  // Si CDA_CC dispo : filtrer directement sur r.cc, sinon via progsCC
+  // Si CDA_CC → filtre direct sur r.cc; sinon via programmes CONSO
   var hasCdaCC=(window.CDA_CC||[]).length>0;
   var progsCC_n=cf&&!hasCdaCC?new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;})):null;
-  var _nd=window.NACRES_DATA||[];
   var data=(window.NACRES_DATA||[]).filter(function(r){
     if(ann&&r.annee&&r.annee!==ann) return false;
     if(prg&&r.prog!==prg) return false;
@@ -2160,8 +2089,6 @@ function renderNacres(){
     if(cf&&hasCdaCC&&r.cc&&r.cc!==cf) return false;
     if(typeF==='marche'&&!r.surMarche) return false;
     if(typeF==='hors'&&r.surMarche) return false;
-    if(statut==='open'&&r.rest<=0) return false;
-    if(statut==='closed'&&r.rest>0) return false;
     return true;
   });
   if(!data.length){
