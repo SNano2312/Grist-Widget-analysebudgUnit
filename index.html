@@ -2153,7 +2153,7 @@ function renderNacres(){
   var progsCC_n=cf&&!hasCdaCC?new Set(CONSO.filter(function(r){return r.cc===cf;}).map(function(r){return r.p;})):null;
   var _nd=window.NACRES_DATA||[];
   var data=(window.NACRES_DATA||[]).filter(function(r){
-    if(ann&&r.annee&&r.annee!==ann&&!hasCdaCC) return false;
+    if(ann&&r.annee&&r.annee!==ann) return false;
     if(prg&&r.prog!==prg) return false;
     if(fnd&&r.fond!==fnd) return false;
     if(progsCC_n&&!progsCC_n.has(r.prog)) return false;
@@ -2175,7 +2175,6 @@ function renderNacres(){
     document.getElementById('nacres-tf').innerHTML='';
     return;
   }
-  var byAnn={}; data.forEach(function(r){byAnn[r.annee]=(byAnn[r.annee]||0)+r.val;}); console.log('[NACRES] ann='+ann+' total='+totVal+' byAnn='+JSON.stringify(byAnn)+' DC01='+data.filter(function(r){return r.agenceVoyage;}).reduce(function(s,r){return s+r.val;},0));
   var totVal=data.reduce(function(s,r){return s+r.val;},0);
   var totMar=data.filter(function(r){return r.surMarche;}).reduce(function(s,r){return s+r.val;},0);
   var totHors=totVal-totMar,totRest=data.reduce(function(s,r){return s+r.rest;},0);
@@ -2315,7 +2314,7 @@ function renderOpenOrders(){
   // Filtrer NACRES_DATA sur les non soldées uniquement
   var data=(window.NACRES_DATA||[]).filter(function(r){
     if(r.rest<=0) return false;  // soldées exclues
-    if(ann&&r.annee&&r.annee!==ann&&!hasCdaCCo) return false;
+    if(ann&&r.annee&&r.annee!==ann) return false;
     if(prg&&r.prog!==prg) return false;
     if(fnd&&r.fond!==fnd) return false;
     if(typeF==='marche'&&!r.surMarche) return false;
