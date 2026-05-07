@@ -804,52 +804,53 @@ async function lanceAnalyse(){
       if(!tCDA) continue;
       try{
         const raw=await grist.docApi.fetchTable(tCDA);
-        console.log('[CDA_CC] Colonnes Grist:',JSON.stringify(Object.keys(raw)));
-        if(raw[Object.keys(raw)[0]].length>0){var sample={};Object.keys(raw).forEach(function(k){sample[k]=raw[k][0];});console.log('[CDA_CC] 1ere ligne brute:',JSON.stringify(sample));}
-        const keys=Object.keys(raw);
-        const n=(raw[keys[0]]||[]).length;
+        const n=(raw[Object.keys(raw)[0]]||[]).length;
         for(let ii=0;ii<n;ii++){
-          const row={annee:anneeStr,cc:'',nacreCode:'',nacreDesc:'',cmd:'',typeDoc:'',
-                     four:'',desig:'',val:0,resteLivr:0,resteFact:0,prog:'',fonds:'',
-                     surMarche:false,agenceVoyage:false};
-          keys.forEach(k=>{
-            const v=raw[k][ii];
-            const kl=k.toLowerCase();
-            if(kl.includes('centre')) row.cc=String(v||'').replace(/\s*\(.*$/,'').trim();
-            else if(kl.includes('grpe')||kl.includes('marchandises')){
-              const gm=String(v||'').trim();
-              const gmp=gm.match(/^([A-Za-z0-9.]+)/);
-              row.nacreCode=gmp?gmp[1]:'';
-              row.nacreDesc=gm.replace(/^[A-Za-z0-9.]+\s*\(?/,'').replace(/\)$/,'').trim();
-            }
-            else if(kl.includes('commande')&&kl.includes('achat')) row.cmd=String(v||'').trim();
-            else if(kl.includes('type')&&kl.includes('document')){
-              const td=String(v||'').trim(); const tdp=td.match(/^([A-Z]+)/);
-              row.typeDoc=tdp?tdp[1]:''; row.surMarche=row.typeDoc.indexOf('OSMA')===0;
-            }
-            else if(kl.includes('fournisseur')) row.four=String(v||'').replace(/^\d+\s*\(/,'').replace(/\)$/,'').trim();
-            else if(kl.includes('signation')) row.desig=String(v||'').trim();
-            else if(kl.includes('nette')) row.val=parseFloat(v)||0;
-            else if(kl.includes('restante')&&kl.includes('livr')) row.resteLivr=parseFloat(v)||0;
-            else if(kl.includes('restante')&&kl.includes('factu')) row.resteFact=parseFloat(v)||0;
-            else if(kl.includes('otp')){
-              const eot=String(v||'').trim(); const eotp=eot.match(/^([A-Z0-9_]+)/i);
-              row.prog=eotp?eotp[1]:'';
-            }
-            else if(k==='Fonds'){
-              const fo=String(v||'').trim(); const fop=fo.match(/^([A-Z0-9_]+)/i);
-              row.fonds=fop?fop[1]:'';
-            }
+          // Extraction directe par nom de colonne Grist connu
+          const getS=k=>(raw[k]&&raw[k][ii]!=null)?String(raw[k][ii]).trim():'';
+          const getN=k=>(raw[k]&&raw[k][ii]!=null)?parseFloat(raw[k][ii])||0:0;
+          // Centre de coûts : prendre le début avant la parenthèse
+          const ccFull=getS('Centre_de_couts');
+          const cc=ccFull.replace(/\s*\(.*$/,'').trim();
+          // NACRES
+          const gmFull=getS('Grpe_de_marchandises');
+          const gmMatch=gmFull.match(/^([A-Za-z0-9.]+)/);
+          const nacreCode=gmMatch?gmMatch[1]:'';
+          const nacreDesc=gmFull.replace(/^[A-Za-z0-9.]+\s*\(?/,'').replace(/\)$/,'').trim();
+          // Programme (Élément d'OTP)
+          const otpFull=getS('Element_d_OTP');
+          const otpMatch=otpFull.match(/^([A-Z0-9_]+)/i);
+          const prog=otpMatch?otpMatch[1]:'';
+          // Fonds
+          const fondsFull=getS('Fonds');
+          const fondsMatch=fondsFull.match(/^([A-Z0-9_]+)/i);
+          const fonds=fondsMatch?fondsMatch[1]:'';
+          // Type document
+          const tdFull=getS('Type_de_document_d_achat');
+          const tdMatch=tdFull.match(/^([A-Z]+)/);
+          const typeDoc=tdMatch?tdMatch[1]:'';
+          // Fournisseur : enlever le code avant la parenthèse
+          const fourFull=getS('Fournisseur');
+          const four=fourFull.replace(/^\d+\s*\(/,'').replace(/\)$/,'').trim()||fourFull;
+          // Commande (entier)
+          const cmd=String(raw['Commande_d_achat']?raw['Commande_d_achat'][ii]||'':'');
+          // Valeurs
+          const val=getN('Valeur_nette_repartie');
+          const resteLivr=getN('Valeur_restante_a_livrer');
+          const resteFact=getN('Valeur_restante_a_facturer');
+          // DC.01 = agence voyage
+          const agenceVoyage=nacreCode.toUpperCase().startsWith('DC.01');
+          const surMarche=agenceVoyage||(typeDoc==='OSMA');
+          if(cc&&prog) window.CDA_CC.push({
+            annee:anneeStr,cc,nacreCode,nacreDesc,cmd,typeDoc,
+            four,desig:getS('Designation'),val,resteLivr,resteFact,
+            prog,fonds,surMarche,agenceVoyage
           });
-          if(row.nacreCode.toUpperCase().startsWith('DC.01')){row.surMarche=true;row.agenceVoyage=true;}
-          if(row.nacreCode.toUpperCase().startsWith('DC.01')){row.surMarche=true;row.agenceVoyage=true;}
-          else if(row.typeDoc==='OSMA'){row.surMarche=true;}
-          if(row.cc&&row.prog) window.CDA_CC.push(row);
         }
       }catch(e){console.warn('[CDA_CC '+anneeStr+'] Erreur:',e.message);}
     }
-  var dc01raw=(window.CDA_CC||[]).filter(function(r){return r.nacreCode.toUpperCase().startsWith('DC.01');});
-  console.log('[CDA_CC] DC.01 bruts:',dc01raw.length,dc01raw.length?JSON.stringify(dc01raw[0]):'');
+    var dc01x=(window.CDA_CC||[]).filter(function(r){return r.agenceVoyage;});
+    console.log('[CDA_CC] Charg\u00e9:',window.CDA_CC.length,'lignes, DC.01:',dc01x.length);
     console.log('[CDA_CC] Chargé:',window.CDA_CC.length,'lignes');
     // Si CDA_CC chargé : reconstruire NACRES_DATA depuis CDA_CC
     if((window.CDA_CC||[]).length) buildNacresFromCdaCC();
