@@ -1458,6 +1458,16 @@ function renderSynthese(){
   // Calculer la conso réelle depuis CONSO filtrée par CC
   // Calculer indicateurs depuis CONSO filtrée par CC
 
+  // Conso filtrée par CC depuis CONSO
+  var consoByProgCC={};
+  if(cfF){
+    CONSO.forEach(function(r){
+      if(ann&&String(r.annee)!==ann) return;
+      if(r.cc!==cfF) return;
+      if(!consoByProgCC[r.p]) consoByProgCC[r.p]=0;
+      consoByProgCC[r.p]+=r.m;
+    });
+  }
   BUDGET.forEach(function(b){
     if(ann&&parseInt(b.annee)!==parseInt(ann)) return;
     if(progsCC&&!progsCC.has(b.prog)) return;
@@ -1471,7 +1481,8 @@ function renderSynthese(){
       var cdaCC=getCdaCC(b.prog,b.fonds,cfF,ann);
       if(cdaCC){g.cda+=cdaCC.cda;g.rar+=cdaCC.rar;g.nconso+=Math.max(0,budEff-cdaCC.cda);}
       else{g.cda+=b.cda;g.rar+=b.rar;g.nconso+=Math.max(0,budEff-b.cda);}
-      g.conso+=b.conso;g.om+=0;g.nf+=0;g.paye+=b.paye;g.rap+=b.rap;
+      var consoCC=cfF?(consoByProgCC[b.prog]||0):b.conso;
+      g.conso+=consoCC;g.om+=0;g.nf+=0;g.paye+=b.paye;g.rap+=b.rap;
     } else {
       g.conso+=b.conso;g.nconso+=b.nconso;g.cda+=b.cda;g.rar+=b.rar;g.om+=b.om;g.nf+=b.nf;g.paye+=b.paye;g.rap+=b.rap;
     }
