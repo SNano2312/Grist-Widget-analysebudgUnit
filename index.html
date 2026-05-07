@@ -2799,10 +2799,9 @@ function renderCC(){
   const sapSuf="',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)";
 
   // Liste des CC à afficher
-  const cfsSet=new Set([
-    ...(window.VENTILATION_CC||[]).flatMap(r=>Object.keys(r.cc)),
-    ...CONSO.map(r=>r.cc).filter(Boolean)
-  ]);
+  const cfsSet=new Set();
+  (window.VENTILATION_CC||[]).forEach(r=>Object.keys(r.cc).forEach(k=>cfsSet.add(k)));
+  CONSO.forEach(r=>{if(r.cc) cfsSet.add(r.cc);});
   const allCC=cf?[cf]:[...cfsSet].sort();
 
   if(!allCC.length){
