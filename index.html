@@ -635,7 +635,7 @@ grist.ready({
       });
       sel.addEventListener('change', checkSelections);
     });
-    ['sel-t1','sel-nacres25','sel-nacres','sel-vcc'].forEach(function(sid){
+    ['sel-t1','sel-nacres25','sel-nacres','sel-vcc','sel-cda25','sel-cda26'].forEach(function(sid){
       const sel=document.getElementById(sid); if(!sel) return;
       tables.forEach(function(t){const opt=document.createElement('option');opt.value=t;opt.textContent=t;sel.appendChild(opt);});
     });
@@ -651,6 +651,8 @@ grist.ready({
     if(saved.nacres25 && saved.nacres25!=='') document.getElementById('sel-nacres25').value=saved.nacres25;
     if(saved.nacres && saved.nacres!=='') document.getElementById('sel-nacres').value=saved.nacres;
     if(saved.vcc && saved.vcc!=='') document.getElementById('sel-vcc').value=saved.vcc;
+    if(saved.cda25) document.getElementById('sel-cda25').value=saved.cda25;
+    if(saved.cda26) document.getElementById('sel-cda26').value=saved.cda26;
     checkSelections();
 
     // Relance automatique si toutes les tables sont configurées
@@ -688,7 +690,7 @@ async function lanceAnalyse(){
   const tT1=document.getElementById('sel-t1').value;
   const tNacres25=document.getElementById('sel-nacres25').value;
   const tNacres=document.getElementById('sel-nacres').value;
-  try{localStorage.setItem('budgetCfg',JSON.stringify({b25:tB25,b26:tB26,c25:tC25,c26:tC26,t1:tT1,nacres25:tNacres25,nacres:tNacres,vcc:document.getElementById('sel-vcc').value}));}catch(e){}
+  try{localStorage.setItem('budgetCfg',JSON.stringify({b25:tB25,b26:tB26,c25:tC25,c26:tC26,t1:tT1,nacres25:tNacres25,nacres:tNacres,vcc:document.getElementById('sel-vcc').value,cda25:document.getElementById('sel-cda25').value,cda26:document.getElementById('sel-cda26').value}));}catch(e){}
 
   showLd('Lecture des données…');
   try{
@@ -786,6 +788,57 @@ async function lanceAnalyse(){
         procNacres(rawN, 2026);
       }catch(e){console.log('NACRES 2026:',e.message);}
     }
+    fillNacresFilters();
+    // Charger CDA par CC
+    window.CDA_CC=[];
+    for(const [anneeStr,selId] of [['2025','sel-cda25'],['2026','sel-cda26']]){
+      const tCDA=document.getElementById(selId).value;
+      if(!tCDA) continue;
+      try{
+        const raw=await grist.docApi.fetchTable(tCDA);
+        const keys=Object.keys(raw);
+        const n=(raw[keys[0]]||[]).length;
+        for(let ii=0;ii<n;ii++){
+          const row={annee:anneeStr,cc:'',nacreCode:'',nacreDesc:'',cmd:'',typeDoc:'',
+                     four:'',desig:'',val:0,resteLivr:0,resteFact:0,prog:'',fonds:'',
+                     surMarche:false,agenceVoyage:false};
+          keys.forEach(k=>{
+            const v=raw[k][ii];
+            const kl=k.toLowerCase();
+            if(kl.includes('centre')) row.cc=String(v||'').replace(/\s*\(.*$/,'').trim();
+            else if(kl.includes('grpe')||kl.includes('marchandises')){
+              const gm=String(v||'').trim();
+              const gmp=gm.match(/^([A-Za-z0-9.]+)/);
+              row.nacreCode=gmp?gmp[1]:'';
+              row.nacreDesc=gm.replace(/^[A-Za-z0-9.]+\s*\(?/,'').replace(/\)$/,'').trim();
+            }
+            else if(kl.includes('commande')&&kl.includes('achat')) row.cmd=String(v||'').trim();
+            else if(kl.includes('type')&&kl.includes('document')){
+              const td=String(v||'').trim(); const tdp=td.match(/^([A-Z]+)/);
+              row.typeDoc=tdp?tdp[1]:''; row.surMarche=row.typeDoc.indexOf('OSMA')===0;
+            }
+            else if(kl.includes('fournisseur')) row.four=String(v||'').replace(/^\d+\s*\(/,'').replace(/\)$/,'').trim();
+            else if(kl.includes('signation')) row.desig=String(v||'').trim();
+            else if(kl.includes('nette')) row.val=parseFloat(v)||0;
+            else if(kl.includes('restante')&&kl.includes('livr')) row.resteLivr=parseFloat(v)||0;
+            else if(kl.includes('restante')&&kl.includes('factu')) row.resteFact=parseFloat(v)||0;
+            else if(kl.includes('otp')){
+              const eot=String(v||'').trim(); const eotp=eot.match(/^([A-Z0-9_]+)/i);
+              row.prog=eotp?eotp[1]:'';
+            }
+            else if(k==='Fonds'){
+              const fo=String(v||'').trim(); const fop=fo.match(/^([A-Z0-9_]+)/i);
+              row.fonds=fop?fop[1]:'';
+            }
+          });
+          if(row.nacreCode.toUpperCase().startsWith('DC.01')){row.surMarche=true;row.agenceVoyage=true;}
+          if(row.cc&&row.prog) window.CDA_CC.push(row);
+        }
+      }catch(e){console.warn('[CDA_CC '+anneeStr+'] Erreur:',e.message);}
+    }
+    console.log('[CDA_CC] Chargé:',window.CDA_CC.length,'lignes');
+    // Si CDA_CC chargé : reconstruire NACRES_DATA depuis CDA_CC
+    if((window.CDA_CC||[]).length) buildNacresFromCdaCC();
     fillNacresFilters();
     fillFilters();
     switchTab('s');
@@ -1029,19 +1082,13 @@ function fb(f){
       &&(!_pcCC3||_pcCC3.has(b.prog)))
     .map(b=>{
       var bv=getBudgetCC(b.prog,b.fonds,f.cf);
-      if(bv===null) return b; // pas de filtre CC → Budget normal
-      // Filtre CC actif : budget=VCC, autres depuis CONSO filtré CC
+      if(bv===null) return b;
       var budEff=bv;
-      return Object.assign({},b,{
-        bud:budEff,
-        conso:'?',nconso:'?',
-        cda:'?',rar:'?',om:'?',nf:'?',
-        paye:'?',rap:'?'
-      });
+      var cdaCC=getCdaCC(b.prog,b.fonds,f.cf,f.ann);
+      return Object.assign({},b,{bud:budEff,conso:b.conso,nconso:Math.max(0,budEff-(cdaCC?cdaCC.cda:b.cda)),cda:cdaCC?cdaCC.cda:b.cda,rar:cdaCC?cdaCC.rar:b.rar,om:0,nf:0,paye:b.paye,rap:b.rap});
     });
   return rows;
 }
-
 function renderHisto(){
   closeDrill();
   const f=gf(); _grp=f.grp;
@@ -1149,10 +1196,10 @@ function renderEvol(){
   var consoIdxE=cf?getIndicateursCC(ann,cf):null;
   const budRows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCCe||_pcCCe.has(b.prog))).map(b=>{
     var bv=getBudgetCC(b.prog,b.fonds,cf);
-    var budEff=bv!==null?bv:b.bud;
-    return Object.assign({},b,{bud:budEff,conso:b.conso,nconso:Math.max(0,budEff-b.conso)});
+    if(bv===null) return b;
+    var cdaCC3=getCdaCC(b.prog,b.fonds,cf,ann);
+    return Object.assign({},b,{bud:bv,cda:cdaCC3?cdaCC3.cda:b.cda,rar:cdaCC3?cdaCC3.rar:b.rar,om:0,nf:0});
   });
-  const totBud=budRows.reduce((s,r)=>s+r.bud,0);
   const totCDA=budRows.reduce((s,r)=>s+r.cda,0);
   const totRAR=budRows.reduce((s,r)=>s+r.rar,0);
   // Commandes d'achat Original en priorité ; fallback Factures si aucune commande
@@ -1246,9 +1293,9 @@ function renderCross(){
 
   const rows=BUDGET.filter(b=>(!ann||parseInt(b.annee)===parseInt(ann))&&(!prg||b.prog===prg)&&(!fnd||b.fonds===fnd)&&(!_pcCC||_pcCC.has(b.prog))).map(b=>{
     var bv=getBudgetCC(b.prog,b.fonds,cf);
-    var bv=getBudgetCC(b.prog,b.fonds,cf);
-    var budEff=bv!==null?bv:b.bud;
-    return Object.assign({},b,{bud:budEff,conso:b.conso,nconso:Math.max(0,budEff-b.conso)});
+    if(bv===null) return b;
+    var cdaCC2=getCdaCC(b.prog,b.fonds,cf,ann);
+    return Object.assign({},b,{bud:bv,nconso:Math.max(0,bv-(cdaCC2?cdaCC2.cda:b.cda)),cda:cdaCC2?cdaCC2.cda:b.cda,rar:cdaCC2?cdaCC2.rar:b.rar,om:0,nf:0});
   });
   var _piX=pi;
   const cols=[
@@ -1367,6 +1414,22 @@ function getConsoCC(ann, cc){
   });
   return idx;
 }
+function getCdaCC(prog, fonds, cc, ann){
+  if(!(window.CDA_CC||[]).length) return null;
+  var rows=(window.CDA_CC).filter(function(r){
+    if(ann&&r.annee!==String(ann)) return false;
+    if(cc&&r.cc!==cc) return false;
+    if(prog&&r.prog!==prog) return false;
+    if(fonds&&r.fonds!==fonds) return false;
+    return true;
+  });
+  if(!rows.length) return null;
+  return {
+    cda:rows.reduce(function(s,r){return s+r.val;},0),
+    rar:rows.reduce(function(s,r){return s+r.resteLivr;},0),
+    resteFact:rows.reduce(function(s,r){return s+r.resteFact;},0)
+  };
+}
 function getBudgetCC(prog, fonds, cc){
   if(!cc||!(window.VENTILATION_CC||[]).length) return null;
   var row=(window.VENTILATION_CC).find(function(r){return r.prog===prog&&r.fonds===fonds;});
@@ -1393,11 +1456,17 @@ function renderSynthese(){
     if(!byProg[b.prog]) byProg[b.prog]={bud:0,conso:0,nconso:0,cda:0,rar:0,om:0,nf:0,paye:0,rap:0};
     var g=byProg[b.prog];
     var budVCC=getBudgetCC(b.prog,b.fonds,cfF);
+    var budVCC=getBudgetCC(b.prog,b.fonds,cfF);
     var budEff=budVCC!==null?budVCC:b.bud;
     g.bud+=budEff;
-    g.conso+=b.conso;g.nconso+=b.nconso;
-    g.cda+=b.cda;g.rar+=b.rar;g.om+=b.om;g.nf+=b.nf;
-    g.paye+=b.paye;g.rap+=b.rap;
+    if(budVCC!==null){
+      var cdaCC=getCdaCC(b.prog,b.fonds,cfF,ann);
+      if(cdaCC){g.cda+=cdaCC.cda;g.rar+=cdaCC.rar;g.nconso+=Math.max(0,budEff-cdaCC.cda);}
+      else{g.cda+=b.cda;g.rar+=b.rar;g.nconso+=Math.max(0,budEff-b.cda);}
+      g.conso+=b.conso;g.om+=0;g.nf+=0;g.paye+=b.paye;g.rap+=b.rap;
+    } else {
+      g.conso+=b.conso;g.nconso+=b.nconso;g.cda+=b.cda;g.rar+=b.rar;g.om+=b.om;g.nf+=b.nf;g.paye+=b.paye;g.rap+=b.rap;
+    }
   });
 
   // Rythme mensuel : 3 derniers mois de CdA Original par programme
@@ -1994,6 +2063,25 @@ function renderEvolMulti(prg,fnd){
 // ════════════════════════
 // NACRES — Traitement
 // ════════════════════════
+// ════════════════════════════════════════════════════════
+// Conversion CDA_CC → NACRES_DATA
+// ════════════════════════════════════════════════════════
+function buildNacresFromCdaCC(){
+  if(!(window.CDA_CC||[]).length) return false;
+  window.NACRES_DATA=[];
+  (window.CDA_CC).forEach(function(r){
+    window.NACRES_DATA.push({
+      nacreCode:r.nacreCode,nacreDesc:r.nacreDesc,cmd:r.cmd,date:'',
+      typeDoc:r.typeDoc,surMarche:r.surMarche,agenceVoyage:r.agenceVoyage,
+      four:r.four,desig:r.desig,val:r.val,
+      rest:r.resteFact,resteLivr:r.resteLivr,
+      fond:r.fonds,prog:r.prog,annee:r.annee,cc:r.cc
+    });
+  });
+  console.log('[NACRES] Construit depuis CDA_CC:',window.NACRES_DATA.length,'lignes');
+  return true;
+}
+
 function procNacres(raw, annee){
   // Accumuler (ne pas réinitialiser si déjà des données)
   if(!window.NACRES_DATA) window.NACRES_DATA=[];
