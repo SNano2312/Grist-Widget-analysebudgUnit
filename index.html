@@ -2818,24 +2818,23 @@ function renderCC(){
       vccLines.forEach(function(vr){
         const bud=vr.cc[ccKey]||0;
         const cda=getCdaCC(vr.prog,vr.fonds,ccKey,ann||null)||{cda:0,rar:0,resteFact:0};
-        const conso=CONSO.filter(r=>r.cc===ccKey&&(!ann||String(r.annee)===ann)&&r.p===vr.prog&&r.fo===vr.fonds).reduce((s,r)=>s+r.m,0);
+        const paye=CONSO.filter(r=>r.cc===ccKey&&(!ann||String(r.annee)===ann)&&r.p===vr.prog&&r.fo===vr.fonds&&r.tv==='Paiements'&&r.m>0).reduce((s,r)=>s+r.m,0);
         const pEng=bud>0?Math.min(cda.cda/bud*100,100):0;
-        const pPaye=bud>0?conso/bud*100:0;
-        rows.push({cc:ccKey,prog:vr.prog,fonds:vr.fonds,nom:(pi[vr.prog]&&pi[vr.prog].nom)||'-',bud,cda:cda.cda,rar:cda.rar,resteFact:cda.resteFact,conso,pEng,pPaye});
+        const pPaye=bud>0?paye/bud*100:0;
+        rows.push({cc:ccKey,prog:vr.prog,fonds:vr.fonds,nom:(pi[vr.prog]&&pi[vr.prog].nom)||'-',bud,cda:cda.cda,rar:cda.rar,resteFact:cda.resteFact,paye,pEng,pPaye});
       });
     } else {
       // Pas de VCC : agréger depuis CONSO
       const consoRows=CONSO.filter(r=>r.cc===ccKey&&(!ann||String(r.annee)===ann)&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd));
       const byP={};
       consoRows.forEach(r=>{const k=r.p+'||'+r.fo;if(!byP[k])byP[k]={prog:r.p,fonds:r.fo,conso:0};byP[k].conso+=r.m;});
-      Object.values(byP).forEach(r=>rows.push({cc:ccKey,prog:r.prog,fonds:r.fonds,nom:(pi[r.prog]&&pi[r.prog].nom)||'-',bud:0,cda:0,rar:0,resteFact:0,conso:r.paye,pEng:0,pPaye:0}));
+      Object.values(byP).forEach(r=>rows.push({cc:ccKey,prog:r.prog,fonds:r.fonds,nom:(pi[r.prog]&&pi[r.prog].nom)||'-',bud:0,cda:0,rar:0,resteFact:0,paye:r.paye,pEng:0,pPaye:0}));
     }
   });
 
   // ── Cartes synthèse par CC ──
   const byCC={};
   rows.forEach(r=>{if(!byCC[r.cc])byCC[r.cc]={bud:0,cda:0,rar:0,paye:0};byCC[r.cc].bud+=r.bud;byCC[r.cc].cda+=r.cda;byCC[r.cc].rar+=r.rar;byCC[r.cc].paye+=r.paye;});
-  console.log('[CC] byCC='+JSON.stringify(Object.keys(byCC)));
   document.getElementById('cc-cards').innerHTML=Object.entries(byCC).map(([ccKey,g])=>{
     const pE=g.bud>0?Math.min(g.cda/g.bud*100,100):0;
     const pC=g.bud>0?g.paye/g.bud*100:0;
@@ -2860,7 +2859,6 @@ function renderCC(){
       <div style="font-size:.8rem">Payé <strong style="color:${clC}">${fmt(g.conso)} €</strong> &nbsp;<span style="color:var(--mu)">${pC.toFixed(1)}%</span></div>
     </div>`;
   }).join('');
-  console.log('[CC] cards innerHTML length:',document.getElementById('cc-cards').innerHTML.length);
 
   // ── Tableau détaillé ──
   document.getElementById('cc-th').innerHTML=
