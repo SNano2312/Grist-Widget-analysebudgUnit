@@ -608,7 +608,8 @@ function attachListeners(){
     [['f-ann2','f-prg2','f-fnd2','f-cf','f-top','f-vue'],renderFournisseurs],
     [['d-ann','d-prg','d-fnd','d-cf','d-statut','d-vue'],renderDelais],
     [['r-ann','r-prg','r-fnd','r-cf'],renderRepartition],
-    [['s-ann','s-cf'],renderSynthese]
+    [['s-ann','s-cf'],renderSynthese],
+    [['cc-ann','cc-cf','cc-prg','cc-fnd'],renderCC]
   ];
   pairs.forEach(function(pair){
     pair[0].forEach(function(id){
