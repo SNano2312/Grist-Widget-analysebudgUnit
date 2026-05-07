@@ -846,6 +846,8 @@ async function lanceAnalyse(){
         }
       }catch(e){console.warn('[CDA_CC '+anneeStr+'] Erreur:',e.message);}
     }
+  var dc01raw=(window.CDA_CC||[]).filter(function(r){return r.nacreCode.toUpperCase().startsWith('DC.01');});
+  console.log('[CDA_CC] DC.01 bruts:',dc01raw.length,dc01raw.length?JSON.stringify(dc01raw[0]):'');
     console.log('[CDA_CC] Chargé:',window.CDA_CC.length,'lignes');
     // Si CDA_CC chargé : reconstruire NACRES_DATA depuis CDA_CC
     if((window.CDA_CC||[]).length) buildNacresFromCdaCC();
@@ -1211,6 +1213,7 @@ function renderEvol(){
     var consoCCe=cf&&cdaCC3?cdaCC3.cda:b.conso;
     return Object.assign({},b,{bud:bv,conso:consoCCe,cda:cdaCC3?cdaCC3.cda:b.cda,rar:cdaCC3?cdaCC3.rar:b.rar,om:0,nf:0});
   });
+  const totBud=budRows.reduce((s,r)=>s+r.bud,0);
   const totCDA=budRows.reduce((s,r)=>s+r.cda,0);
   const totRAR=budRows.reduce((s,r)=>s+r.rar,0);
   // Commandes d'achat Original en priorité ; fallback Factures si aucune commande
@@ -2094,6 +2097,8 @@ function buildNacresFromCdaCC(){
       fond:r.fonds,prog:r.prog,annee:r.annee,cc:r.cc
     });
   });
+  var dc01=window.NACRES_DATA.filter(function(r){return r.nacreCode.toUpperCase().startsWith('DC.01');});
+  console.log('[NACRES] DC.01 lignes:',dc01.length,'agenceVoyage:',dc01.map(function(r){return r.agenceVoyage;}));
   console.log('[NACRES] Construit depuis CDA_CC:',window.NACRES_DATA.length,'lignes');
   return true;
 }
