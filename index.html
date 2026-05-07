@@ -1132,7 +1132,7 @@ function renderHisto(){
   document.getElementById('kpi-strip').innerHTML=`
     <div class="kpi"><div class="kl">Budget total AE</div><div class="kv">${fmt(tB)} €</div></div>
     <div class="kpi"><div class="kl">Conso AE totale</div><div class="kv ${cl}">${fmt(tC)} €</div></div>
-    <div class="kpi"><div class="kl">Non consommé</div><div class="kv c-wn">${fmt(tN)} €</div></div>
+    <div class="kpi"><div class="kl">Non engagémmé</div><div class="kv c-wn">${fmt(tN)} €</div></div>
     <div class="kpi"><div class="kl">Payé (CP)</div><div class="kv">${fmt(tP)} €</div></div>
     <div class="kpi"><div class="kl">Taux de conso</div><div class="kv ${cl}">${pct(p)}</div></div>`;
   _grpd={};
@@ -1168,11 +1168,11 @@ function openDrill(label){
   document.getElementById('drv').style.display='block';
   const gl=_grp==='prog'?'Programme':_grp==='fonds'?'Fonds':'Année';
   document.getElementById('dr-title').textContent=gl+' : '+label;
-  const g=_grpd[label], p=g.bud>0?g.conso/g.bud*100:0, cl=p>=90?'c-ok':p>=50?'c-wn':'c-er';
+  const g=_grpd[label], p=g.bud>0?g.paye/g.bud*100:0, cl=p>=90?'c-ok':p>=50?'c-wn':'c-er';
   document.getElementById('dr-kpis').innerHTML=
     '<div class="kpi"><div class="kl">Budget AE</div><div class="kv">'+fmt(g.bud)+' €</div></div>'+
-    '<div class="kpi"><div class="kl">Conso AE</div><div class="kv '+cl+'">'+fmt(g.conso)+' €</div></div>'+
-    '<div class="kpi"><div class="kl">Non consommé</div><div class="kv c-wn">'+fmt(g.nconso)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">Conso AE</div><div class="kv '+cl+'">'+fmt(g.paye)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">Non engagémmé</div><div class="kv c-wn">'+fmt(g.nconso)+' €</div></div>'+
     '<div class="kpi"><div class="kl">Taux conso</div><div class="kv '+cl+'">'+pct(p)+'</div></div>';
   const fann=_grp==='annee'?parseInt(label):(f.ann?parseInt(f.ann):null);
   const fp=_grp==='prog'?label:(f.prg&&f.prg!==''?f.prg:null);
@@ -1548,7 +1548,7 @@ function renderSynthese(){
   Object.keys(byProg).sort().forEach(function(prog){
     var g=byProg[prog];
     var info=pi[prog]||{nom:'',dateFin:null};
-    var taux=g.bud>0?g.conso/g.bud*100:0;
+    var taux=g.bud>0?g.paye/g.bud*100:0;
     var engage=g.cda+g.rar+g.om+g.nf;
     var tauxEng=g.bud>0?Math.min(engage/g.bud*100,100):0;
     var rae=Math.max(0,g.bud-engage);
@@ -1648,7 +1648,7 @@ function renderSynthese(){
       '<div class="prog-num">'+esc(prog)+'</div>'+
       '<div class="prog-fin '+finCl+'">'+finTxt+(jRestants!==null&&jRestants>=0?' — J-'+jRestants:'')+'</div>'+
       '<div class="synth-bar-wrap"><div class="synth-bar" style="width:'+Math.min(taux,100).toFixed(1)+'%;background:'+bc+'"></div></div>'+
-      '<div class="synth-metrics"><span>Budget <strong>'+fmt(g.bud)+' €</strong></span><span>Conso <strong>'+fmt(g.conso)+' €</strong></span><span>Prévision <strong>'+fmt(prev)+' €</strong></span></div>'+
+      '<div class="synth-metrics"><span>Budget <strong>'+fmt(g.bud)+' €</strong></span><span>Payé <strong>'+fmt(g.conso)+' €</strong></span><span>Prévision <strong>'+fmt(prev)+' €</strong></span></div>'+
       '<div class="synth-metrics"><span>Engagé <strong class="'+clE+'">'+pct(tauxEng)+'</strong></span><span>Reste à engager <strong>'+fmt(rae)+' €</strong></span></div>'+
       '<div class="synth-metrics"><span>Payé <strong>'+fmt(g.paye)+' €</strong></span><span>Reste à payer <strong>'+fmt(g.rap)+' €</strong></span></div>'+
       (joursEpuisement!==null&&joursEpuisement<=60?'<div style="margin-top:4px;font-size:.73rem;color:var(--er)">⚡ Épuisement dans ~'+joursEpuisement+' j</div>':'')+
@@ -2821,43 +2821,43 @@ function renderCC(){
         const cda=getCdaCC(vr.prog,vr.fonds,ccKey,ann||null)||{cda:0,rar:0,resteFact:0};
         const conso=CONSO.filter(r=>r.cc===ccKey&&(!ann||String(r.annee)===ann)&&r.p===vr.prog&&r.fo===vr.fonds).reduce((s,r)=>s+r.m,0);
         const pEng=bud>0?Math.min(cda.cda/bud*100,100):0;
-        const pConso=bud>0?conso/bud*100:0;
-        rows.push({cc:ccKey,prog:vr.prog,fonds:vr.fonds,nom:(pi[vr.prog]&&pi[vr.prog].nom)||'-',bud,cda:cda.cda,rar:cda.rar,resteFact:cda.resteFact,conso,pEng,pConso});
+        const pPaye=bud>0?conso/bud*100:0;
+        rows.push({cc:ccKey,prog:vr.prog,fonds:vr.fonds,nom:(pi[vr.prog]&&pi[vr.prog].nom)||'-',bud,cda:cda.cda,rar:cda.rar,resteFact:cda.resteFact,conso,pEng,pPaye});
       });
     } else {
       // Pas de VCC : agréger depuis CONSO
       const consoRows=CONSO.filter(r=>r.cc===ccKey&&(!ann||String(r.annee)===ann)&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd));
       const byP={};
       consoRows.forEach(r=>{const k=r.p+'||'+r.fo;if(!byP[k])byP[k]={prog:r.p,fonds:r.fo,conso:0};byP[k].conso+=r.m;});
-      Object.values(byP).forEach(r=>rows.push({cc:ccKey,prog:r.prog,fonds:r.fonds,nom:(pi[r.prog]&&pi[r.prog].nom)||'-',bud:0,cda:0,rar:0,resteFact:0,conso:r.conso,pEng:0,pConso:0}));
+      Object.values(byP).forEach(r=>rows.push({cc:ccKey,prog:r.prog,fonds:r.fonds,nom:(pi[r.prog]&&pi[r.prog].nom)||'-',bud:0,cda:0,rar:0,resteFact:0,conso:r.paye,pEng:0,pPaye:0}));
     }
   });
 
   // ── Cartes synthèse par CC ──
   const byCC={};
-  rows.forEach(r=>{if(!byCC[r.cc])byCC[r.cc]={bud:0,cda:0,rar:0,conso:0};byCC[r.cc].bud+=r.bud;byCC[r.cc].cda+=r.cda;byCC[r.cc].rar+=r.rar;byCC[r.cc].conso+=r.conso;});
+  rows.forEach(r=>{if(!byCC[r.cc])byCC[r.cc]={bud:0,cda:0,rar:0,paye:0};byCC[r.cc].bud+=r.bud;byCC[r.cc].cda+=r.cda;byCC[r.cc].rar+=r.rar;byCC[r.cc].paye+=r.paye;});
   document.getElementById('cc-cards').innerHTML=Object.entries(byCC).map(([ccKey,g])=>{
     const pE=g.bud>0?Math.min(g.cda/g.bud*100,100):0;
-    const pC=g.bud>0?g.conso/g.bud*100:0;
+    const pC=g.bud>0?g.paye/g.bud*100:0;
     const clE=pE>=90?'#16a34a':pE>=50?'#d97706':'#2563eb';
     const clC=pC>=90?'#16a34a':pC>=50?'#d97706':'#dc2626';
-    const nconso=Math.max(0,g.bud-g.conso);
+    const nconso=Math.max(0,g.bud-g.cda);
     return`<div style="background:#fff;border:2px solid var(--bd);border-radius:10px;padding:18px;min-width:230px;flex:1">
       <div style="font-size:1rem;font-weight:700;color:var(--pr);margin-bottom:14px">🏦 ${esc(ccKey)}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.8rem;margin-bottom:12px">
         <div><div style="color:var(--mu)">Budget alloué</div><div style="font-weight:700;font-size:.95rem">${fmt(g.bud)} €</div></div>
-        <div><div style="color:var(--mu)">Non consommé</div><div style="font-weight:700;font-size:.95rem;color:var(--wn)">${fmt(nconso)} €</div></div>
+        <div><div style="color:var(--mu)">Non engagémmé</div><div style="font-weight:700;font-size:.95rem;color:var(--wn)">${fmt(nconso)} €</div></div>
       </div>
       <div style="font-size:.72rem;color:var(--mu);margin-bottom:2px">Engagement (CDa / Budget)</div>
       <div style="height:7px;background:#f0f1f5;border-radius:4px;margin-bottom:4px;overflow:hidden">
         <div style="height:100%;width:${pE.toFixed(1)}%;background:${clE};border-radius:4px"></div>
       </div>
       <div style="font-size:.8rem;margin-bottom:10px">CDa <strong style="color:${clE}">${fmt(g.cda)} €</strong> &nbsp;RAR <strong>${fmt(g.rar)} €</strong> &nbsp;<span style="color:var(--mu)">${pE.toFixed(1)}%</span></div>
-      <div style="font-size:.72rem;color:var(--mu);margin-bottom:2px">Consommation SAP</div>
+      <div style="font-size:.72rem;color:var(--mu);margin-bottom:2px">Payé (CP)</div>
       <div style="height:7px;background:#f0f1f5;border-radius:4px;margin-bottom:4px;overflow:hidden">
         <div style="height:100%;width:${Math.min(pC,100).toFixed(1)}%;background:${clC};border-radius:4px"></div>
       </div>
-      <div style="font-size:.8rem">Conso <strong style="color:${clC}">${fmt(g.conso)} €</strong> &nbsp;<span style="color:var(--mu)">${pC.toFixed(1)}%</span></div>
+      <div style="font-size:.8rem">Payé <strong style="color:${clC}">${fmt(g.conso)} €</strong> &nbsp;<span style="color:var(--mu)">${pC.toFixed(1)}%</span></div>
     </div>`;
   }).join('');
 
@@ -2866,13 +2866,13 @@ function renderCC(){
     '<tr><th>CC</th><th>Programme</th><th>Nom</th><th>Fonds</th>'+
     '<th style="text-align:right">Budget</th><th style="text-align:right">CDa</th>'+
     '<th style="text-align:right">RAR</th><th style="text-align:right">Reste fact.</th>'+
-    '<th style="text-align:right">Conso SAP</th><th style="text-align:right">Non conso</th>'+
+    '<th style="text-align:right">Conso SAP</th><th style="text-align:right">Non engagé</th>'+
     '<th style="text-align:right">% engagé</th><th style="text-align:right">% conso</th></tr>';
 
   document.getElementById('cc-tb').innerHTML=rows.map(r=>{
     const clE=r.pEng>=90?'r-ok':r.pEng>=50?'r-wn':'r-er';
-    const clC=r.pConso>=90?'r-ok':r.pConso>=50?'r-wn':'r-er';
-    const nconso=Math.max(0,r.bud-r.conso);
+    const clC=r.pPaye>=90?'r-ok':r.pPaye>=50?'r-wn':'r-er';
+    const nconso=Math.max(0,r.bud-r.cda);
     return`<tr style="cursor:pointer" onclick="openCCDrill('${esc(r.cc)}','${esc(r.prog)}','${esc(r.fonds)}','${esc(ann)}')" title="Voir le détail">
       <td style="font-weight:600;color:var(--pr)">${esc(r.cc)}</td>
       <td style="font-weight:500">${esc(r.prog)}</td><td>${esc(r.nom)}</td><td>${esc(r.fonds)}</td>
@@ -2883,20 +2883,20 @@ function renderCC(){
       <td style="text-align:right">${fmt(r.conso)} €</td>
       <td style="text-align:right">${fmt(nconso)} €</td>
       <td style="text-align:right"><span class="rb ${clE}">${r.pEng.toFixed(1)}%</span></td>
-      <td style="text-align:right"><span class="rb ${clC}">${r.pConso.toFixed(1)}%</span></td>
+      <td style="text-align:right"><span class="rb ${clC}">${r.pPaye.toFixed(1)}%</span></td>
     </tr>`;
   }).join('');
 
   const tot={bud:0,cda:0,rar:0,resteFact:0,conso:0};
-  rows.forEach(r=>{tot.bud+=r.bud;tot.cda+=r.cda;tot.rar+=r.rar;tot.resteFact+=r.resteFact;tot.conso+=r.conso;});
+  rows.forEach(r=>{tot.bud+=r.bud;tot.cda+=r.cda;tot.rar+=r.rar;tot.resteFact+=r.resteFact;tot.paye+=r.conso;});
   document.getElementById('cc-tf').innerHTML=
     `<tr><td colspan="4">TOTAL (${rows.length} lignes)</td>`+
     `<td style="text-align:right">${fmt(tot.bud)} €</td>`+
     `<td style="text-align:right">${fmt(tot.cda)} €</td>`+
     `<td style="text-align:right">${fmt(tot.rar)} €</td>`+
     `<td style="text-align:right">${fmt(tot.resteFact)} €</td>`+
-    `<td style="text-align:right">${fmt(tot.conso)} €</td>`+
-    `<td style="text-align:right">${fmt(Math.max(0,tot.bud-tot.conso))} €</td>`+
+    `<td style="text-align:right">${fmt(tot.paye)} €</td>`+
+    `<td style="text-align:right">${fmt(Math.max(0,tot.bud-tot.cda))} €</td>`+
     `<td colspan="2"></td></tr>`;
 }
 
@@ -2918,7 +2918,7 @@ function openCCDrill(ccKey,prog,fonds,ann){
     `<div class="kpi"><div class="kl">CDa engagées</div><div class="kv ${clE}">${fmt(cdaObj.cda)} €</div></div>`+
     `<div class="kpi"><div class="kl">RAR</div><div class="kv">${fmt(cdaObj.rar)} €</div></div>`+
     `<div class="kpi"><div class="kl">Reste à facturer</div><div class="kv c-wn">${fmt(cdaObj.resteFact)} €</div></div>`+
-    `<div class="kpi"><div class="kl">Conso SAP</div><div class="kv">${fmt(conso)} €</div></div>`+
+    `<div class="kpi"><div class="kl">Payé (CP)</div><div class="kv">${fmt(conso)} €</div></div>`+
     `<div class="kpi"><div class="kl">% engagé</div><div class="kv ${clE}">${pE.toFixed(1)} %</div></div>`;
 
   // Détail CDA
