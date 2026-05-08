@@ -783,11 +783,8 @@ async function lanceAnalyse(){
     procConso(rawC26, 2026);
 
 
-    hideLd();
-    document.getElementById('cfg-screen').style.display='none';
-    document.getElementById('dash').style.display='block';
-    document.getElementById('dash-title').textContent='Analyse budgétaire'+(CF_LABEL?' — Centre financier '+CF_LABEL:'');
     window.NACRES_DATA=[];
+    setLd('Lecture Ventilation CC…');
     // ── Charger Ventilation CC 2025 + 2026 ──
     window.VENTILATION_CC=[];
     for(const [vccAnn,vccSelId] of [['2025','sel-vcc25'],['2026','sel-vcc26']]){
@@ -828,6 +825,11 @@ async function lanceAnalyse(){
       });});
     }
 
+    // Afficher le dashboard maintenant que tout est chargé
+    hideLd();
+    document.getElementById('cfg-screen').style.display='none';
+    document.getElementById('dash').style.display='block';
+    document.getElementById('dash-title').textContent='Analyse budgétaire'+(CF_LABEL?' — Centre financier '+CF_LABEL:'');
     fillNacresFilters();
     // Enrichir filtre CC depuis VCC
     const cfsSet=new Set(CONSO.map(r=>r.cc).filter(Boolean));
