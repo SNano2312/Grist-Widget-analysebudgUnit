@@ -813,6 +813,46 @@ async function lanceAnalyse(){
       }catch(e){console.warn('[VCC'+vccAnn+']',e.message);}
     }
 
+    // ── Charger CDA par CC ──
+    setLd('Lecture CDA par CC…');
+    window.CDA_CC=[];
+    for(const [yr,selId] of [['2025','sel-cda25'],['2026','sel-cda26']]){
+      const tCDA=document.getElementById(selId).value;
+      if(!tCDA) continue;
+      try{
+        const raw=await grist.docApi.fetchTable(tCDA);
+        const n=(raw[Object.keys(raw)[0]]||[]).length;
+        for(let ii=0;ii<n;ii++){
+          const G=k=>(raw[k]&&raw[k][ii]!=null)?String(raw[k][ii]).trim():'';
+          const N=k=>(raw[k]&&raw[k][ii]!=null)?parseFloat(raw[k][ii])||0:0;
+          const ccFull=G('Centre_de_couts');
+          const cc=ccFull.replace(/\s*\(.*$/,'').trim();
+          const gmFull=G('Grpe_de_marchandises');
+          const gmM=gmFull.match(/^([A-Za-z0-9.]+)/);
+          const nacreCode=gmM?gmM[1]:'';
+          const nacreDesc=gmFull.replace(/^[A-Za-z0-9.]+\s*\(?/,'').replace(/\)$/,'').trim();
+          const otpFull=G('Element_d_OTP');
+          const prog=(otpFull.match(/^([A-Z0-9_]+)/i)||[])[1]||'';
+          const fondsFull=G('Fonds');
+          const fonds=(fondsFull.match(/^([A-Z0-9_]+)/i)||[])[1]||'';
+          const tdFull=G('Type_de_document_d_achat');
+          const typeDoc=(tdFull.match(/^([A-Z]+)/)||[])[1]||'';
+          const fourFull=G('Fournisseur');
+          const four=fourFull.replace(/^\d+\s*\(/,'').replace(/\)$/,'').trim()||fourFull;
+          const cmd=String(raw['Commande_d_achat']?raw['Commande_d_achat'][ii]||'':'');
+          const val=N('Valeur_nette_repartie');
+          const resteLivr=N('Valeur_restante_a_livrer');
+          const resteFact=N('Valeur_restante_a_facturer');
+          const agenceVoyage=nacreCode.toUpperCase().startsWith('DC.01');
+          const surMarche=agenceVoyage||(typeDoc==='OSMA');
+          if(cc) window.CDA_CC.push({annee:yr,cc,nacreCode,nacreDesc,cmd,typeDoc,
+            four,desig:G('Designation'),val,resteLivr,resteFact,
+            prog,fonds,surMarche,agenceVoyage});
+        }
+      }catch(e){console.warn('[CDA'+yr+']',e.message);}
+    }
+    console.log('[CDA_CC]',window.CDA_CC.length,'lignes');
+
     // CDA_CC remplace NACRES si configuré
     if(window.CDA_CC.length){
       window.NACRES_DATA=[];
