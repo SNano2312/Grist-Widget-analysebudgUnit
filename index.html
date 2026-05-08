@@ -727,9 +727,9 @@ async function lanceAnalyse(){
 
   // Mémoriser la config
   const tT1=document.getElementById('sel-t1').value;
-  const tNacres25=document.getElementById('sel-nacres25').value;
-  const tNacres=document.getElementById('sel-nacres').value;
-  try{localStorage.setItem('budgetCfg',JSON.stringify({b25:tB25,b26:tB26,c25:tC25,c26:tC26,t1:tT1,nacres25:tNacres25,nacres:tNacres,cda25:document.getElementById('sel-cda25').value,cda26:document.getElementById('sel-cda26').value,vcc:document.getElementById('sel-vcc').value}));}catch(e){}
+  const tVCC25=document.getElementById('sel-vcc25').value;
+  const tVCC26=document.getElementById('sel-vcc26').value;
+  try{localStorage.setItem('budgetCfg',JSON.stringify({b25:tB25,b26:tB26,c25:tC25,c26:tC26,t1:tT1,cda25:document.getElementById('sel-cda25').value,cda26:document.getElementById('sel-cda26').value,vcc25:tVCC25,vcc26:tVCC26}));}catch(e){}
 
   showLd('Lecture des données…');
   try{
@@ -784,83 +784,33 @@ async function lanceAnalyse(){
     document.getElementById('dash').style.display='block';
     document.getElementById('dash-title').textContent='Analyse budgétaire'+(CF_LABEL?' — Centre financier '+CF_LABEL:'');
     window.NACRES_DATA=[];
-    if(tNacres25){
-      try{
-        setLd('Lecture NACRES 2025…');
-        const rawN25=await grist.docApi.fetchTable(tNacres25);
-        procNacres(rawN25, 2025);
-      }catch(e){console.log('NACRES 2025:',e.message);}
-    }
-    if(tNacres){
-      try{
-        setLd('Lecture NACRES 2026…');
-        const rawN=await grist.docApi.fetchTable(tNacres);
-        procNacres(rawN, 2026);
-      }catch(e){console.log('NACRES 2026:',e.message);}
-    }
-    // ── Charger Ventilation CC ──
+    // ── Charger Ventilation CC 2025 + 2026 ──
     window.VENTILATION_CC=[];
-    const tVCC=document.getElementById('sel-vcc').value;
-    if(tVCC){try{
-      const vccRaw=await grist.docApi.fetchTable(tVCC);
-      const vccKeys=Object.keys(vccRaw);
-      const vccN=(vccRaw[vccKeys[0]]||[]).length;
-      for(let ii=0;ii<vccN;ii++){
-        const row={prog:'',fonds:'',budget:0,cc:{}};
-        vccKeys.forEach(k=>{
-          const v=vccRaw[k][ii];
-          const kl=k.toLowerCase().replace(/[_\s]/g,'');
-          if(kl.includes('programme')) row.prog=String(v||'').trim();
-          else if(kl==='fonds') row.fonds=String(v||'').trim();
-          else if(kl.includes('budget')) row.budget=parseFloat(v)||0;
-          else if(k!=='id'&&k!=='manualSort'){
-            const ccKey=(k.length>1&&k[0]==='c'&&k[1]>='0'&&k[1]<='9')?k.slice(1):k;
-            row.cc[ccKey]=parseFloat(v)||0;
-          }
-        });
-        if(row.prog&&row.fonds) window.VENTILATION_CC.push(row);
-      }
-      console.log('[VCC]',window.VENTILATION_CC.length,'lignes');
-    }catch(e){console.warn('[VCC]',e.message);}}
-
-    // ── Charger CDA par CC ──
-    window.CDA_CC=[];
-    for(const [yr,selId] of [['2025','sel-cda25'],['2026','sel-cda26']]){
-      const tCDA=document.getElementById(selId).value;
-      if(!tCDA) continue;
+    for(const [vccAnn,vccSelId] of [['2025','sel-vcc25'],['2026','sel-vcc26']]){
+      const tVCC=document.getElementById(vccSelId).value;
+      if(!tVCC) continue;
       try{
-        const raw=await grist.docApi.fetchTable(tCDA);
-        const n=(raw[Object.keys(raw)[0]]||[]).length;
-        for(let ii=0;ii<n;ii++){
-          const G=k=>(raw[k]&&raw[k][ii]!=null)?String(raw[k][ii]).trim():'';
-          const N=k=>(raw[k]&&raw[k][ii]!=null)?parseFloat(raw[k][ii])||0:0;
-          const ccFull=G('Centre_de_couts');
-          const cc=ccFull.replace(/\s*\(.*$/,'').trim();
-          const gmFull=G('Grpe_de_marchandises');
-          const gmM=gmFull.match(/^([A-Za-z0-9.]+)/);
-          const nacreCode=gmM?gmM[1]:'';
-          const nacreDesc=gmFull.replace(/^[A-Za-z0-9.]+\s*\(?/,'').replace(/\)$/,'').trim();
-          const otpFull=G('Element_d_OTP');
-          const prog=(otpFull.match(/^([A-Z0-9_]+)/i)||[])[1]||'';
-          const fondsFull=G('Fonds');
-          const fonds=(fondsFull.match(/^([A-Z0-9_]+)/i)||[])[1]||'';
-          const tdFull=G('Type_de_document_d_achat');
-          const typeDoc=(tdFull.match(/^([A-Z]+)/)||[])[1]||'';
-          const fourFull=G('Fournisseur');
-          const four=fourFull.replace(/^\d+\s*\(/,'').replace(/\)$/,'').trim()||fourFull;
-          const cmd=String(raw['Commande_d_achat']?raw['Commande_d_achat'][ii]||'':'');
-          const val=N('Valeur_nette_repartie');
-          const resteLivr=N('Valeur_restante_a_livrer');
-          const resteFact=N('Valeur_restante_a_facturer');
-          const agenceVoyage=nacreCode.toUpperCase().startsWith('DC.01');
-          const surMarche=agenceVoyage||(typeDoc==='OSMA');
-          if(cc) window.CDA_CC.push({annee:yr,cc,nacreCode,nacreDesc,cmd,typeDoc,
-            four,desig:G('Designation'),val,resteLivr,resteFact,
-            prog,fonds,surMarche,agenceVoyage});
+        const vccRaw=await grist.docApi.fetchTable(tVCC);
+        const vccKeys=Object.keys(vccRaw);
+        const vccN=(vccRaw[vccKeys[0]]||[]).length;
+        for(let ii=0;ii<vccN;ii++){
+          const row={prog:'',fonds:'',budget:0,annee:vccAnn,cc:{}};
+          vccKeys.forEach(k=>{
+            const v=vccRaw[k][ii];
+            const kl=k.toLowerCase().replace(/[_\s]/g,'');
+            if(kl.includes('programme')) row.prog=String(v||'').trim();
+            else if(kl==='fonds') row.fonds=String(v||'').trim();
+            else if(kl.includes('budget')) row.budget=parseFloat(v)||0;
+            else if(k!=='id'&&k!=='manualSort'){
+              const ccKey=(k.length>1&&k[0]==='c'&&k[1]>='0'&&k[1]<='9')?k.slice(1):k;
+              row.cc[ccKey]=parseFloat(v)||0;
+            }
+          });
+          if(row.prog&&row.fonds) window.VENTILATION_CC.push(row);
         }
-      }catch(e){console.warn('[CDA'+yr+']',e.message);}
+        console.log('[VCC'+vccAnn+']',window.VENTILATION_CC.filter(r=>r.annee===vccAnn).length,'lignes');
+      }catch(e){console.warn('[VCC'+vccAnn+']',e.message);}
     }
-    console.log('[CDA_CC]',window.CDA_CC.length,'lignes');
 
     // CDA_CC remplace NACRES si configuré
     if(window.CDA_CC.length){
@@ -1460,11 +1410,15 @@ function renderCrossComp(prg, fnd, pcCC, pi){
 // ══════════════════════════════════════════
 // VENTILATION CC — Helpers
 // ══════════════════════════════════════════
-function getBudgetCC(prog, fonds, cc){
+function getBudgetCC(prog, fonds, cc, ann){
   if(!cc||!(window.VENTILATION_CC||[]).length) return null;
-  const row=(window.VENTILATION_CC).find(r=>r.prog===prog&&r.fonds===fonds);
-  if(!row) return null;
-  return row.cc[cc]!==undefined?row.cc[cc]:null;
+  // Filtrer par année si disponible
+  const rows=(window.VENTILATION_CC).filter(r=>r.prog===prog&&r.fonds===fonds&&(!ann||!r.annee||r.annee===String(ann)));
+  if(!rows.length) return null;
+  // Sommer les montants CC (si plusieurs lignes pour des années différentes)
+  const total=rows.reduce((s,r)=>s+(r.cc[cc]!==undefined?r.cc[cc]:0),0);
+  const found=rows.some(r=>r.cc[cc]!==undefined);
+  return found?total:null;
 }
 function getCdaCC(prog, fonds, cc, ann){
   // Retourne {cda,rar,resteFact} depuis CDA_CC
@@ -1482,11 +1436,10 @@ function getCdaCC(prog, fonds, cc, ann){
     resteFact:rows.reduce((s,r)=>s+r.resteFact,0)
   };
 }
-function getProgsCCfromVCC(cf){
-  // Programmes ayant une allocation VCC > 0 pour ce CC
+function getProgsCCfromVCC(cf, ann){
   if(!cf||!(window.VENTILATION_CC||[]).length) return null;
   return new Set((window.VENTILATION_CC)
-    .filter(r=>r.cc[cf]!==undefined&&r.cc[cf]>0)
+    .filter(r=>r.cc[cf]!==undefined&&r.cc[cf]>0&&(!ann||!r.annee||r.annee===String(ann)))
     .map(r=>r.prog));
 }
 function getProgsCCfromConso(cf){
@@ -1499,7 +1452,7 @@ function getProgsCC(cf){
 }
 function applyVCC(b, cf, ann){
   // Retourne la ligne Budget avec budget/conso/cda/rar corrigés pour le CC
-  const bv=getBudgetCC(b.prog,b.fonds,cf);
+  const bv=getBudgetCC(b.prog,b.fonds,cf,ann);
   if(bv===null) return b; // pas de VCC → Budget global
   const cda=getCdaCC(b.prog,b.fonds,cf,ann);
   // Conso CC = CDa depuis CDA_CC (engagement réel)
@@ -2813,9 +2766,11 @@ function renderCC(){
   // Construire lignes CC × Prog × Fonds depuis VCC
   const rows=[];
   allCC.forEach(function(ccKey){
-    const vccLines=(window.VENTILATION_CC||[]).filter(r=>r.cc[ccKey]!==undefined&&r.cc[ccKey]>0&&(!prg||r.prog===prg)&&(!fnd||r.fonds===fnd));
+    const vccLines=(window.VENTILATION_CC||[]).filter(r=>r.cc[ccKey]!==undefined&&r.cc[ccKey]>0&&(!ann||!r.annee||r.annee===ann)&&(!prg||r.prog===prg)&&(!fnd||r.fonds===fnd));
     if(vccLines.length){
       vccLines.forEach(function(vr){
+        // Budget CC = budget réel de l'année × proportion VCC
+        // Budget CC = montant direct depuis VCC (déjà par année)
         const bud=vr.cc[ccKey]||0;
         const cda=getCdaCC(vr.prog,vr.fonds,ccKey,ann||null)||{cda:0,rar:0,resteFact:0};
         const paye=(window.CONSO_PMT||[]).filter(r=>r.cc===ccKey&&(!ann||String(r.annee)===ann)&&r.p===vr.prog&&r.fo===vr.fonds&&r.m>0).reduce((s,r)=>s+r.m,0);
@@ -2908,7 +2863,7 @@ function openCCDrill(ccKey,prog,fonds,ann){
   const sapSuf="',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)";
 
   // KPIs
-  const bud=getBudgetCC(prog,fonds,ccKey)||0;
+  const bud=getBudgetCC(prog,fonds,ccKey,ann)||0;
   const cdaObj=getCdaCC(prog,fonds,ccKey,ann||null)||{cda:0,rar:0,resteFact:0};
   const conso=CONSO.filter(r=>r.cc===ccKey&&(!ann||String(r.annee)===ann)&&r.p===prog&&r.fo===fonds).reduce((s,r)=>s+r.m,0);
   const pE=bud>0?Math.min(cdaObj.cda/bud*100,100):0;
