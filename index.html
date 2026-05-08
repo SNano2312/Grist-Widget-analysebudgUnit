@@ -662,7 +662,7 @@ grist.ready({
 (async function init(){
   showLd('Chargement des tables Grist…');
   try{
-    const tables = await grist.docApi.listTables();
+    const tables = (await grist.docApi.listTables())||[];
     _tables = tables;
     ['sel-b25','sel-b26','sel-c25','sel-c26'].forEach(id=>{
       const sel=document.getElementById(id);
@@ -680,7 +680,11 @@ grist.ready({
 
     // Restaurer la config sauvegardée
     let saved={};
-    try{ saved=JSON.parse(localStorage.getItem('budgetCfg')||'{}'); }catch(e){}
+    try{
+      saved=JSON.parse(localStorage.getItem('budgetCfg')||'{}');
+      // Nettoyer les anciennes clés obsolètes
+      delete saved.nacres; delete saved.nacres25; delete saved.vcc;
+    }catch(e){}
     if(saved.b25) document.getElementById('sel-b25').value=saved.b25;
     if(saved.b26) document.getElementById('sel-b26').value=saved.b26;
     if(saved.c25) document.getElementById('sel-c25').value=saved.c25;
