@@ -121,6 +121,14 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <label>CDA par CC 2026 (optionnel — remplace NACRES 2026)</label>
       <select id="sel-cda26"><option value="">-- Pas de table --</option></select>
     </div>
+    <div class="cfg-row">
+      <label>Ventilation CC 2025 (optionnel)</label>
+      <select id="sel-vcc25"><option value="">-- Pas de ventilation CC 2025 --</option></select>
+    </div>
+    <div class="cfg-row">
+      <label>Ventilation CC 2026 (optionnel)</label>
+      <select id="sel-vcc26"><option value="">-- Pas de ventilation CC 2026 --</option></select>
+    </div>
 
     <div id="cfg-err"></div>
     <button id="btn-analyse" disabled >Lancer l'analyse →</button>
@@ -682,6 +690,8 @@ grist.ready({
     
     if(saved.cda25) document.getElementById('sel-cda25').value=saved.cda25;
     if(saved.cda26) document.getElementById('sel-cda26').value=saved.cda26;
+    if(saved.vcc25) document.getElementById('sel-vcc25').value=saved.vcc25;
+    if(saved.vcc26) document.getElementById('sel-vcc26').value=saved.vcc26;
     
     checkSelections();
 
