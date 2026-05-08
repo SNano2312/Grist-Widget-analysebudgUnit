@@ -1155,6 +1155,12 @@ function renderHisto(){
       onHover:(e,els)=>{e.native.target.style.cursor=els.length?'pointer':'default'}
     }
   });
+  // Fallback : listener natif sur le canvas pour le drill-down
+  document.getElementById('chBar').onclick=function(evt){
+    if(!_chart) return;
+    const pts=_chart.getElementsAtEventForMode(evt,'nearest',{intersect:true},true);
+    if(pts.length) openDrill(lbs[pts[0].index]);
+  };
 }
 
 // ════════════════════════════════════════
