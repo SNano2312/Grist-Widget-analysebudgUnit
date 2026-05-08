@@ -783,7 +783,6 @@ async function lanceAnalyse(){
     procConso(rawC26, 2026);
 
 
-    fillFilters();
     hideLd();
     document.getElementById('cfg-screen').style.display='none';
     document.getElementById('dash').style.display='block';
@@ -1197,6 +1196,9 @@ function renderHistoComp(f){
     `<div class="kpi"><div class="kl">Budget 2026</div><div class="kv">${fmt(tB26)} €</div></div>`+
     `<div class="kpi"><div class="kl">Conso 2025</div><div class="kv c-ok">${fmt(tC25)} €</div></div>`+
     `<div class="kpi"><div class="kl">Conso 2026</div><div class="kv c-ok">${fmt(tC26)} €</div></div>`;
+  // Remplir _grpd pour le drill-down (somme 2025+2026)
+  _grpd={};
+  lbs.forEach(k=>{_grpd[k]={bud:(d25[k]||{bud:0}).bud+(d26[k]||{bud:0}).bud,conso:(d25[k]||{conso:0}).conso+(d26[k]||{conso:0}).conso,nconso:0};});
   if(_chart) _chart.destroy();
   _chart=new Chart(document.getElementById('chBar').getContext('2d'),{
     type:'bar',
@@ -1433,7 +1435,7 @@ function getCdaCC(prog, fonds, cc, ann){
     (!ann||r.annee===String(ann))&&
     (!cc||r.cc===cc)&&
     (!prog||r.prog===prog||!r.prog)&&
-    (!fonds||r.fonds===fonds||!r.fonds)
+    (!fonds||r.fonds===fonds||r.fonds==='')
   );
   return {
     cda:rows.reduce((s,r)=>s+r.val,0),
@@ -1479,7 +1481,18 @@ function renderSynthese(){
   var pi=window._PROG_INFO||{}, today=new Date(), byProg={};
 
   // Filtrer BUDGET
-  var progsCC=cfF?getProgsCC(cfF):null;
+  // progsCC : programmes avec budget VCC sur ce CC + programmes sans VCC (ex: Non Applicable)
+  var progsCC=null;
+  if(cfF){
+    var _vccProgs=getProgsCC(cfF);
+    if(_vccProgs){
+      // Ajouter les programmes du Budget qui ne sont pas dans VCC
+      BUDGET.forEach(function(b){if(!_vccProgs.has(b.prog)&&(!ann||parseInt(b.annee)===parseInt(ann))){_vccProgs.add(b.prog);}});
+      progsCC=_vccProgs;
+    } else {
+      progsCC=getProgsCCfromConso(cfF);
+    }
+  }
   BUDGET.forEach(function(b){
     if(ann&&parseInt(b.annee)!==parseInt(ann)) return;
     if(progsCC&&!progsCC.has(b.prog)) return;
@@ -2777,7 +2790,9 @@ function renderCC(){
         // Budget CC = budget réel de l'année × proportion VCC
         // Budget CC = montant direct depuis VCC (déjà par année)
         const bud=vr.cc[ccKey]||0;
-        const cda=getCdaCC(vr.prog,vr.fonds,ccKey,ann||null)||{cda:0,rar:0,resteFact:0};
+        // getCdaCC : prog vide si Élément d'OTP absent (ex: DC.01)
+        const _prgCda=vr.prog==='Non Applicable'?'':vr.prog;
+        const cda=getCdaCC(_prgCda,vr.fonds,ccKey,ann||null)||{cda:0,rar:0,resteFact:0};
         const paye=(window.CONSO_PMT||[]).filter(r=>r.cc===ccKey&&(!ann||String(r.annee)===ann)&&r.p===vr.prog&&r.fo===vr.fonds&&r.m>0).reduce((s,r)=>s+r.m,0);
         const pEng=bud>0?Math.min(cda.cda/bud*100,100):0;
         const pPaye=bud>0?paye/bud*100:0;
