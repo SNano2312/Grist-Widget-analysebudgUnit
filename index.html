@@ -266,7 +266,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
   <!-- RÉPARTITION -->
   <div id="vw-r" style="display:none">
     <div class="flt">
-      <div class="fg"><label>Année</label><select id="r-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option><option value="comp">Comparaison 2025/2026</option></select></div>
+      <div class="fg"><label>Année</label><select id="r-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
       <div class="fg"><label>Programme</label><select id="r-prg"><option value="">Tous</option></select></div>
       <div class="fg"><label>Fonds</label><select id="r-fnd"><option value="">Tous</option></select></div>
       <div class="fg"><label>Centre de coûts</label><select id="r-cf"><option value="">Tous</option></select></div>
@@ -624,6 +624,8 @@ function attachListeners(){
   if(btnCloseOM) btnCloseOM.addEventListener('click',closeOMDrill);
 }
 window.closeDrill = closeDrill;
+window.openDrill = openDrill;
+window.sortD = sortD;
 window.sortD      = sortD;
 window.renderHisto= renderHisto;
 window.renderEvol = renderEvol;
@@ -1502,7 +1504,11 @@ function getProgsCC(cf){
 function applyVCC(b, cf, ann){
   // Retourne la ligne Budget avec budget/conso/cda/rar corrigés pour le CC
   const bv=getBudgetCC(b.prog,b.fonds,cf,ann);
-  if(bv===null) return b; // pas de VCC → Budget global
+  // Si VCC chargé et CC filtré : bv=null signifie pas d'allocation → tout à 0
+  if(bv===null){
+    if(cf&&(window.VENTILATION_CC||[]).length) return Object.assign({},b,{bud:0,conso:0,nconso:0,cda:0,rar:0,om:0,nf:0,paye:0,rap:0});
+    return b; // pas de VCC → Budget global
+  }
   const cda=getCdaCC(b.prog,b.fonds,cf,ann);
   // Conso CC = CDa depuis CDA_CC (engagement réel)
   const consoCC=cda?cda.cda:0;
@@ -2023,6 +2029,7 @@ function renderRepartition(){
   var prg=document.getElementById('r-prg').value;
   var fnd=document.getElementById('r-fnd').value;
   var cf=(document.getElementById('r-cf')||{}).value||'';
+  if(ann==='comp') ann='';
   var all=CONSO.concat(window.CONSO_PMT||[]);
   var byCat={},byPC={};
   all.forEach(function(r){
