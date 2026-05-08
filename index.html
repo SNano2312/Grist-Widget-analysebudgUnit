@@ -1469,10 +1469,21 @@ function renderCrossComp(prg, fnd, pcCC, pi){
 // ══════════════════════════════════════════
 function getBudgetCC(prog, fonds, cc, ann){
   if(!cc||!(window.VENTILATION_CC||[]).length) return null;
-  // Filtrer par année si disponible
-  const rows=(window.VENTILATION_CC).filter(r=>r.prog===prog&&r.fonds===fonds&&(!ann||!r.annee||r.annee===String(ann)));
+  // 'Non Applicable' peut être stocké comme 'NA' ou vide dans VCC
+  const progAlt=prog==='Non Applicable'?['Non Applicable','NA','']:
+                prog===''?['','Non Applicable','NA']:[prog];
+  // Option B : chercher ligne explicite pour ce prog/fonds
+  let rows=(window.VENTILATION_CC).filter(r=>progAlt.includes(r.prog)&&r.fonds===fonds&&(!ann||!r.annee||r.annee===String(ann)));
+  // Option A fallback : si prog=NA et pas de ligne explicite → agréger par fonds
+  if(!rows.length&&(prog==='Non Applicable'||prog==='')){
+    rows=(window.VENTILATION_CC).filter(r=>r.fonds===fonds&&(!ann||!r.annee||r.annee===String(ann)));
+    if(!rows.length) return null;
+    // Calculer le ratio CC moyen sur ce fonds
+    const totCC=rows.reduce((s,r)=>s+(r.cc[cc]||0),0);
+    const totAll=rows.reduce((s,r)=>s+Object.values(r.cc).reduce((a,v)=>a+(v||0),0),0);
+    return totAll>0?null:null; // fallback ratio → retourner null pour garder le budget global
+  }
   if(!rows.length) return null;
-  // Sommer les montants CC (si plusieurs lignes pour des années différentes)
   const total=rows.reduce((s,r)=>s+(r.cc[cc]!==undefined?r.cc[cc]:0),0);
   const found=rows.some(r=>r.cc[cc]!==undefined);
   return found?total:null;
@@ -1481,10 +1492,12 @@ function getCdaCC(prog, fonds, cc, ann){
   // Retourne {cda,rar,resteFact} depuis CDA_CC
   // Si CDA_CC non chargé → null (fallback Budget)
   if(!(window.CDA_CC||[]).length) return null;
+  // Non Applicable → prog peut être '' ou 'NA' dans CDA_CC
+  const _progMatch = !prog || prog==='Non Applicable' || prog==='NA';
   const rows=(window.CDA_CC).filter(r=>
     (!ann||r.annee===String(ann))&&
     (!cc||r.cc===cc)&&
-    (!prog||r.prog===prog||!r.prog)&&
+    (_progMatch ? (!r.prog||r.prog==='NA') : r.prog===prog)&&
     (!fonds||r.fonds===fonds||r.fonds==='')
   );
   return {
@@ -1495,9 +1508,14 @@ function getCdaCC(prog, fonds, cc, ann){
 }
 function getProgsCCfromVCC(cf, ann){
   if(!cf||!(window.VENTILATION_CC||[]).length) return null;
-  return new Set((window.VENTILATION_CC)
-    .filter(r=>r.cc[cf]!==undefined&&r.cc[cf]>0&&(!ann||!r.annee||r.annee===String(ann)))
-    .map(r=>r.prog));
+  const progs=new Set();
+  (window.VENTILATION_CC).filter(r=>r.cc[cf]!==undefined&&r.cc[cf]>0&&(!ann||!r.annee||r.annee===String(ann)))
+    .forEach(r=>{
+      // Normaliser : NA et '' → 'Non Applicable'
+      const p=(r.prog==='NA'||r.prog==='')?'Non Applicable':r.prog;
+      progs.add(p);
+    });
+  return progs;
 }
 function getProgsCCfromConso(cf){
   if(!cf) return null;
@@ -2839,7 +2857,11 @@ function renderCC(){
   // Construire lignes CC × Prog × Fonds depuis VCC
   const rows=[];
   allCC.forEach(function(ccKey){
-    const vccLines=(window.VENTILATION_CC||[]).filter(r=>r.cc[ccKey]!==undefined&&r.cc[ccKey]>0&&(!ann||!r.annee||r.annee===ann)&&(!prg||r.prog===prg)&&(!fnd||r.fonds===fnd));
+    // Normaliser prog NA/'' → 'Non Applicable' dans VCC
+    const vccLines=(window.VENTILATION_CC||[])
+      .filter(r=>r.cc[ccKey]!==undefined&&r.cc[ccKey]>0&&(!ann||!r.annee||r.annee===ann))
+      .map(r=>Object.assign({},r,{prog:(r.prog==='NA'||r.prog==='')?'Non Applicable':r.prog}))
+      .filter(r=>(!prg||r.prog===prg)&&(!fnd||r.fonds===fnd));
     if(vccLines.length){
       vccLines.forEach(function(vr){
         // Budget CC = budget réel de l'année × proportion VCC
