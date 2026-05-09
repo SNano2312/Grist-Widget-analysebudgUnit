@@ -1,4 +1,5 @@
-<!DOCTYPE html>
+<!
+  ['tl-ann','tl-statut','tl-vue'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderTimeline);el.addEventListener('change',renderTimeline);});DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -163,6 +164,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <div class="tab" id="tab-pluri" onclick="switchTab('pluri')">📋 Engagements pluriannuels</div>
     <div class="tab" id="tab-open" onclick="switchTab('open')">🔴 Cdes non soldées</div>
     <div class="tab" id="tab-cc" onclick="switchTab('cc')">🏦 Centres de coûts</div>
+    <div class="tab" id="tab-tl" onclick="switchTab('tl')">📅 Échéances</div>
     <div class="tab" id="tab-doc" onclick="switchTab('doc')">📖 Documentation</div>
   </div>
 
@@ -397,6 +399,18 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div style="font-weight:700;font-size:.82rem;color:var(--mu);text-transform:uppercase;letter-spacing:.04em;margin:12px 0 6px">Opérations SAP (CONSO)</div>
       <div class="tw"><table><thead id="cc-dr-conso-th"></thead><tbody id="cc-dr-conso-tb"></tbody><tfoot id="cc-dr-conso-tf"></tfoot></table></div>
     </div>
+  </div>
+
+  <!-- ÉCHÉANCES TIMELINE -->
+  <div id="vw-tl" style="display:none">
+    <div class="flt">
+      <div class="fg"><label>Année budgétaire</label><select id="tl-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Statut</label><select id="tl-statut"><option value="">Tous</option><option value="urgent">Urgent (&lt;90j)</option><option value="proche">Proche (&lt;180j)</option><option value="ok">OK</option><option value="expire">Expirés</option></select></div>
+      <div class="fg"><label>Vue</label><select id="tl-vue"><option value="timeline">Timeline</option><option value="table">Tableau</option></select></div>
+    </div>
+    <div class="ks" id="tl-kpis"></div>
+    <div id="tl-timeline" style="margin-bottom:16px"></div>
+    <div id="tl-table" style="display:none" class="tw"><table><thead id="tl-th"></thead><tbody id="tl-tb"></tbody></table></div>
   </div>
 
   <!-- DOCUMENTATION -->
@@ -1117,7 +1131,7 @@ function fillFilters(){
 
 function switchTab(t){
   _currentTab=t;
-  ['s','h','e','x','f','d','r','om','nacres','pluri','open','cc','doc'].forEach(function(k){
+  ['s','h','e','x','f','d','r','om','nacres','pluri','open','cc','tl','doc'].forEach(function(k){
     var tab=document.getElementById('tab-'+k);
     var vw=document.getElementById('vw-'+k);
     if(tab) tab.classList.toggle('on',k===t);
