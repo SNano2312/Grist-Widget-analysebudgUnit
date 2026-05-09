@@ -2876,8 +2876,12 @@ function renderCC(){
   const cdaCC=new Set((window.CDA_CC||[]).map(r=>r.cc).filter(Boolean));
   const consoCC=new Set(CONSO.map(r=>r.cc).filter(Boolean));
   const missingFromVCC=[...new Set([...cdaCC,...consoCC])].filter(c=>c&&!vccCC.has(c)).sort();
+  // Supprimer l'ancien bandeau avant d'en créer un
+  var oldWarn=document.getElementById('cc-vcc-warn');
+  if(oldWarn) oldWarn.parentNode.removeChild(oldWarn);
   if(missingFromVCC.length){
     const warn=document.createElement('div');
+    warn.id='cc-vcc-warn';
     warn.style.cssText='background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:.82rem';
     warn.innerHTML='⚠️ <strong>CC présents dans les données mais absents de VCC :</strong> '+
       missingFromVCC.map(c=>'<code style="background:#f7f8fb;padding:1px 5px;border-radius:4px">'+esc(c)+'</code>').join(' ')+
@@ -2986,6 +2990,8 @@ function renderCC(){
     `<td style="text-align:right">${fmt(tot.paye)} €</td>`+
     `<td style="text-align:right">${fmt(Math.max(0,tot.bud-tot.cda))} €</td>`+
     `<td colspan="2"></td></tr>`;
+  // Rafraîchir le sous-onglet actif si nécessaire
+  if(typeof _ccSubTab!=='undefined'&&_ccSubTab!=='synthese') switchCCTab(_ccSubTab);
 }
 
 function openCCDrill(ccKey,prog,fonds,ann){
