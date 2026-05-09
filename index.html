@@ -347,7 +347,31 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="fg"><label>Programme</label><select id="cc-prg"><option value="">Tous</option></select></div>
       <div class="fg"><label>Fonds</label><select id="cc-fnd"><option value="">Tous</option></select></div>
     </div>
-    <div id="cc-cards" style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px"></div>
+    <!-- Sous-onglets CC -->
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+      <button id="cc-tab-synthese" class="btn" style="background:var(--pr);color:#fff;border-color:var(--pr)" onclick="switchCCTab('synthese')">📊 Synthèse</button>
+      <button id="cc-tab-evol" class="btn" onclick="switchCCTab('evol')">📈 Évolution</button>
+      <button id="cc-tab-comp" class="btn" onclick="switchCCTab('comp')">🔀 Comparaison CC</button>
+      <button id="cc-tab-nacres" class="btn" onclick="switchCCTab('nacres')">🧪 NACRES</button>
+    </div>
+    <!-- Vue Synthèse -->
+    <div id="cc-view-synthese">
+      <div id="cc-cards" style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px"></div>
+      <div id="cc-alerts" style="margin-bottom:12px"></div>
+    </div>
+    <!-- Vue Évolution -->
+    <div id="cc-view-evol" style="display:none">
+      <div class="pnl"><div class="pnl-t">Évolution mensuelle des engagements par CC</div><canvas id="chCCEvol" style="max-height:320px"></canvas></div>
+    </div>
+    <!-- Vue Comparaison CC -->
+    <div id="cc-view-comp" style="display:none">
+      <div class="pnl"><div class="pnl-t">Comparaison des CC — Budget / CDa / Payé</div><canvas id="chCCComp" style="max-height:320px"></canvas></div>
+    </div>
+    <!-- Vue NACRES par CC -->
+    <div id="cc-view-nacres" style="display:none">
+      <div class="pnl"><div class="pnl-t">Répartition NACRES par CC</div><canvas id="chCCNacres" style="max-height:320px"></canvas></div>
+      <div class="tw" style="margin-top:12px"><table><thead id="cc-nacres-th"></thead><tbody id="cc-nacres-tb"></tbody><tfoot id="cc-nacres-tf"></tfoot></table></div>
+    </div>
     <div class="tw" id="cc-table-wrap">
       <table><thead id="cc-th"></thead><tbody id="cc-tb"></tbody><tfoot id="cc-tf"></tfoot></table>
     </div>
@@ -1085,7 +1109,7 @@ function switchTab(t){
     if(vw) vw.style.display=k===t?'block':'none';
   });
   var btnExp=document.getElementById('btn-export');
-  if(btnExp) btnExp.style.display=['x','f','d','om','nacres','pluri','open'].includes(t)?'':'none';
+  if(btnExp) btnExp.style.display=['x','f','d','om','nacres','pluri','open','cc'].includes(t)?'':'none';
   if(t==='s') renderSynthese();
   if(t==='e') renderEvol();
   if(t==='x') renderCross();
@@ -2083,7 +2107,13 @@ function renderRepartition(){
 // ════════════════════════════════════
 function exportCSV(){
   var t=_currentTab,rows=[],headers=[];
-  if(t==='x'){
+  if(t==='cc'){
+    headers=['CC','Programme','Nom','Fonds','Budget','CDa','RAR','Reste fact.','Payé CP','Non engagé','% engagé','% payé'];
+    document.querySelectorAll('#cc-tb tr').forEach(function(tr){
+      var cells=[...tr.querySelectorAll('td')].map(function(td){return td.textContent.trim().replace(/\s+€/,'').replace(/,/g,'.').trim();});
+      if(cells.length) rows.push(cells);
+    });
+  } else if(t==='x'){
     headers=['CF','Annee','Programme','Nom','Fonds','Budget AE','Conso AE','Non Conso','CDa','RAR','Paye CP','Reste payer','Taux'];
     var pi=window._PROG_INFO||{};
     BUDGET.forEach(function(b){var p2=b.bud>0?b.conso/b.bud*100:0;rows.push([b.cf,b.annee,b.prog,(pi[b.prog]&&pi[b.prog].nom)||'',b.fonds,b.bud.toFixed(2),b.conso.toFixed(2),b.nconso.toFixed(2),b.cda.toFixed(2),b.rar.toFixed(2),b.paye.toFixed(2),b.rap.toFixed(2),p2.toFixed(1)]);});
