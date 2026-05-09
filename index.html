@@ -2945,29 +2945,48 @@ function renderCC(){
 
   // ── Cartes synthèse par CC ──
   const byCC={};
-  rows.forEach(r=>{if(!byCC[r.cc])byCC[r.cc]={bud:0,cda:0,rar:0,paye:0};byCC[r.cc].bud+=r.bud;byCC[r.cc].cda+=r.cda;byCC[r.cc].rar+=r.rar;byCC[r.cc].paye+=r.paye;});
+  rows.forEach(r=>{if(!byCC[r.cc])byCC[r.cc]={bud:0,cda:0,rar:0,resteFact:0,paye:0};byCC[r.cc].bud+=r.bud;byCC[r.cc].cda+=r.cda;byCC[r.cc].rar+=r.rar;byCC[r.cc].resteFact+=(r.resteFact||0);byCC[r.cc].paye+=r.paye;});
   document.getElementById('cc-cards').innerHTML=Object.entries(byCC).map(([ccKey,g])=>{
     const pE=g.bud>0?Math.min(g.cda/g.bud*100,100):0;
     const pC=g.bud>0?g.paye/g.bud*100:0;
     const clE=pE>=90?'#16a34a':pE>=50?'#d97706':'#2563eb';
     const clC=pC>=90?'#16a34a':pC>=50?'#d97706':'#dc2626';
     const nconso=Math.max(0,g.bud-g.cda);
-    return`<div style="background:#fff;border:2px solid var(--bd);border-radius:10px;padding:18px;min-width:230px;flex:1">
-      <div style="font-size:1rem;font-weight:700;color:var(--pr);margin-bottom:14px">🏦 ${esc(ccKey)}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.8rem;margin-bottom:12px">
-        <div><div style="color:var(--mu)">Budget alloué</div><div style="font-weight:700;font-size:.95rem">${fmt(g.bud)} €</div></div>
-        <div><div style="color:var(--mu)">Non engagé</div><div style="font-weight:700;font-size:.95rem;color:var(--wn)">${fmt(nconso)} €</div></div>
+    // Prévision : rythme d'engagement mensuel depuis CONSO
+    var cdaMois={};
+    CONSO.filter(r=>r.cc===ccKey&&r.tv.replace(/’/g,"'").indexOf("Commandes d'achat")>=0&&r.tm==='Original'&&r.dtMois).forEach(r=>{cdaMois[r.dtMois]=(cdaMois[r.dtMois]||0)+r.m;});
+    var moisList=Object.keys(cdaMois).sort();
+    var prevTxt='—';
+    if(moisList.length>=2&&nconso>0){
+      var derniers=moisList.slice(-3);
+      var rythme=derniers.reduce((s,m)=>s+(cdaMois[m]||0),0)/derniers.length;
+      if(rythme>0){
+        var moisRestants=Math.round(nconso/rythme);
+        if(moisRestants<=0) prevTxt='Budget épuisé';
+        else if(moisRestants>60) prevTxt='&gt;5 ans';
+        else if(moisRestants>24) prevTxt='~'+Math.round(moisRestants/12)+' ans';
+        else prevTxt='~'+moisRestants+' mois';
+      }
+    } else if(nconso<=0) prevTxt='Entièrement engagé';
+    const clPrev=nconso<=0?'#16a34a':prevTxt==='—'?'var(--mu)':'var(--wn)';
+    return`<div style="background:#fff;border:2px solid var(--bd);border-radius:10px;padding:18px;min-width:240px;flex:1">
+      <div style="font-size:1rem;font-weight:700;color:var(--pr);margin-bottom:12px">🏦 ${esc(ccKey)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.78rem;margin-bottom:10px">
+        <div><div style="color:var(--mu)">Budget alloué</div><div style="font-weight:700;font-size:.9rem">${fmt(g.bud)} €</div></div>
+        <div><div style="color:var(--mu)">Non engagé</div><div style="font-weight:700;font-size:.9rem;color:${nconso>0?'var(--wn)':'var(--ok)'}">${fmt(nconso)} €</div></div>
+        <div><div style="color:var(--mu)">Reste à facturer</div><div style="font-weight:700;font-size:.9rem;color:${g.resteFact>0?'var(--er)':'inherit'}">${fmt(g.resteFact)} €</div></div>
+        <div><div style="color:var(--mu)">Épuisement budget</div><div style="font-weight:600;font-size:.85rem;color:${clPrev}">${prevTxt}</div></div>
       </div>
-      <div style="font-size:.72rem;color:var(--mu);margin-bottom:2px">Engagement (CDa / Budget)</div>
-      <div style="height:7px;background:#f0f1f5;border-radius:4px;margin-bottom:4px;overflow:hidden">
-        <div style="height:100%;width:${pE.toFixed(1)}%;background:${clE};border-radius:4px"></div>
+      <div style="font-size:.7rem;color:var(--mu);margin-bottom:2px">Taux d'engagement — CDa / Budget</div>
+      <div style="height:6px;background:#f0f1f5;border-radius:4px;margin-bottom:3px;overflow:hidden">
+        <div style="height:100%;width:${Math.min(pE,100).toFixed(1)}%;background:${clE};border-radius:4px"></div>
       </div>
-      <div style="font-size:.8rem;margin-bottom:10px">CDa <strong style="color:${clE}">${fmt(g.cda)} €</strong> &nbsp;RAR <strong>${fmt(g.rar)} €</strong> &nbsp;<span style="color:var(--mu)">${pE.toFixed(1)}%</span></div>
-      <div style="font-size:.72rem;color:var(--mu);margin-bottom:2px">Payé (CP)</div>
-      <div style="height:7px;background:#f0f1f5;border-radius:4px;margin-bottom:4px;overflow:hidden">
+      <div style="font-size:.78rem;margin-bottom:8px">CDa <strong style="color:${clE}">${fmt(g.cda)} €</strong> &nbsp;RAR <strong>${fmt(g.rar)} €</strong> &nbsp;<span style="color:var(--mu)">${pE.toFixed(1)}%</span></div>
+      <div style="font-size:.7rem;color:var(--mu);margin-bottom:2px">Taux de paiement CP — Payé / Budget</div>
+      <div style="height:6px;background:#f0f1f5;border-radius:4px;margin-bottom:3px;overflow:hidden">
         <div style="height:100%;width:${Math.min(pC,100).toFixed(1)}%;background:${clC};border-radius:4px"></div>
       </div>
-      <div style="font-size:.8rem">Payé <strong style="color:${clC}">${fmt(g.paye)} €</strong> &nbsp;<span style="color:var(--mu)">${pC.toFixed(1)}%</span></div>
+      <div style="font-size:.78rem">Payé <strong style="color:${clC}">${fmt(g.paye)} €</strong> &nbsp;<span style="color:var(--mu)">${pC.toFixed(1)}%</span></div>
     </div>`;
   }).join('');
 
