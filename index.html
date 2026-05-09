@@ -2872,7 +2872,7 @@ function renderCC(){
   const allCC=cf?[cf]:[...cfsSet].sort();
 
   // Détecter les CC présents dans CDA/CONSO mais absents de VCC
-  const vccCC=new Set((window.VENTILATION_CC||[]).map(r=>Object.keys(r.cc)).flat());
+  const vccCC=new Set((function(){var _r=[];(window.VENTILATION_CC||[]).forEach(function(r){Object.keys(r.cc).forEach(function(k){_r.push(k);});});return _r;})());
   const cdaCC=new Set((window.CDA_CC||[]).map(r=>r.cc).filter(Boolean));
   const consoCC=new Set(CONSO.map(r=>r.cc).filter(Boolean));
   const missingFromVCC=[...new Set([...cdaCC,...consoCC])].filter(c=>c&&!vccCC.has(c)).sort();
@@ -3032,6 +3032,154 @@ function openCCDrill(ccKey,prog,fonds,ann){
 }
 
 function closeCCDrill(){document.getElementById('cc-drv').style.display='none';}
+
+
+// ════════════════════════════════════════════════════════
+// ONGLET CC — SOUS-ONGLETS
+// ════════════════════════════════════════════════════════
+var _ccChEvol=null, _ccChComp=null, _ccChNacres=null;
+var _ccSubTab='synthese';
+
+function switchCCTab(tab){
+  _ccSubTab=tab;
+  ['synthese','evol','comp','nacres'].forEach(function(t){
+    var v=document.getElementById('cc-view-'+t);
+    var b=document.getElementById('cc-tab-'+t);
+    if(v) v.style.display=t===tab?'block':'none';
+    if(b){b.style.background=t===tab?'var(--pr)':'';b.style.color=t===tab?'#fff':'';b.style.borderColor=t===tab?'var(--pr)':'';}
+  });
+  var ann=(document.getElementById('cc-ann')||{}).value||'';
+  var cf=((document.getElementById('cc-cf')||{}).value)||'';
+  var prg=((document.getElementById('cc-prg')||{}).value)||'';
+  var fnd=((document.getElementById('cc-fnd')||{}).value)||'';
+  if(tab==='evol') renderCCEvol(ann,cf,prg,fnd);
+  if(tab==='comp') renderCCComp(ann,prg,fnd);
+  if(tab==='nacres') renderCCNacres(ann,cf,prg,fnd);
+}
+window.switchCCTab=switchCCTab;
+
+function renderCCAlerts(rows){
+  var alertes='';
+  rows.forEach(function(r){
+    if(r.cda>r.bud&&r.bud>0) alertes+='<div style="display:flex;gap:10px;padding:4px 0;border-bottom:1px solid var(--bd)"><span style="font-weight:600;min-width:200px;font-size:.8rem">'+esc(r.cc)+' / '+esc(r.prog)+' / '+esc(r.fonds)+'</span><span style="font-size:.8rem;color:var(--er)">⚠️ Sur-engagement : CDa '+fmt(r.cda)+' € > Budget '+fmt(r.bud)+' €</span></div>';
+    if(r.rar>0&&r.bud>0&&r.rar/r.bud>0.2) alertes+='<div style="display:flex;gap:10px;padding:4px 0;border-bottom:1px solid var(--bd)"><span style="font-weight:600;min-width:200px;font-size:.8rem">'+esc(r.cc)+' / '+esc(r.prog)+' / '+esc(r.fonds)+'</span><span style="font-size:.8rem;color:var(--wn)">📦 RAR élevé : '+fmt(r.rar)+' € ('+( r.bud>0?r.rar/r.bud*100:0).toFixed(1)+'% du budget)</span></div>';
+    if(r.bud>1000&&r.cda/r.bud<0.1) alertes+='<div style="display:flex;gap:10px;padding:4px 0;border-bottom:1px solid var(--bd)"><span style="font-weight:600;min-width:200px;font-size:.8rem">'+esc(r.cc)+' / '+esc(r.prog)+' / '+esc(r.fonds)+'</span><span style="font-size:.8rem;color:var(--wn)">💤 Sous-engagement : '+( r.bud>0?r.cda/r.bud*100:0).toFixed(1)+'% engagé seulement</span></div>';
+  });
+  var el=document.getElementById('cc-alerts');
+  if(!el) return;
+  el.innerHTML=alertes?'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px 16px;margin-bottom:8px"><div style="font-weight:700;font-size:.85rem;color:var(--wn);margin-bottom:6px">⚠️ Alertes par CC</div>'+alertes+'</div>':'<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 14px;margin-bottom:8px;font-size:.82rem;color:var(--ok)">✅ Aucune alerte budgétaire</div>';
+}
+
+function renderCCEvol(ann,cf,prg,fnd){
+  // Courbe cumulative mensuelle par CC depuis CONSO
+  var cfsSet=new Set();
+  (window.VENTILATION_CC||[]).forEach(function(r){Object.keys(r.cc).forEach(function(k){cfsSet.add(k);});});
+  CONSO.forEach(function(r){if(r.cc) cfsSet.add(r.cc);});
+  var allCC=cf?[cf]:[...cfsSet].sort().slice(0,6);
+  var allMoisSet=new Set();
+  var byCC={};
+  allCC.forEach(function(ccKey){
+    byCC[ccKey]={};
+    CONSO.filter(function(r){
+      return r.cc===ccKey&&(!ann||String(r.annee)===ann)&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&
+        r.tv.replace(/’/g,"'").indexOf("Commandes d'achat")>=0&&r.tm==='Original'&&r.dtMois;
+    }).forEach(function(r){
+      byCC[ccKey][r.dtMois]=(byCC[ccKey][r.dtMois]||0)+r.m;
+      allMoisSet.add(r.dtMois);
+    });
+  });
+  var mois=[...allMoisSet].sort();
+  if(!mois.length){
+    if(_ccChEvol){_ccChEvol.destroy();_ccChEvol=null;}
+    var cv=document.getElementById('chCCEvol');
+    if(cv){var ctx2=cv.getContext('2d');ctx2.clearRect(0,0,cv.width,cv.height);}
+    return;
+  }
+  var colors=['#2563eb','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2'];
+  var datasets=allCC.map(function(ccKey,ci){
+    var cumul=0;
+    return{label:ccKey,data:mois.map(function(m){cumul+=(byCC[ccKey][m]||0);return Math.round(cumul*100)/100;}),
+      borderColor:colors[ci%colors.length],backgroundColor:'transparent',tension:.3,pointRadius:3,borderWidth:2,spanGaps:true};
+  });
+  if(_ccChEvol){_ccChEvol.destroy();_ccChEvol=null;}
+  _ccChEvol=new Chart(document.getElementById('chCCEvol').getContext('2d'),{
+    type:'line',data:{labels:mois,datasets:datasets},
+    options:{responsive:true,plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.dataset.label+' : '+fmt(c.raw)+' €';}}}}
+    ,scales:{y:{ticks:{callback:function(v){return fmt(v)+' €';}}}}}
+  });
+}
+
+function renderCCComp(ann,prg,fnd){
+  var cfsSet=new Set();
+  (window.VENTILATION_CC||[]).forEach(function(r){Object.keys(r.cc).forEach(function(k){cfsSet.add(k);});});
+  CONSO.forEach(function(r){if(r.cc) cfsSet.add(r.cc);});
+  var allCC=[...cfsSet].sort();
+  var byCC={};
+  allCC.forEach(function(ccKey){
+    var vccLines=(window.VENTILATION_CC||[]).filter(function(r){return r.cc[ccKey]!==undefined&&(!ann||!r.annee||r.annee===ann)&&(!prg||r.prog===prg)&&(!fnd||r.fonds===fnd);});
+    var bud=vccLines.reduce(function(s,r){return s+(r.cc[ccKey]||0);},0);
+    var cda=(window.CDA_CC||[]).filter(function(r){return r.cc===ccKey&&(!ann||r.annee===ann)&&(!prg||r.prog===prg)&&(!fnd||r.fonds===fnd);}).reduce(function(s,r){return s+r.val;},0);
+    var paye=(window.CONSO_PMT||[]).filter(function(r){return r.cc===ccKey&&(!ann||String(r.annee)===ann)&&r.m>0&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd);}).reduce(function(s,r){return s+r.m;},0);
+    byCC[ccKey]={bud:bud,cda:cda,paye:paye};
+  });
+  if(_ccChComp){_ccChComp.destroy();_ccChComp=null;}
+  _ccChComp=new Chart(document.getElementById('chCCComp').getContext('2d'),{
+    type:'bar',
+    data:{labels:allCC,datasets:[
+      {label:'Budget alloué',data:allCC.map(function(c){return byCC[c].bud;}),backgroundColor:'#93c5fd'},
+      {label:'CDa engagées',data:allCC.map(function(c){return byCC[c].cda;}),backgroundColor:'#2563eb'},
+      {label:'Payé (CP)',data:allCC.map(function(c){return byCC[c].paye;}),backgroundColor:'#16a34a'},
+    ]},
+    options:{responsive:true,plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.dataset.label+' : '+fmt(c.raw)+' €';}}}},
+      scales:{y:{ticks:{callback:function(v){return fmt(v)+' €';}}}}}
+  });
+}
+
+function renderCCNacres(ann,cf,prg,fnd){
+  var data=(window.NACRES_DATA||[]).filter(function(r){
+    return(!ann||r.annee===ann)&&(!cf||r.cc===cf)&&(!prg||r.prog===prg)&&(!fnd||r.fond===fnd);
+  });
+  if(!data.length){
+    var el=document.getElementById('cc-nacres-tb');
+    if(el) el.innerHTML='<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--mu)">Aucune donnée NACRES pour ces filtres</td></tr>';
+    if(_ccChNacres){_ccChNacres.destroy();_ccChNacres=null;}
+    return;
+  }
+  // Grouper par CC × nacreCode
+  var byCCnacre={};
+  data.forEach(function(r){
+    var k=(r.cc||'?')+'||'+(r.nacreCode||'?');
+    if(!byCCnacre[k]) byCCnacre[k]={cc:r.cc||'?',nacreCode:r.nacreCode,nacreDesc:r.nacreDesc,val:0,rest:0,surMarche:r.surMarche};
+    byCCnacre[k].val+=r.val; byCCnacre[k].rest+=r.rest;
+  });
+  var rows2=Object.values(byCCnacre).sort(function(a,b){return b.val-a.val;}).slice(0,20);
+  var allCCn=[...new Set(rows2.map(function(r){return r.cc;}))].sort();
+  var allNacre=[...new Set(rows2.map(function(r){return r.nacreCode;}))].sort();
+  var colors2=['#2563eb','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2'];
+  var datasets2=allCCn.map(function(ccKey,ci){
+    return{label:ccKey,data:allNacre.map(function(n){
+      var f=rows2.find(function(r){return r.cc===ccKey&&r.nacreCode===n;});
+      return f?Math.round(f.val*100)/100:0;
+    }),backgroundColor:colors2[ci%colors2.length]};
+  });
+  if(_ccChNacres){_ccChNacres.destroy();_ccChNacres=null;}
+  _ccChNacres=new Chart(document.getElementById('chCCNacres').getContext('2d'),{
+    type:'bar',data:{labels:allNacre,datasets:datasets2},
+    options:{responsive:true,indexAxis:'y',plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.dataset.label+' : '+fmt(c.raw)+' €';}}}},
+      scales:{x:{ticks:{callback:function(v){return fmt(v)+' €';}}},y:{ticks:{font:{size:10}}}}}
+  });
+  var thEl=document.getElementById('cc-nacres-th');
+  if(thEl) thEl.innerHTML='<tr><th>CC</th><th>NACRES</th><th>Description</th><th>Type</th><th style="text-align:right">Valeur</th><th style="text-align:right">Reste fact.</th></tr>';
+  var tbEl=document.getElementById('cc-nacres-tb');
+  if(tbEl) tbEl.innerHTML=rows2.map(function(r){
+    return'<tr><td style="font-weight:600;color:var(--pr)">'+esc(r.cc)+'</td><td>'+esc(r.nacreCode)+'</td><td>'+esc(r.nacreDesc)+'</td>'+
+      '<td style="color:'+(r.surMarche?'var(--ok)':'var(--wn)')+'">'+esc(r.surMarche?'Sur marché':'Hors marché')+'</td>'+
+      '<td style="text-align:right">'+fmt(r.val)+' €</td><td style="text-align:right">'+fmt(r.rest)+' €</td></tr>';
+  }).join('');
+  var totV=rows2.reduce(function(s,r){return s+r.val;},0), totR=rows2.reduce(function(s,r){return s+r.rest;},0);
+  var tfEl=document.getElementById('cc-nacres-tf');
+  if(tfEl) tfEl.innerHTML='<tr><td colspan="4">TOTAL</td><td style="text-align:right">'+fmt(totV)+' €</td><td style="text-align:right">'+fmt(totR)+' €</td></tr>';
+}
 
 </script>
 </body>
