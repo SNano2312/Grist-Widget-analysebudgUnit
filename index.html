@@ -314,6 +314,15 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <div class="ks" id="nacres-kpis"></div>
     <div id="nacres-chart-wrap" class="pnl" style="margin-bottom:16px"><canvas id="chNacres" style="max-height:320px"></canvas></div>
     <div class="tw"><table><thead id="nacres-th"></thead><tbody id="nacres-tb"></tbody><tfoot id="nacres-tf"></tfoot></table></div>
+    <!-- Drill-down NACRES -->
+    <div id="nacres-drv" style="display:none;margin-top:16px">
+      <div class="drh">
+        <button class="btn" onclick="closeNacresDrill()">← Retour</button>
+        <span id="nacres-dr-title" style="font-weight:600;font-size:.95rem"></span>
+      </div>
+      <div class="dk" id="nacres-dr-kpis"></div>
+      <div class="tw"><table><thead id="nacres-dr-th"></thead><tbody id="nacres-dr-tb"></tbody><tfoot id="nacres-dr-tf"></tfoot></table></div>
+    </div>
   </div>
 
   <!-- ENGAGEMENTS PLURIANNUELS -->
@@ -2229,6 +2238,8 @@ function fillNacresFilters(){
 // ════════════════════════
 var _chNacres=null;
 function renderNacres(){
+  // Fermer le drill-down si ouvert
+  var drv=document.getElementById('nacres-drv');if(drv) drv.style.display='none';
   var prg=document.getElementById('n-prg').value,fnd=document.getElementById('n-fnd').value;
   var typeF=document.getElementById('n-type').value,vue=document.getElementById('n-vue').value;
   var ann=document.getElementById('n-ann').value;
@@ -2298,9 +2309,16 @@ function renderNacres(){
   document.getElementById('nacres-tb').innerHTML=keys.map(function(k){
     var tot=grouped[k]||0,mar=gMar[k]||0,hors=gHors[k]||0,rest=gRest[k]||0,av=gAv[k]||0;
     var isDC01=k.toUpperCase().startsWith('DC.01');
-    var rowCl=isDC01?'style="background:#f5f3ff"':'';
+    var rowCl='style="cursor:pointer;'+(isDC01?'background:#f5f3ff':'')+'"';
     var marDisplay=isDC01?'<span style="color:#7c3aed;font-weight:600">'+fmt(av)+' \u20ac \u2708</span>':'<span style="color:var(--ok)">'+fmt(mar)+' \u20ac</span>';
-    return'<tr '+rowCl+'><td style="'+(isDC01?'color:#7c3aed;font-weight:600':'')+'">' +esc(k)+'</td><td style="text-align:right;font-weight:600">'+fmt(tot)+' \u20ac</td><td style="text-align:right">'+marDisplay+'</td><td style="text-align:right">'+(tot>0?mar/tot*100:0).toFixed(1)+' %</td><td style="text-align:right;color:var(--wn)">'+fmt(hors)+' \u20ac</td><td style="text-align:right">'+fmt(rest)+' \u20ac</td></tr>';
+    var drKey=k.replace(/'/g,"\'");
+    return'<tr '+rowCl+' onclick="openNacresDrill(this)" data-key="'+esc(k)+'" data-vue="'+esc(vue)+'" title="Cliquer pour voir le d\u00e9tail">'+
+      '<td style="'+(isDC01?'color:#7c3aed;font-weight:600':'')+'">' +esc(k)+'</td>'+
+      '<td style="text-align:right;font-weight:600">'+fmt(tot)+' \u20ac</td>'+
+      '<td style="text-align:right">'+marDisplay+'</td>'+
+      '<td style="text-align:right">'+(tot>0?mar/tot*100:0).toFixed(1)+' %</td>'+
+      '<td style="text-align:right;color:var(--wn)">'+fmt(hors)+' \u20ac</td>'+
+      '<td style="text-align:right">'+fmt(rest)+' \u20ac</td></tr>';
   }).join('');
   document.getElementById('nacres-tf').innerHTML='<tr><td>TOTAL</td><td style="text-align:right">'+fmt(totVal)+' \u20ac</td><td style="text-align:right">'+fmt(totMar)+' \u20ac</td><td style="text-align:right">'+pctMar.toFixed(1)+' %</td><td style="text-align:right">'+fmt(totHors)+' \u20ac</td><td style="text-align:right">'+fmt(totRest)+' \u20ac</td></tr>';
 }
@@ -3186,6 +3204,95 @@ function renderCCNacres(ann,cf,prg,fnd){
   var tfEl=document.getElementById('cc-nacres-tf');
   if(tfEl) tfEl.innerHTML='<tr><td colspan="4">TOTAL</td><td style="text-align:right">'+fmt(totV)+' €</td><td style="text-align:right">'+fmt(totR)+' €</td></tr>';
 }
+
+
+// ════════════════════════════════════════════════════════
+// DRILL-DOWN NACRES
+// ════════════════════════════════════════════════════════
+function openNacresDrill(el){
+  var key=el.getAttribute('data-key');
+  var vue=el.getAttribute('data-vue')||'';
+  var prg=document.getElementById('n-prg').value;
+  var fnd=document.getElementById('n-fnd').value;
+  var ann=document.getElementById('n-ann').value;
+  var cf=(document.getElementById('n-cf')||{}).value||'';
+  var typeF=document.getElementById('n-type').value;
+
+  // Filtrer les lignes correspondantes
+  var rows=(window.NACRES_DATA||[]).filter(function(r){
+    if(ann&&r.annee&&r.annee!==ann) return false;
+    if(prg&&r.prog!==prg) return false;
+    if(fnd&&r.fond!==fnd) return false;
+    if(cf&&r.cc&&r.cc!==cf) return false;
+    if(typeF==='marche'&&!r.surMarche) return false;
+    if(typeF==='hors'&&r.surMarche) return false;
+    // Filtrer selon la vue
+    if(vue==='nacres'||vue===''){
+      var k=r.nacreCode+(r.nacreDesc?' ('+r.nacreDesc+')':'');
+      if(k!==key) return false;
+    } else if(vue==='four'){
+      if((r.four||'Inconnu')!==key) return false;
+    }
+    return true;
+  });
+
+  var totVal=rows.reduce(function(s,r){return s+r.val;},0);
+  var totRest=rows.reduce(function(s,r){return s+r.rest;},0);
+  var totMar=rows.filter(function(r){return r.surMarche;}).reduce(function(s,r){return s+r.val;},0);
+  var nbOpen=rows.filter(function(r){return r.rest>0;}).length;
+
+  document.getElementById('nacres-dr-title').textContent=key+' — '+rows.length+' ligne'+(rows.length>1?'s':'');
+  document.getElementById('nacres-dr-kpis').innerHTML=
+    '<div class="kpi"><div class="kl">Total engagé</div><div class="kv">'+fmt(totVal)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">Sur marché</div><div class="kv c-ok">'+fmt(totMar)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">Reste à facturer</div><div class="kv '+(totRest>0?'c-wn':'')+'">'+fmt(totRest)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">Cdes non soldées</div><div class="kv '+(nbOpen>0?'c-er':'c-ok')+'">'+nbOpen+' / '+rows.length+'</div></div>';
+
+  var sapBase="https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&/C_PurchaseOrderTP(PurchaseOrder='";
+  var sapSuf="',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)";
+
+  var sorted=rows.slice().sort(function(a,b){return b.val-a.val;});
+  document.getElementById('nacres-dr-th').innerHTML=
+    '<tr><th>Année</th><th>CC</th><th>Programme</th><th>NACRES</th><th>N° Commande</th><th>Fournisseur</th><th>Désignation</th><th>Type</th>'+
+    '<th style="text-align:right">Valeur</th><th style="text-align:right">RAR</th><th style="text-align:right">Reste fact.</th><th>Fonds</th></tr>';
+
+  document.getElementById('nacres-dr-tb').innerHTML=sorted.map(function(r){
+    var cmdLink=r.cmd?'<a href="'+sapBase+encodeURIComponent(r.cmd)+sapSuf+'" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">'+esc(r.cmd)+'</a>':'-';
+    var rowStyle=r.rest>0?'background:#fff7ed':'';
+    var typeCl=r.agenceVoyage?'#7c3aed':r.surMarche?'var(--ok)':'var(--wn)';
+    return'<tr style="'+rowStyle+'">'+
+      '<td>'+(r.annee||'-')+'</td>'+
+      '<td style="color:var(--pr);font-weight:500">'+esc(r.cc||'-')+'</td>'+
+      '<td>'+esc(r.prog||'-')+'</td>'+
+      '<td>'+esc(r.nacreCode)+'</td>'+
+      '<td>'+cmdLink+'</td>'+
+      '<td>'+esc(r.four)+'</td>'+
+      '<td>'+esc(r.desig)+'</td>'+
+      '<td style="color:'+typeCl+';font-weight:500">'+esc(r.typeDoc.split(' ')[0])+'</td>'+
+      '<td style="text-align:right">'+fmt(r.val)+' €</td>'+
+      '<td style="text-align:right">'+fmt(r.resteLivr)+'€</td>'+
+      '<td style="text-align:right;font-weight:'+(r.rest>0?'700':'400')+';color:'+(r.rest>0?'var(--er)':'inherit')+'">'+fmt(r.rest)+' €</td>'+
+      '<td>'+esc(r.fond)+'</td>'+
+    '</tr>';
+  }).join('') || '<tr><td colspan="12" style="text-align:center;padding:16px;color:var(--mu)">Aucune ligne</td></tr>';
+
+  document.getElementById('nacres-dr-tf').innerHTML=
+    '<tr><td colspan="8">TOTAL ('+rows.length+' lignes)</td>'+
+    '<td style="text-align:right">'+fmt(totVal)+' €</td>'+
+    '<td></td>'+
+    '<td style="text-align:right;color:var(--er);font-weight:700">'+fmt(totRest)+' €</td>'+
+    '<td></td></tr>';
+
+  var drv=document.getElementById('nacres-drv');
+  drv.style.display='block';
+  drv.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function closeNacresDrill(){
+  document.getElementById('nacres-drv').style.display='none';
+}
+window.openNacresDrill=openNacresDrill;
+window.closeNacresDrill=closeNacresDrill;
 
 </script>
 </body>
