@@ -3056,6 +3056,10 @@ function openCCDrill(ccKey,prog,fonds,ann){
     `<div class="kpi"><div class="kl">Reste à facturer</div><div class="kv c-wn">${fmt(cdaObj.resteFact)} €</div></div>`+
     `<div class="kpi"><div class="kl">Payé (CP)</div><div class="kv">${fmt(conso)} €</div></div>`+
     `<div class="kpi"><div class="kl">% engagé</div><div class="kv ${clE}">${pE.toFixed(1)} %</div></div>`;
+    `<div style="width:100%;margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">` +
+    `<button class="btn" style="font-size:.78rem" onclick="navToNacres('${esc(ccKey)}','${esc(prog)}','${esc(fonds)}','${esc(ann)}')">🧪 Voir NACRES pour ce CC</button>` +
+    `<button class="btn" style="font-size:.78rem" onclick="navToMissions('${esc(ccKey)}','${esc(prog)}','${esc(fonds)}','${esc(ann)}')">✈️ Voir Missions pour ce CC</button>` +
+    `</div>`;
 
   // Détail CDA
   const cdaRows=(window.CDA_CC||[]).filter(r=>r.cc===ccKey&&(!ann||r.annee===ann)&&(!prog||r.prog===prog||!r.prog)&&(!fonds||r.fonds===fonds||!r.fonds)).sort((a,b)=>b.val-a.val);
@@ -3317,6 +3321,37 @@ function closeNacresDrill(){
 }
 window.openNacresDrill=openNacresDrill;
 window.closeNacresDrill=closeNacresDrill;
+
+
+// ════════════════════════════════════════════════════════
+// NAVIGATION DEPUIS DRILL-DOWN CC
+// ════════════════════════════════════════════════════════
+function navToNacres(cc, prog, fonds, ann){
+  document.getElementById('cc-drv').style.display='none';
+  switchTab('nacres');
+  var sel={'n-ann':ann||'','n-cf':cc||'','n-prg':(prog==='Non Applicable'?'':prog||''),'n-fnd':fonds||''};
+  Object.keys(sel).forEach(function(id){
+    var el=document.getElementById(id); if(!el) return;
+    var val=sel[id];
+    var hasOpt=[...el.options].some(function(o){return o.value===val;});
+    if(hasOpt||val==='') el.value=val;
+  });
+  renderNacres();
+}
+function navToMissions(cc, prog, fonds, ann){
+  document.getElementById('cc-drv').style.display='none';
+  switchTab('om');
+  var sel={'om-ann':ann||'','om-cf':cc||'','om-prg':(prog==='Non Applicable'?'':prog||''),'om-fnd':fonds||''};
+  Object.keys(sel).forEach(function(id){
+    var el=document.getElementById(id); if(!el) return;
+    var val=sel[id];
+    var hasOpt=[...el.options].some(function(o){return o.value===val;});
+    if(hasOpt||val==='') el.value=val;
+  });
+  renderOM();
+}
+window.navToNacres=navToNacres;
+window.navToMissions=navToMissions;
 
 </script>
 </body>
