@@ -812,8 +812,6 @@ async function lanceAnalyse(){
     window._PROG_INFO={};
     try{
       const rawT1=await grist.docApi.fetchTable(tT1||'Table1');
-      console.log('[Table1] colonnes:',JSON.stringify(Object.keys(rawT1)));
-      if(Object.keys(rawT1).length>2){var _k=Object.keys(rawT1);var _s={};_k.forEach(function(k){_s[k]=rawT1[k][0];});console.log('[Table1] 1ere ligne:',JSON.stringify(_s));}
       if(rawT1['A']){
         const nT=rawT1['A'].length;
         for(let i=0;i<nT;i++){
@@ -3404,171 +3402,100 @@ function renderTimeline(){
   var today=new Date();
   var pi=window._PROG_INFO||{};
 
-  // Vérifier si Table Programmes est configurée
-  var hasDates=Object.values(pi).some(function(p){return p.dateFin;});
+  var hasDates=Object.values(pi).some(function(p){return p&&p.dateFin;});
   if(!hasDates){
     document.getElementById('tl-kpis').innerHTML='';
-    document.getElementById('tl-timeline').innerHTML=
-      '<div style="background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:16px;font-size:.85rem">'+
-      '⚠️ <strong>Aucune date de fin configurée.</strong><br>'+
-      'Renseignez la colonne C (Date de fin) dans votre <strong>Table Programmes</strong> pour voir la timeline.<br>'+
-      'Format accepté : JJ/MM/AAAA ou AAAA-MM.</div>';
+    document.getElementById('tl-timeline').innerHTML='<div style="background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:16px;font-size:.85rem">⚠️ <strong>Aucune date de fin configurée.</strong><br>Renseignez la colonne C dans la Table Programmes.</div>';
     document.getElementById('tl-table').style.display='none';
     return;
   }
-  // Construire la liste des programmes avec date de fin
-  var progs=[];
-  var seen=new Set();
+
+  // Agréger budget par programme
+  var progBudget={};
   BUDGET.forEach(function(b){
-    if(!pi[b.prog]||!pi[b.prog].dateFin) return;
     if(ann&&String(b.annee)!==ann) return;
-    var k=b.prog;
-    if(seen.has(k)) return;
-    seen.add(k);
-    var info=pi[b.prog];
+    if(!progBudget[b.prog]) progBudget[b.prog]={bud:0,conso:0,cda:0};
+    progBudget[b.prog].bud+=b.bud;
+    progBudget[b.prog].conso+=b.conso;
+    progBudget[b.prog].cda+=b.cda;
+  });
+
+  // Construire liste programmes avec date de fin depuis _PROG_INFO
+  var progs=[];
+  Object.keys(pi).forEach(function(prog){
+    var info=pi[prog];
+    if(!info||!info.dateFin) return;
     var p2=info.dateFin.split('-');
     var finDate=new Date(parseInt(p2[0]),parseInt(p2[1])-1,28);
     var diff=Math.round((finDate-today)/(864e5));
     var statProg=diff<0?'expire':diff<90?'urgent':diff<180?'proche':'ok';
-    // Agréger le budget de ce programme (toutes années si pas de filtre)
-    var bRows=BUDGET.filter(function(r){return r.prog===k&&(!ann||String(r.annee)===ann);});
-    var totalBud=bRows.reduce(function(s,r){return s+r.bud;},0);
-    var totalConso=bRows.reduce(function(s,r){return s+r.conso;},0);
-    var totalCda=bRows.reduce(function(s,r){return s+r.cda;},0);
-    var taux=totalBud>0?totalConso/totalBud*100:0;
-    var tauxEng=totalBud>0?Math.min(totalCda/totalBud*100,100):0;
-    progs.push({
-      prog:k, nom:info.nom||k, dateFin:info.dateFin,
-      finDate:finDate, diff:diff, statut:statProg,
-      bud:totalBud, conso:totalConso, cda:totalCda,
-      taux:taux, tauxEng:tauxEng
-    });
+    var bd=progBudget[prog]||{bud:0,conso:0,cda:0};
+    var taux=bd.bud>0?bd.conso/bd.bud*100:0;
+    var tauxEng=bd.bud>0?Math.min(bd.cda/bd.bud*100,100):0;
+    progs.push({prog:prog,nom:info.nom||prog,dateFin:info.dateFin,finDate:finDate,diff:diff,statut:statProg,bud:bd.bud,conso:bd.conso,cda:bd.cda,taux:taux,tauxEng:tauxEng});
   });
 
-  // Filtrer par statut
   if(statut) progs=progs.filter(function(p){return p.statut===statut;});
-
-  // Trier par date de fin croissante
   progs.sort(function(a,b){return a.finDate-b.finDate;});
-  window.tlProgs=progs; // pour l'onclick
+  window.tlProgs=progs;
 
-  // KPIs
-  var nbExpire=progs.filter(function(p){return p.statut==='expire';}).length;
-  var nbUrgent=progs.filter(function(p){return p.statut==='urgent';}).length;
-  var nbProche=progs.filter(function(p){return p.statut==='proche';}).length;
-  var nbOk=progs.filter(function(p){return p.statut==='ok';}).length;
+  var nbE=progs.filter(function(p){return p.statut==='expire';}).length;
+  var nbU=progs.filter(function(p){return p.statut==='urgent';}).length;
+  var nbP=progs.filter(function(p){return p.statut==='proche';}).length;
+  var nbO=progs.filter(function(p){return p.statut==='ok';}).length;
   document.getElementById('tl-kpis').innerHTML=
-    '<div class="kpi"><div class="kl">Programmes</div><div class="kv">'+progs.length+'</div></div>'+
-    (nbExpire?'<div class="kpi"><div class="kl">⛔ Expirés</div><div class="kv c-er">'+nbExpire+'</div></div>':'')+
-    (nbUrgent?'<div class="kpi"><div class="kl">🔴 Urgents (&lt;90j)</div><div class="kv c-er">'+nbUrgent+'</div></div>':'')+
-    (nbProche?'<div class="kpi"><div class="kl">🟠 Proches (&lt;180j)</div><div class="kv c-wn">'+nbProche+'</div></div>':'')+
-    (nbOk?'<div class="kpi"><div class="kl">✅ OK</div><div class="kv c-ok">'+nbOk+'</div></div>':'');
-
-  // Couleur selon statut + taux conso
-  function getColor(p){
-    if(p.statut==='expire') return '#6b7280';
-    if(p.statut==='urgent') return p.taux<50?'#dc2626':'#f97316';
-    if(p.statut==='proche') return p.taux<50?'#d97706':'#84cc16';
-    return p.taux>=80?'#16a34a':'#2563eb';
-  }
-  function getLabel(p){
-    if(p.statut==='expire') return 'Expiré';
-    if(p.diff===0) return 'Aujourd\'hui';
-    if(p.diff>0) return 'J-'+p.diff;
-    return 'J+'+Math.abs(p.diff);
-  }
-
-  document.getElementById('tl-timeline').style.display=vue==='timeline'?'':'none';
+    '<div class="kpi"><div class="kl">Avec date de fin</div><div class="kv">'+progs.length+'</div></div>'+
+    (nbP?'<div class="kpi"><div class="kl">Proches (&lt;180j)</div><div class="kv c-wn">'+nbP+'</div></div>':'')+
+    (nbO?'<div class="kpi"><div class="kl">OK</div><div class="kv c-ok">'+nbO+'</div></div>':'');
+  function getColor(p){if(p.statut==='expire')return'#6b7280';if(p.statut==='urgent')return p.taux<50?'#dc2626':'#f97316';if(p.statut==='proche')return p.taux<50?'#d97706':'#84cc16';return p.taux>=80?'#16a34a':'#2563eb';}
+  function getLabel(p){return p.statut==='expire'?'Expire (J+'+Math.abs(p.diff)+')':'J-'+p.diff;}
+  document.getElementById('tl-timeline').style.display=vue==='timeline'?'block':'none';
   document.getElementById('tl-table').style.display=vue==='table'?'':'none';
-
   if(vue==='table'){
-    document.getElementById('tl-th').innerHTML=
-      '<tr><th>Programme</th><th>Nom</th><th>Date fin</th><th>Jours restants</th>'+
-      '<th style="text-align:right">Budget</th><th style="text-align:right">Conso AE</th>'+
-      '<th style="text-align:right">Taux conso</th><th style="text-align:right">% engagé</th><th>Statut</th></tr>';
-    document.getElementById('tl-tb').innerHTML=progs.map(function(p){
+    document.getElementById('tl-th').innerHTML='<tr><th>Programme</th><th>Nom</th><th>Date fin</th><th>Jours restants</th><th style="text-align:right">Budget</th><th style="text-align:right">Conso AE</th><th style="text-align:right">Taux conso</th><th style="text-align:right">% engage</th><th>Statut</th></tr>';
+    document.getElementById('tl-tb').innerHTML=progs.map(function(p,i){
       var cl=p.statut==='expire'?'r-wn':p.statut==='urgent'?'r-er':p.statut==='proche'?'r-wn':'r-ok';
-      var jLabel=p.statut==='expire'?'<span style="color:#6b7280">Expiré ('+Math.abs(p.diff)+' j)</span>':
-        '<strong style="color:'+getColor(p)+'">J-'+p.diff+'</strong>';
+      var jLabel=p.statut==='expire'?'<span style="color:#6b7280">Expire</span>':'<strong style="color:'+getColor(p)+'">J-'+p.diff+'</strong>';
       return'<tr style="cursor:pointer" onclick="drillFromSynthese(tlProgs['+i+'].prog)">'+
-        '<td style="font-weight:600">'+esc(p.prog)+'</td>'+
-        '<td>'+esc(p.nom)+'</td>'+
-        '<td>'+esc(p.dateFin.split('-').reverse().join('/'))+'</td>'+
-        '<td>'+jLabel+'</td>'+
-        '<td style="text-align:right">'+fmt(p.bud)+' €</td>'+
-        '<td style="text-align:right">'+fmt(p.conso)+' €</td>'+
+        '<td style="font-weight:600">'+esc(p.prog)+'</td><td>'+esc(p.nom)+'</td>'+
+        '<td>'+esc(p.dateFin.split('-').reverse().join('/'))+'</td><td>'+jLabel+'</td>'+
+        '<td style="text-align:right">'+fmt(p.bud)+' \u20ac</td><td style="text-align:right">'+fmt(p.conso)+' \u20ac</td>'+
         '<td style="text-align:right"><span class="rb '+cl+'">'+p.taux.toFixed(1)+' %</span></td>'+
         '<td style="text-align:right">'+p.tauxEng.toFixed(1)+' %</td>'+
-        '<td><span class="rb '+cl+'">'+getLabel(p)+'</span></td>'+
-      '</tr>';
+        '<td><span class="rb '+cl+'">'+getLabel(p)+'</span></td></tr>';
     }).join('');
     return;
   }
-
-  // ── Vue Timeline SVG ──
-  if(!progs.length){
-    document.getElementById('tl-timeline').innerHTML='<div style="padding:30px;text-align:center;color:var(--mu)">Aucun programme avec date de fin configurée dans la Table Programmes.</div>';
-    return;
-  }
-  var W=900, rowH=52, pad=20, labelW=160, barW=W-labelW-pad*2-80;
-  var H=progs.length*rowH+60;
-  // Calcul de l'axe temporel
-  var minDate=new Date(Math.min.apply(null,progs.map(function(p){return p.finDate;})));
-  var maxDate=new Date(Math.max.apply(null,progs.map(function(p){return p.finDate;})));
-  minDate.setMonth(minDate.getMonth()-1);
-  maxDate.setMonth(maxDate.getMonth()+2);
+  if(!progs.length){document.getElementById('tl-timeline').innerHTML='<div style="padding:30px;text-align:center;color:var(--mu)">Aucun resultat.</div>';return;}
+  var W=900,rowH=54,pad=20,labelW=170,barW=W-labelW-pad*2-80,H=progs.length*rowH+60;
+  var dates=progs.map(function(p){return p.finDate;});
+  var minDate=new Date(Math.min.apply(null,dates)),maxDate=new Date(Math.max.apply(null,dates));
+  minDate.setMonth(minDate.getMonth()-2);maxDate.setMonth(maxDate.getMonth()+2);
   var span=maxDate-minDate;
   function xPos(d){return labelW+pad+(d-minDate)/span*barW;}
   var todayX=xPos(today);
-  // Mois sur l'axe
-  var months=[];
-  var cur=new Date(minDate.getFullYear(),minDate.getMonth(),1);
+  var months=[],cur=new Date(minDate.getFullYear(),minDate.getMonth(),1);
   while(cur<=maxDate){months.push(new Date(cur));cur.setMonth(cur.getMonth()+1);}
-  var monthNames=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  var mN=['Jan','Fev','Mar','Avr','Mai','Jun','Jul','Aou','Sep','Oct','Nov','Dec'];
   var svg='<div style="overflow-x:auto"><svg viewBox="0 0 '+W+' '+H+'" width="100%" style="font-family:Segoe UI,sans-serif;background:#fafafa;border-radius:8px;border:1px solid var(--bd)">';
-  // Fond alterné par ligne
+  progs.forEach(function(p,i){svg+='<rect x="0" y="'+(40+i*rowH)+'" width="'+W+'" height="'+rowH+'" fill="'+(i%2===0?'#f7f8fb':'#fff')+'"/>';});
+  months.forEach(function(m){var mx=xPos(m);if(mx<labelW||mx>W-60)return;svg+='<line x1="'+mx+'" y1="30" x2="'+mx+'" y2="'+H+'" stroke="#e5e7eb" stroke-width="1"/><text x="'+mx+'" y="20" text-anchor="middle" font-size="10" fill="#9ca3af">'+mN[m.getMonth()]+'</text>';if(m.getMonth()===0)svg+='<text x="'+mx+'" y="32" text-anchor="middle" font-size="9" fill="#9ca3af">'+m.getFullYear()+'</text>';});
+  if(todayX>labelW&&todayX<W-60)svg+='<line x1="'+todayX+'" y1="28" x2="'+todayX+'" y2="'+H+'" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="4,3"/><text x="'+todayX+'" y="14" text-anchor="middle" font-size="9" fill="#2563eb" font-weight="600">Aujourd\'hui</text>';
   progs.forEach(function(p,i){
-    svg+='<rect x="0" y="'+(40+i*rowH)+'" width="'+W+'" height="'+rowH+'" fill="'+(i%2===0?'#f7f8fb':'#fff')+'"/>';
-  });
-  // Lignes verticales des mois
-  months.forEach(function(m){
-    var mx=xPos(m);
-    if(mx<labelW+pad||mx>W-80) return;
-    svg+='<line x1="'+mx+'" y1="30" x2="'+mx+'" y2="'+H+'" stroke="#e5e7eb" stroke-width="1"/>';
-    svg+='<text x="'+mx+'" y="20" text-anchor="middle" font-size="10" fill="#9ca3af">'+monthNames[m.getMonth()]+'</text>';
-    if(m.getMonth()===0) svg+='<text x="'+mx+'" y="32" text-anchor="middle" font-size="9" fill="#9ca3af">'+m.getFullYear()+'</text>';
-  });
-  // Ligne aujourd'hui
-  if(todayX>=labelW+pad&&todayX<=W-80){
-    svg+='<line x1="'+todayX+'" y1="30" x2="'+todayX+'" y2="'+H+'" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="4,3"/>';
-    svg+='<text x="'+todayX+'" y="14" text-anchor="middle" font-size="9" fill="#2563eb" font-weight="600">Aujourd\'hui</text>';
-  }
-  // Programmes
-  progs.forEach(function(p,i){
-    var y=40+i*rowH;
-    var cx=xPos(p.finDate);
-    var color=getColor(p);
-    var tauxW=Math.max(4,p.taux/100*(cx-(labelW+pad)));
-    // Label nom
-    var nomDisp=(p.nom||p.prog).length>22?(p.nom||p.prog).substring(0,20)+'…':(p.nom||p.prog);
-    svg+='<text x="'+(labelW+pad-8)+'" y="'+(y+rowH/2+4)+'" text-anchor="end" font-size="11" fill="#374151" font-weight="500">'+nomDisp+'</text>';
-    // Barre de fond (budget total)
-    svg+='<rect x="'+(labelW+pad)+'" y="'+(y+rowH/2-6)+'" width="'+(cx-(labelW+pad))+'" height="12" rx="6" fill="#e5e7eb"/>';
-    // Barre conso
-    if(tauxW>0) svg+='<rect x="'+(labelW+pad)+'" y="'+(y+rowH/2-6)+'" width="'+tauxW+'" height="12" rx="6" fill="'+color+'" opacity="0.8"/>';
-    // Point échéance
-    svg+='<circle cx="'+cx+'" cy="'+(y+rowH/2)+'" r="8" fill="'+color+'" stroke="#fff" stroke-width="2"/>';
-    // Label date
-    var dateLabel=p.dateFin.split('-').slice(0,2).reverse().join('/');
-    svg+='<text x="'+(cx+12)+'" y="'+(y+rowH/2-3)+'" font-size="10" fill="'+color+'" font-weight="600">'+dateLabel+'</text>';
-    // Label jours restants
-    svg+='<text x="'+(cx+12)+'" y="'+(y+rowH/2+10)+'" font-size="9" fill="#6b7280">'+getLabel(p)+' — '+p.taux.toFixed(0)+'% conso</text>';
+    var y=40+i*rowH,cy=y+rowH/2,cx=xPos(p.finDate),color=getColor(p);
+    var sX=labelW+pad,bL=Math.max(0,cx-sX),tW=bL*Math.min(p.taux/100,1);
+    var nomT=(p.nom||p.prog).length>24?(p.nom||p.prog).substring(0,22)+'...':(p.nom||p.prog);
+    svg+='<text x="'+(labelW-6)+'" y="'+(cy+4)+'" text-anchor="end" font-size="11" fill="#374151" font-weight="500">'+nomT+'</text>';
+    if(bL>0)svg+='<rect x="'+sX+'" y="'+(cy-5)+'" width="'+bL+'" height="10" rx="5" fill="#e5e7eb"/>';
+    if(tW>0)svg+='<rect x="'+sX+'" y="'+(cy-5)+'" width="'+tW+'" height="10" rx="5" fill="'+color+'" opacity="0.75"/>';
+    svg+='<circle cx="'+cx+'" cy="'+cy+'" r="9" fill="'+color+'" stroke="#fff" stroke-width="2"/>';
+    svg+='<text x="'+(cx+13)+'" y="'+(cy-2)+'" font-size="10" fill="'+color+'" font-weight="600">'+p.dateFin.split('-').slice(0,2).reverse().join('/')+'</text>';
+    svg+='<text x="'+(cx+13)+'" y="'+(cy+11)+'" font-size="9" fill="#6b7280">'+getLabel(p)+' - '+p.taux.toFixed(0)+'% conso</text>';
   });
   svg+='</svg></div>';
   document.getElementById('tl-timeline').innerHTML=svg;
 }
 window.renderTimeline=renderTimeline;
-
 </script>
 </body>
 </html>
