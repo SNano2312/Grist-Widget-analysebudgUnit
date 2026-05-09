@@ -812,6 +812,8 @@ async function lanceAnalyse(){
     window._PROG_INFO={};
     try{
       const rawT1=await grist.docApi.fetchTable(tT1||'Table1');
+      console.log('[Table1] colonnes:',JSON.stringify(Object.keys(rawT1)));
+      if(Object.keys(rawT1).length>2){var _k=Object.keys(rawT1);var _s={};_k.forEach(function(k){_s[k]=rawT1[k][0];});console.log('[Table1] 1ere ligne:',JSON.stringify(_s));}
       if(rawT1['A']){
         const nT=rawT1['A'].length;
         for(let i=0;i<nT;i++){
@@ -3402,6 +3404,18 @@ function renderTimeline(){
   var today=new Date();
   var pi=window._PROG_INFO||{};
 
+  // Vérifier si Table Programmes est configurée
+  var hasDates=Object.values(pi).some(function(p){return p.dateFin;});
+  if(!hasDates){
+    document.getElementById('tl-kpis').innerHTML='';
+    document.getElementById('tl-timeline').innerHTML=
+      '<div style="background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:16px;font-size:.85rem">'+
+      '⚠️ <strong>Aucune date de fin configurée.</strong><br>'+
+      'Renseignez la colonne C (Date de fin) dans votre <strong>Table Programmes</strong> pour voir la timeline.<br>'+
+      'Format accepté : JJ/MM/AAAA ou AAAA-MM.</div>';
+    document.getElementById('tl-table').style.display='none';
+    return;
+  }
   // Construire la liste des programmes avec date de fin
   var progs=[];
   var seen=new Set();
