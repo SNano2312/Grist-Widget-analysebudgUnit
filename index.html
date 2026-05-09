@@ -1173,6 +1173,7 @@ function switchTab(t){
   if(t==='pluri') renderPluri();
   if(t==='open') renderOpenOrders();
 }
+  if(t==='tl') renderTimeline();
 
 // ════════════════════════════════════════
 // HISTOGRAMME
@@ -3401,7 +3402,6 @@ function renderTimeline(){
   var vue=document.getElementById('tl-vue').value;
   var today=new Date();
   var pi=window._PROG_INFO||{};
-  console.log('[TL] pi keys:',Object.keys(pi),' hasDates:',Object.values(pi).some(function(p){return p&&p.dateFin;}),' exemple:',JSON.stringify(Object.values(pi)[0]));
 
   var hasDates=Object.values(pi).some(function(p){return p&&p.dateFin;});
   if(!hasDates){
