@@ -407,67 +407,70 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <div class="pnl-t">📂 Sources de données</div>
         <p style="font-size:.82rem;line-height:1.8">
           <strong>Budget_2025 / Budget_2026</strong> : données budgétaires par CF/Programme/Fonds (Budget AE N, Conso AE N, CDa engagées N, RAR, OM, Payé CP…).<br>
-          <strong>Conso_2025 / Conso_2026</strong> : opérations SAP ligne à ligne (type de valeur, montant, fournisseur, date, centre de coûts…).<br>
+          <strong>Conso_2025 / Conso_2026</strong> : opérations SAP ligne à ligne (type de valeur, montant, fournisseur, date, centre de coûts, compte budgétaire…).<br>
           <strong>Table Programmes</strong> (optionnel) : Col. A = N° programme &bull; Col. B = Acronyme &bull; Col. C = Date de fin.<br>
-          <strong>CDA par CC 2025 / CDA par CC 2026</strong> (optionnel, remplace NACRES) : postes de commandes d'achat SAP par centre de coûts. Colonnes clés : <em>Centre de coûts, Grpe de marchandises, Commande d'achat, Type de document d'achat, Fournisseur, Désignation, Valeur nette répartie, Valeur restante à livrer, Valeur restante à facturer, Élément d'OTP, Fonds</em>.<br>
-          <strong>Ventilation CC 2025 / Ventilation CC 2026</strong> (optionnel) : ventilation du budget par centre de coûts <em>pour chaque année</em>. Colonnes : <em>Programme de financement, Fonds, Budget AE N</em>, puis une colonne par CC (ex : 0496C0001, 0496C0002…). Les programmes sans OTP (dépenses communes) doivent figurer avec <code>Programme = NA</code>.
+          <strong>CDA par CC 2025 / CDA par CC 2026</strong> (optionnel, remplace NACRES) : postes de commandes SAP par CC. Colonnes : <em>Centre de coûts, Grpe de marchandises, Commande d'achat, Type de document d'achat, Fournisseur, Désignation, Valeur nette répartie, Valeur restante à livrer, Valeur restante à facturer, Élément d'OTP, Fonds</em>.<br>
+          <strong>Ventilation CC 2025 / Ventilation CC 2026</strong> (optionnel) : budget ventilé par CC pour chaque année. Colonnes : <em>Programme de financement, Fonds, Budget AE N</em>, puis une colonne par CC (ex : 0496C0001, 0496C0002…). Les programmes sans OTP (dépenses communes) utilisent <code>Programme = NA</code>.<br>
+          <strong>⚠️ Noms de colonnes CC</strong> : les noms de colonnes CC dans la table Ventilation_CC doivent correspondre exactement aux CC des tables CDA et Conso (ex : <code>0496C0001</code> et non <code>0496C001</code>). Un bandeau d'alerte signale automatiquement toute discordance dans l'onglet Centres de coûts.
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">💡 Subtilité AE / CP — Pourquoi CDa ou Payé peuvent dépasser le Budget</div>
         <p style="font-size:.82rem;line-height:1.8">
-          SAP distingue deux comptabilités indépendantes :<br><br>
-          <strong>AE (Autorisations d'Engagement)</strong> : enregistre les <em>engagements juridiques</em> (commandes d'achat). Une AE consommée en 2025 sur un programme reste dans les indicateurs 2025 même si la livraison et la facture arrivent en 2026 ou 2027.<br><br>
-          <strong>CP (Crédits de Paiement)</strong> : enregistre les <em>décaissements effectifs</em>. Un paiement 2026 peut liquider une commande engagée en 2025 — il apparaît donc dans la colonne Payé de l'année courante, indépendamment de l'année d'engagement.<br><br>
+          SAP gère deux comptabilités indépendantes :<br><br>
+          <strong>AE (Autorisations d'Engagement)</strong> : enregistre les engagements juridiques (commandes d'achat). Une commande passée en 2025 consomme du budget AE 2025, même si la livraison et la facture arrivent en 2026 ou 2027.<br><br>
+          <strong>CP (Crédits de Paiement)</strong> : enregistre les décaissements effectifs. Un paiement 2026 peut liquider une commande engagée en 2025 — il apparaît dans la colonne Payé de l'exercice courant, indépendamment de l'année d'engagement.<br><br>
           <strong>Conséquences visibles dans le widget :</strong><br>
-          &bull; <strong>Payé (CP) &gt; Budget AE N</strong> : normal — les paiements de l'exercice incluent la liquidation d'engagements d'années antérieures.<br>
-          &bull; <strong>CDa engagées &gt; Budget AE N</strong> : sur-engagement — les commandes passées dépassent le budget alloué. Alerte déclenchée automatiquement.<br>
-          &bull; <strong>Reste à payer négatif</strong> : normal — indique que des paiements ont été effectués au-delà de la consommation AE de l'année (liquidation d'engagements antérieurs).<br>
-          &bull; <strong>Non engagé = 0</strong> : budget entièrement engagé ou sur-engagé — <code>MAX(0, Budget − CDa)</code>, ne peut pas être négatif.
+          &bull; <strong>Payé (CP) &gt; Budget AE N</strong> : normal sur le centre financier 0496 — les paiements de l'exercice incluent la liquidation d'engagements d'années antérieures.<br>
+          &bull; <strong>CDa engagées &gt; Budget AE N</strong> : sur-engagement — alerte déclenchée automatiquement.<br>
+          &bull; <strong>Reste à payer négatif</strong> : normal — indique que les paiements ont dépassé la consommation AE de l'année (liquidation d'anciens engagements).<br>
+          &bull; <strong>Non engagé = 0</strong> : budget entièrement engagé ou sur-engagé — calculé comme <code>MAX(0, Budget − CDa)</code>.
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
-        <div class="pnl-t">🏦 Centres de coûts (CC) et ventilation budgétaire</div>
+        <div class="pnl-t">🏦 Onglet Centres de coûts</div>
         <p style="font-size:.82rem;line-height:1.8">
-          Le filtre <strong>Centre de coûts</strong> est disponible dans tous les onglets. Exemple avec le centre financier 0496 qui comporte deux CC : <code>0496C0001</code> (dépenses communes) et <code>0496C0002</code>.<br><br>
-          Quand les tables <strong>Ventilation CC 2025/2026</strong> sont configurées et qu'un CC est sélectionné :<br>
-          &bull; <strong>Budget AE</strong> → montant alloué à ce CC dans la table Ventilation CC de l'année sélectionnée<br>
-          &bull; <strong>CDa engagées / RAR / Reste à facturer</strong> → depuis CDA par CC filtré sur ce CC<br>
-          &bull; <strong>Payé (CP)</strong> → paiements SAP filtrés sur ce CC<br>
-          &bull; <strong>Conso AE</strong> → engagement réel sur ce CC (= CDa engagées)<br><br>
-          <strong>Programmes NA (Non Applicable)</strong> : les dépenses sans programme OTP (ex : frais communs sur fonds SE) doivent avoir une ligne <code>NA / SE</code> dans la table Ventilation CC avec la répartition entre les CC. Sans cette ligne, ces dépenses ne sont pas ventilées.<br><br>
-          <strong>Avertissement automatique</strong> : si un CC présent dans les données SAP est absent de la table Ventilation CC (ex : faute de frappe <code>1749C0001</code> au lieu de <code>1479C0001</code>), un bandeau jaune s'affiche dans l'onglet Centres de coûts pour signaler l'anomalie.
+          Vue dédiée au suivi par centre de coûts, avec 4 sous-onglets :<br><br>
+          <strong>📊 Synthèse</strong> : cartes par CC + tableau détaillé CC × Programme × Fonds.<br>
+          Chaque carte affiche : Budget alloué, Non engagé, Reste à facturer, Prévision d'épuisement du budget (basée sur le rythme d'engagement des 3 derniers mois), taux d'engagement (CDa / Budget) et taux de paiement CP (Payé / Budget).<br>
+          Des alertes automatiques signalent : sur-engagement (CDa &gt; Budget), RAR élevé (&gt;20% du budget), sous-engagement (&lt;10% engagé).<br>
+          Cliquer sur une ligne du tableau ouvre un drill-down avec le détail des commandes CDA et des opérations SAP (CONSO).<br><br>
+          <strong>📈 Évolution</strong> : courbes mensuelles cumulatives des engagements par CC. Filtrables par année, programme, fonds.<br><br>
+          <strong>🔀 Comparaison CC</strong> : barres groupées Budget / CDa engagées / Payé (CP) côte à côte pour tous les CC.<br><br>
+          <strong>🧪 NACRES par CC</strong> : répartition des codes NACRES par CC en graphique et tableau.<br><br>
+          <strong>Programmes NA</strong> : les dépenses sans OTP (ex : fonds SE sur le centre 0496) doivent avoir une ligne <code>NA / SE</code> dans la table Ventilation CC avec la répartition entre <code>0496C0001</code> et <code>0496C0002</code>.<br>
+          <strong>Export CSV</strong> : disponible via le bouton en haut à droite.
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">🔢 Indicateurs budgétaires (Synthèse &amp; Histogramme)</div>
         <p style="font-size:.82rem;line-height:1.8">
-          <strong>Taux de consommation</strong> : Conso AE N &divide; Budget AE N &times; 100 &mdash; Vert &ge;90% &bull; Orange &ge;50% &bull; Rouge &lt;50%<br>
-          <strong>Taux d'engagement</strong> : MIN((CDa+RAR+OM+NF) &divide; Budget AE N, 100%) &mdash; plafonné à 100% car le budget peut être révisé à la baisse après engagement.<br>
-          <strong>Reste à engager</strong> : MAX(0, Budget AE N &minus; CDa &minus; RAR &minus; OM &minus; NF) — ne peut pas être négatif.<br>
-          <strong>Payé (CP)</strong> : décaissements effectifs. Peut dépasser le Budget AE (voir section AE/CP ci-dessus).<br>
+          <strong>Taux de consommation</strong> : Conso AE N &divide; Budget AE N &times; 100 — Vert &ge;90% &bull; Orange &ge;50% &bull; Rouge &lt;50%<br>
+          <strong>Taux d'engagement</strong> : MIN((CDa+RAR+OM+NF) &divide; Budget AE N, 100%) — plafonné à 100%.<br>
+          <strong>Reste à engager</strong> : MAX(0, Budget AE N &minus; CDa &minus; RAR &minus; OM &minus; NF).<br>
+          <strong>Payé (CP)</strong> : peut dépasser le Budget AE (voir section AE/CP).<br>
           <strong>Prévision finale</strong> : si taux &ge;95% → Budget AE N ; sinon MIN(Conso + CDa + RAR, Budget AE N).<br>
-          <strong>Alertes automatiques</strong> : sur-engagement, budget épuisé, RAR &gt;20%, sous-consommation J-90, échéance proche, épuisement imminent (&lt;30j), inactivité &gt;90j.<br>
-          <strong>Drill-down</strong> : cliquer sur une barre ou une tuile Synthèse affiche le détail des opérations SAP avec liens SIFAC+.
+          <strong>Alertes</strong> : sur-engagement, budget épuisé, RAR &gt;20%, sous-consommation J-90, échéance proche, épuisement imminent (&lt;30j au rythme actuel), inactivité &gt;90j.<br>
+          <strong>Drill-down</strong> : clic sur une tuile Synthèse ou une barre Histogramme → détail des opérations SAP avec liens SIFAC+.
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">📊 Histogramme &amp; Comparaison 2025/2026</div>
         <p style="font-size:.82rem;line-height:1.8">
-          Barres Budget / Conso / Non consommé par Programme, Fonds ou Année.<br>
-          <strong>Comparaison 2025/2026</strong> : barres groupées Budget+Conso côte à côte pour les deux années, compatible avec le filtre Centre de coûts.<br>
-          <strong>Drill-down</strong> : clic sur une barre → détail des lignes de consommation SAP avec N° Commande cliquable (lien SIFAC+).
+          Barres Budget / Conso / Non consommé par Programme, Fonds ou Année. Compatible avec le filtre Centre de coûts.<br>
+          <strong>Comparaison 2025/2026</strong> : barres Budget+Conso groupées côte à côte pour les deux exercices.<br>
+          <strong>Drill-down</strong> : clic sur une barre → opérations SAP détaillées avec N° Commande cliquable (SIFAC+).
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">📈 Évolution mensuelle</div>
         <p style="font-size:.82rem;line-height:1.8">
-          Cumul mensuel des commandes d'achat Original, plafonné au budget. Fallback automatique sur Factures si aucune commande.<br>
+          Cumul mensuel des commandes d'achat Original, plafonné au budget. Fallback sur Factures si aucune commande.<br>
           <strong>Prévision</strong> : MIN(dernier cumul + CDa + RAR, Budget). Projection par rythme mensuel si pas d'engagements formels.<br>
           <strong>Comparaison 2025/2026</strong> : courbes superposées par mois calendaire.
         </p>
@@ -478,16 +481,17 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <p style="font-size:.82rem;line-height:1.8">
           Vue tabulaire : Budget AE, Conso AE, CDa, RAR, Payé, Reste à payer, Taux de conso.<br>
           <strong>Drill-down</strong> : clic sur une ligne → détail des opérations SAP avec liens SIFAC+.<br>
-          <strong>Comparaison 2025/2026</strong> : Budget, Conso, Taux, Payé côte à côte avec évolution %.
+          <strong>Comparaison 2025/2026</strong> : Budget, Conso, Taux, Payé côte à côte avec évolution en %.
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">🧪 NACRES / Postes de commande</div>
         <p style="font-size:.82rem;line-height:1.8">
-          Source : tables <strong>CDA par CC 2025/2026</strong> si configurées.<br>
-          <strong>Sur marché</strong> : type document OSMA &bull; <strong>Agence voyage DC.01</strong> : carte logée CAMA, affiché en violet &bull; <strong>Hors marché</strong> : OSBC, CA, CAMA hors DC.01.<br>
-          Filtre Centre de coûts : seules les lignes de ce CC sont affichées.
+          Source : tables <strong>CDA par CC 2025/2026</strong>.<br>
+          <strong>Sur marché</strong> : type OSMA &bull; <strong>Agence voyage DC.01</strong> : carte logée CAMA, affiché en violet &bull; <strong>Hors marché</strong> : OSBC, CA, CAMA hors DC.01.<br>
+          Vues : par code NACRES, par fournisseur, ou détail ligne par ligne.<br>
+          <strong>Drill-down</strong> : clic sur une ligne de la vue "Par code NACRES" ou "Par fournisseur" → toutes les commandes associées avec KPIs, N° commande cliquable (SIFAC+), CC, programme, type, RAR et reste à facturer.
         </p>
       </div>
 
@@ -495,15 +499,8 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <div class="pnl-t">🔴 Commandes non soldées</div>
         <p style="font-size:.82rem;line-height:1.8">
           Lignes CDA avec <strong>Reste à facturer &gt; 0</strong>, triées par reste décroissant.<br>
-          N° Commande cliquable vers SIFAC+. Filtres : Année / Programme / Fonds / CC / Type.
-        </p>
-      </div>
-
-      <div class="pnl" style="margin-bottom:16px">
-        <div class="pnl-t">✈️ Missions (NOTILUSBUS)</div>
-        <p style="font-size:.82rem;line-height:1.8">
-          Détection via <code>Saisi par = NOTILUSBUS</code> dans les tables de conso.<br>
-          Lien Notilus : <code>/#/OD/XXX</code> (ordre de mission) ou <code>/#/OMP/XXX</code> (ordre permanent, détecté via compte budgétaire FG).
+          KPIs : nb commandes / reste total / dont marché / dont hors marché.<br>
+          N° Commande cliquable → SIFAC+. Filtres : Année / Programme / Fonds / CC / Type. Export CSV disponible.
         </p>
       </div>
 
@@ -511,16 +508,24 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <div class="pnl-t">📋 Engagements pluriannuels</div>
         <p style="font-size:.82rem;line-height:1.8">
           Consolidation Budget (CDa + RAR 2025 + 2026) + CDA non soldées par Programme/Fonds.<br>
-          N'affiche que les lignes ayant un RAR &gt; 0 ou un reste à facturer &gt; 0, triées par RAR décroissant.
+          N'affiche que les lignes avec RAR &gt; 0 ou reste à facturer &gt; 0, triées par RAR décroissant.
+        </p>
+      </div>
+
+      <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">⏱ Délais de paiement &amp; ✈️ Missions</div>
+        <p style="font-size:.82rem;line-height:1.8">
+          <strong>Délais</strong> : délai calculé entre date de facture et date de paiement via N° pièce SAP. Vue par fournisseur ou détail. Rouge &gt;60j, orange &gt;30j.<br>
+          <strong>Missions</strong> : détection via <code>Saisi par = NOTILUSBUS</code>. Lien Notilus <code>/#/OD/XXX</code> (OM) ou <code>/#/OMP/XXX</code> (ordre permanent). Drill-down par programme ou par ordre de mission.
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">🔗 Hyperliens</div>
         <p style="font-size:.82rem;line-height:1.8">
-          <strong>SIFAC+</strong> (N° Commande dans les drill-downs) :<br>
+          <strong>SIFAC+</strong> :<br>
           <code style="font-size:.74rem;background:#f7f8fb;padding:2px 6px;border-radius:4px;display:block;word-break:break-all;margin:4px 0">https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&amp;/C_PurchaseOrderTP(PurchaseOrder='&lt;N°&gt;',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)</code>
-          <strong>Notilus</strong> (N° OM dans Missions) :<br>
+          <strong>Notilus</strong> :<br>
           <code style="font-size:.74rem;background:#f7f8fb;padding:2px 6px;border-radius:4px;display:block;word-break:break-all;margin:4px 0">https://esr-inrae.notilus-pio.cegid.cloud/#/OD/&lt;N°&gt; &nbsp;ou&nbsp; /#/OMP/&lt;N°&gt;</code>
         </p>
       </div>
@@ -530,7 +535,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <p style="font-size:.82rem;line-height:1.8">
           <strong>Tables obligatoires</strong> : Budget 2025, Budget 2026, Conso AE 2025, Conso AE 2026.<br>
           <strong>Tables optionnelles</strong> : Programmes &bull; CDA par CC 2025/2026 (remplace NACRES) &bull; Ventilation CC 2025/2026 (budget par centre de coûts).<br>
-          La configuration est mémorisée dans le navigateur (localStorage) et rechargée automatiquement.<br>
+          La configuration est mémorisée dans le navigateur (localStorage) et rechargée automatiquement au prochain chargement du widget.<br>
           <strong>Actualiser</strong> : recharge toutes les données depuis Grist sans repasser par la configuration.
         </p>
       </div>
