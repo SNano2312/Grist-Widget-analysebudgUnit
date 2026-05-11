@@ -2544,7 +2544,6 @@ function renderOM(){
 
   // Filtrer les lignes missions
   var omRows=CONSO.filter(function(r){
-  console.log('[OM] vue='+vue+' omRows='+omRows.length+' CONSO total='+CONSO.length+' NOTILUSBUS='+CONSO.filter(function(r){return r.saisiPar==='NOTILUSBUS';}).length);
     if(r.saisiPar!=='NOTILUSBUS') return false;
     if(ann&&String(r.annee)!==ann) return false;
     if(prg&&r.p!==prg) return false;
@@ -2552,6 +2551,7 @@ function renderOM(){
     if(cf&&r.cc!==cf) return false;
     return true;
   });
+  console.log('[OM] vue='+vue+' omRows='+omRows.length+' CONSO='+CONSO.length);
 
   if(!omRows.length){
     document.getElementById('om-kpis').innerHTML='<div style="padding:20px;color:var(--mu)">\u26a0\ufe0f Aucune donn\u00e9e mission. V\u00e9rifiez que la colonne "Saisi par" est pr\u00e9sente dans vos tables de conso.</div>';
