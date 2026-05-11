@@ -2544,6 +2544,7 @@ function renderOM(){
 
   // Filtrer les lignes missions
   var omRows=CONSO.filter(function(r){
+  console.log('[OM] vue='+vue+' omRows='+omRows.length+' CONSO total='+CONSO.length+' NOTILUSBUS='+CONSO.filter(function(r){return r.saisiPar==='NOTILUSBUS';}).length);
     if(r.saisiPar!=='NOTILUSBUS') return false;
     if(ann&&String(r.annee)!==ann) return false;
     if(prg&&r.p!==prg) return false;
