@@ -1,5 +1,4 @@
 <!
-  ['tl-ann','tl-statut','tl-vue'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.removeEventListener('change',renderTimeline);el.addEventListener('change',renderTimeline);});DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -675,7 +674,8 @@ function attachListeners(){
     [['d-ann','d-prg','d-fnd','d-cf','d-statut','d-vue'],renderDelais],
     [['r-ann','r-prg','r-fnd','r-cf'],renderRepartition],
     [['s-ann','s-cf'],renderSynthese],
-    [['cc-ann','cc-cf','cc-prg','cc-fnd'],renderCC]
+    [['cc-ann','cc-cf','cc-prg','cc-fnd'],renderCC],
+    [['tl-ann','tl-statut','tl-vue'],renderTimeline]
   ];
   pairs.forEach(function(pair){
     pair[0].forEach(function(id){
@@ -2551,7 +2551,6 @@ function renderOM(){
     if(cf&&r.cc!==cf) return false;
     return true;
   });
-  console.log('[OM] vue='+vue+' omRows='+omRows.length+' CONSO='+CONSO.length);
 
   if(!omRows.length){
     document.getElementById('om-kpis').innerHTML='<div style="padding:20px;color:var(--mu)">\u26a0\ufe0f Aucune donn\u00e9e mission. V\u00e9rifiez que la colonne "Saisi par" est pr\u00e9sente dans vos tables de conso.</div>';
