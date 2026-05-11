@@ -3609,7 +3609,7 @@ function renderDashboard(){
   bar.style.cssText='height:6px;background:#f0f1f5;border-radius:3px;margin-top:8px;overflow:hidden';
   var fill=document.createElement('div');
   fill.style.cssText='height:100%;border-radius:3px;background:'+clG+';width:'+Math.min(tauxG,100).toFixed(1)+'%';
-  bar.appendChild(fill); kTaux.querySelector('.pnl').appendChild(bar);
+  bar.appendChild(fill); kTaux.appendChild(bar);
   krow.appendChild(kTaux);
 
   var nbEr=alertes.filter(function(a){return a.niv==='er';}).length;
