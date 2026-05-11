@@ -191,7 +191,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
   </div></div>
 
   <!-- TABLEAU DE BORD -->
-  <div id="vw-db" style="display:none"><div id="db-content" style="padding:4px 0"></div></div>
+  <div id="vw-db" style="display:none"><div id="db-content" style="padding:4px 0"><div id="db-loading" style="padding:20px;color:#6b7280;font-size:.9rem">Chargement du tableau de bord...</div></div></div>
 
   <!-- SYNTHÈSE -->
   <div id="vw-s">
@@ -3511,6 +3511,7 @@ window.renderTimeline=renderTimeline;
 // TABLEAU DE BORD EXÉCUTIF
 // ════════════════════════════════════════════════════════
 function renderDashboard(){
+  try{
   console.log('[DB] BUDGET='+BUDGET.length+' _PROG_INFO='+Object.keys(window._PROG_INFO||{}).length);
   var today = new Date();
   var pi = window._PROG_INFO || {};
@@ -3726,6 +3727,7 @@ function renderDashboard(){
     nav.appendChild(btn);
   });
   el.appendChild(nav);
+  } catch(e){ console.error('[DB] ERREUR:',e); document.getElementById('db-content').innerHTML='<div style="color:red;padding:20px">Erreur dashboard: '+e.message+'</div>'; }
 }
 window.renderDashboard=renderDashboard;
 
