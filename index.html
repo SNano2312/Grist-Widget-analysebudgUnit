@@ -364,6 +364,13 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
 
   <!-- COMMANDES NON SOLDÉES -->
   <div id="vw-open" style="display:none">
+    <!-- Sous-onglets -->
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+      <button id="open-tab-cdes" class="btn" style="background:var(--pr);color:#fff;border-color:var(--pr)" onclick="switchOpenTab('cdes')">🔴 Non soldées</button>
+      <button id="open-tab-livr" class="btn" onclick="switchOpenTab('livr')">📦 Délais livraison</button>
+    </div>
+    <!-- Vue non soldées -->
+    <div id="open-view-cdes">
     <div class="flt">
       <div class="fg"><label>Année</label><select id="o-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
       <div class="fg"><label>Programme</label><select id="o-prg"><option value="">Tous</option></select></div>
@@ -373,6 +380,32 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     </div>
     <div class="ks" id="open-kpis"></div>
     <div class="tw"><table><thead id="open-th"></thead><tbody id="open-tb"></tbody><tfoot id="open-tf"></tfoot></table></div>
+    </div><!-- fin open-view-cdes -->
+
+    <!-- Vue délais de livraison -->
+    <div id="open-view-livr" style="display:none">
+      <div class="flt">
+        <div class="fg"><label>Année</label><select id="livr-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+        <div class="fg"><label>Statut</label><select id="livr-statut"><option value="">Tous</option><option value="retard">En retard</option><option value="proche">Proche (&lt;30j)</option><option value="avenir">À venir (&gt;30j)</option></select></div>
+        <div class="fg"><label>Programme</label><select id="livr-prg"><option value="">Tous</option></select></div>
+        <div class="fg"><label>CC</label><select id="livr-cf"><option value="">Tous</option></select></div>
+      </div>
+      <div class="ks" id="livr-kpis"></div>
+      <!-- Vue agrégée par fournisseur -->
+      <div class="pnl" style="margin-bottom:14px">
+        <div class="pnl-t">Par fournisseur</div>
+        <div class="tw"><table><thead id="livr-four-th"></thead><tbody id="livr-four-tb"></tbody><tfoot id="livr-four-tf"></tfoot></table></div>
+      </div>
+      <!-- Drill-down détail -->
+      <div id="livr-drv" style="display:none;margin-top:12px">
+        <div class="drh">
+          <button class="btn" onclick="closeLivrDrill()">← Retour</button>
+          <span id="livr-dr-title" style="font-weight:600;font-size:.95rem"></span>
+        </div>
+        <div class="ks" id="livr-dr-kpis"></div>
+        <div class="tw"><table><thead id="livr-dr-th"></thead><tbody id="livr-dr-tb"></tbody></table></div>
+      </div>
+    </div><!-- fin open-view-livr -->
   </div>
 
   <!-- CENTRES DE COÛTS -->
@@ -687,7 +720,8 @@ function attachListeners(){
     [['r-ann','r-prg','r-fnd','r-cf'],renderRepartition],
     [['s-ann','s-cf'],renderSynthese],
     [['cc-ann','cc-cf','cc-prg','cc-fnd'],renderCC],
-    [['tl-ann','tl-statut','tl-vue'],renderTimeline]
+    [['tl-ann','tl-statut','tl-vue'],renderTimeline],
+    [['livr-ann','livr-statut','livr-prg','livr-cf'],renderLivraison]
   ];
   pairs.forEach(function(pair){
     pair[0].forEach(function(id){
@@ -927,9 +961,18 @@ async function lanceAnalyse(){
           const resteFact=N('Valeur_restante_a_facturer');
           const agenceVoyage=nacreCode.toUpperCase().startsWith('DC.01');
           const surMarche=agenceVoyage||(typeDoc==='OSMA');
+          // Date de livraison prévue (timestamp Grist → Date)
+          const dlvTs=raw['Date_de_livraison_suivante']?raw['Date_de_livraison_suivante'][ii]:null;
+          let dateLivr=null;
+          if(dlvTs&&typeof dlvTs==='number'&&dlvTs>0){
+            const _d=new Date(dlvTs*1000);
+            dateLivr=_d.getFullYear()+'-'+String(_d.getMonth()+1).padStart(2,'0')+'-'+String(_d.getDate()).padStart(2,'0');
+          } else if(dlvTs&&typeof dlvTs==='string'&&dlvTs.match(/\d{4}/)){
+            dateLivr=dlvTs.substring(0,10);
+          }
           if(cc) window.CDA_CC.push({annee:yr,cc,nacreCode,nacreDesc,cmd,typeDoc,
             four,desig:G('Designation'),val,resteLivr,resteFact,
-            prog,fonds,surMarche,agenceVoyage});
+            prog,fonds,surMarche,agenceVoyage,dateLivr});
         }
       }catch(e){console.warn('[CDA'+yr+']',e.message);}
     }
@@ -2458,6 +2501,7 @@ window.sortDrillX=sortDrillX;
 // COMMANDES NON SOLDÉES
 // ════════════════════════════════════
 function renderOpenOrders(){
+  if(_openSubTab==='livr'){renderLivraison();return;}
   var ann=document.getElementById('o-ann').value;
   var prg=document.getElementById('o-prg').value;
   var fnd=document.getElementById('o-fnd').value;
@@ -3738,6 +3782,187 @@ function renderDashboard(){
   } catch(e){ console.error('[DB] ERREUR:',e); document.getElementById('db-content').innerHTML='<div style="color:red;padding:20px">Erreur dashboard: '+e.message+'</div>'; }
 }
 window.renderDashboard=renderDashboard;
+
+
+// ════════════════════════════════════════════════════════
+// DÉLAIS DE LIVRAISON — SOUS-ONGLET DE CDES NON SOLDÉES
+// ════════════════════════════════════════════════════════
+var _openSubTab = 'cdes';
+
+function switchOpenTab(tab){
+  _openSubTab = tab;
+  ['cdes','livr'].forEach(function(t){
+    var v = document.getElementById('open-view-'+t);
+    var b = document.getElementById('open-tab-'+t);
+    if(v) v.style.display = t===tab ? '' : 'none';
+    if(b){
+      b.style.background = t===tab ? 'var(--pr)' : '';
+      b.style.color = t===tab ? '#fff' : '';
+      b.style.borderColor = t===tab ? 'var(--pr)' : '';
+    }
+  });
+  if(tab==='livr') renderLivraison();
+}
+window.switchOpenTab = switchOpenTab;
+
+function renderLivraison(){
+  var today = new Date();
+  today.setHours(0,0,0,0);
+  var ann   = (document.getElementById('livr-ann')||{}).value||'';
+  var statut= (document.getElementById('livr-statut')||{}).value||'';
+  var prg   = (document.getElementById('livr-prg')||{}).value||'';
+  var cf    = (document.getElementById('livr-cf')||{}).value||'';
+
+  // Peupler les filtres
+  var allPrg = [...new Set((window.CDA_CC||[]).map(function(r){return r.prog;}).filter(Boolean))].sort();
+  var allCC  = [...new Set((window.CDA_CC||[]).map(function(r){return r.cc;}).filter(Boolean))].sort();
+  ['livr-prg','livr-cf'].forEach(function(id, idx){
+    var el = document.getElementById(id); if(!el) return;
+    var cur = el.value, opts = idx===0?allPrg:allCC;
+    el.innerHTML = '<option value="">Tous</option>';
+    opts.forEach(function(v){ el.innerHTML += '<option value="'+esc(v)+'">'+esc(v)+'</option>'; });
+    if(cur) el.value = cur;
+  });
+
+  // Filtrer les lignes CDA avec dateLivr et resteLivr > 0
+  var rows = (window.CDA_CC||[]).filter(function(r){
+    if(!r.dateLivr) return false;
+    if(r.resteLivr <= 0 && r.resteFact <= 0) return false;
+    if(ann && r.annee !== ann) return false;
+    if(prg && r.prog !== prg) return false;
+    if(cf  && r.cc   !== cf)  return false;
+    return true;
+  }).map(function(r){
+    var fd = new Date(r.dateLivr); fd.setHours(0,0,0,0);
+    var diff = Math.round((fd - today) / 864e5);
+    var statProg = diff < 0 ? 'retard' : diff <= 30 ? 'proche' : 'avenir';
+    return Object.assign({}, r, {diff:diff, statProg:statProg, livrDate:fd});
+  });
+
+  if(statut) rows = rows.filter(function(r){return r.statProg===statut;});
+  rows.sort(function(a,b){return a.diff-b.diff;}); // retards d'abord
+
+  // KPIs
+  var nbRetard = rows.filter(function(r){return r.statProg==='retard';}).length;
+  var nbProche = rows.filter(function(r){return r.statProg==='proche';}).length;
+  var nbAvenir = rows.filter(function(r){return r.statProg==='avenir';}).length;
+  var totRAR   = rows.reduce(function(s,r){return s+r.resteLivr;},0);
+  document.getElementById('livr-kpis').innerHTML =
+    '<div class="kpi"><div class="kl">Lignes avec date</div><div class="kv">'+rows.length+'</div></div>'+
+    (nbRetard?'<div class="kpi"><div class="kl">En retard</div><div class="kv c-er">'+nbRetard+'</div></div>':'')+
+    (nbProche?'<div class="kpi"><div class="kl">Proche (&lt;30j)</div><div class="kv c-wn">'+nbProche+'</div></div>':'')+
+    (nbAvenir?'<div class="kpi"><div class="kl">À venir</div><div class="kv c-ok">'+nbAvenir+'</div></div>':'')+
+    '<div class="kpi"><div class="kl">RAR total</div><div class="kv c-wn">'+fmt(totRAR)+' €</div></div>';
+
+  if(!rows.length){
+    document.getElementById('livr-four-tb').innerHTML =
+      '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--mu)">'+
+      (!(window.CDA_CC||[]).some(function(r){return r.dateLivr;})?
+        'Aucune date de livraison dans les données CDA — vérifiez que la colonne <code>Date_de_livraison_suivante</code> existe dans votre table CDA par CC.':
+        'Aucune livraison en attente pour ces filtres.')+'</td></tr>';
+    document.getElementById('livr-four-th').innerHTML='';
+    return;
+  }
+
+  // Agréger par fournisseur
+  var byFour = {};
+  rows.forEach(function(r){
+    var k = r.four||'Inconnu';
+    if(!byFour[k]) byFour[k]={four:k, nb:0, rar:0, retard:0, proche:0, minDiff:9999, cmds:[]};
+    var g = byFour[k];
+    g.nb++; g.rar+=r.resteLivr;
+    if(r.statProg==='retard') g.retard++;
+    if(r.statProg==='proche') g.proche++;
+    g.minDiff = Math.min(g.minDiff, r.diff);
+    g.cmds.push(r);
+  });
+  var fourList = Object.values(byFour).sort(function(a,b){return a.minDiff-b.minDiff;});
+  window._livrFour = fourList;
+
+  document.getElementById('livr-four-th').innerHTML =
+    '<tr><th>Fournisseur</th><th style="text-align:right">Nb lignes</th>'+
+    '<th style="text-align:right">RAR</th><th style="text-align:right">En retard</th>'+
+    '<th style="text-align:right">Proche</th><th>Prochaine livr.</th></tr>';
+  document.getElementById('livr-four-tb').innerHTML = fourList.map(function(g, i){
+    var cl = g.retard>0?'c-er':g.proche>0?'c-wn':'c-ok';
+    var jLabel = g.minDiff<0 ? '<span class="c-er">J'+g.minDiff+'</span>' :
+                 g.minDiff===0 ? '<span class="c-wn">Aujourd\'hui</span>' :
+                 '<span class="c-ok">J+'+g.minDiff+'</span>';
+    return '<tr style="cursor:pointer" onclick="openLivrDrill('+i+')" title="Voir le détail">'+
+      '<td style="font-weight:600">'+esc(g.four)+'</td>'+
+      '<td style="text-align:right">'+g.nb+'</td>'+
+      '<td style="text-align:right">'+fmt(g.rar)+' €</td>'+
+      '<td style="text-align:right;color:'+(g.retard>0?'var(--er)':'var(--mu)')+'">'+g.retard+'</td>'+
+      '<td style="text-align:right;color:'+(g.proche>0?'var(--wn)':'var(--mu)')+'">'+g.proche+'</td>'+
+      '<td>'+jLabel+'</td>'+
+    '</tr>';
+  }).join('');
+  var totF = fourList.reduce(function(s,g){return s+g.rar;},0);
+  document.getElementById('livr-four-tf').innerHTML =
+    '<tr><td>TOTAL ('+fourList.length+' fournisseurs)</td><td style="text-align:right">'+
+    rows.length+'</td><td style="text-align:right">'+fmt(totF)+' €</td><td colspan="3"></td></tr>';
+}
+
+function openLivrDrill(idx){
+  var g = (window._livrFour||[])[idx]; if(!g) return;
+  var today = new Date(); today.setHours(0,0,0,0);
+  document.getElementById('livr-dr-title').textContent = g.four + ' — ' + g.cmds.length + ' ligne(s)';
+
+  var nbR=g.cmds.filter(function(r){return r.statProg==='retard';}).length;
+  var nbP=g.cmds.filter(function(r){return r.statProg==='proche';}).length;
+  var totRAR=g.cmds.reduce(function(s,r){return s+r.resteLivr;},0);
+  var retardMoy=nbR>0?Math.round(g.cmds.filter(function(r){return r.statProg==='retard';}).reduce(function(s,r){return s+Math.abs(r.diff);},0)/nbR):0;
+  document.getElementById('livr-dr-kpis').innerHTML =
+    '<div class="kpi"><div class="kl">Lignes</div><div class="kv">'+g.cmds.length+'</div></div>'+
+    '<div class="kpi"><div class="kl">RAR total</div><div class="kv c-wn">'+fmt(totRAR)+' €</div></div>'+
+    (nbR?'<div class="kpi"><div class="kl">En retard</div><div class="kv c-er">'+nbR+' (moy. '+retardMoy+'j)</div></div>':'')+
+    (nbP?'<div class="kpi"><div class="kl">Proche</div><div class="kv c-wn">'+nbP+'</div></div>':'');
+
+  var sapBase="https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&/C_PurchaseOrderTP(PurchaseOrder='";
+  var sapSuf="',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)";
+  document.getElementById('livr-dr-th').innerHTML =
+    '<tr><th>N° Commande</th><th>CC</th><th>Programme</th><th>NACRES</th><th>Désignation</th>'+
+    '<th style="text-align:right">RAR livr.</th><th style="text-align:right">Reste fact.</th>'+
+    '<th>Date livr. prévue</th><th>Statut</th></tr>';
+  document.getElementById('livr-dr-tb').innerHTML = g.cmds.map(function(r){
+    var cl = r.statProg==='retard'?'#dc2626':r.statProg==='proche'?'#d97706':'#16a34a';
+    var jLabel = r.diff<0?'Retard '+Math.abs(r.diff)+'j':r.diff===0?'Aujourd\'hui':'J+'+r.diff;
+    var cmdLink = r.cmd?'<a href="'+sapBase+encodeURIComponent(r.cmd)+sapSuf+'" target="_blank" style="color:var(--pr);font-weight:500">'+esc(r.cmd)+'</a>':'-';
+    var rowStyle = r.statProg==='retard'?'background:#fff5f5':'';
+    return '<tr style="'+rowStyle+'">'+
+      '<td>'+cmdLink+'</td>'+
+      '<td style="color:var(--pr);font-weight:500">'+esc(r.cc||'-')+'</td>'+
+      '<td>'+esc(r.prog||'-')+'</td>'+
+      '<td>'+esc(r.nacreCode||'-')+'</td>'+
+      '<td>'+esc(r.desig||'-')+'</td>'+
+      '<td style="text-align:right">'+fmt(r.resteLivr)+' €</td>'+
+      '<td style="text-align:right">'+fmt(r.resteFact)+' €</td>'+
+      '<td>'+esc(r.dateLivr||'-')+'</td>'+
+      '<td style="font-weight:600;color:'+cl+'">'+jLabel+'</td>'+
+    '</tr>';
+  }).join('');
+
+  var drv = document.getElementById('livr-drv');
+  drv.style.display='block';
+  drv.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function closeLivrDrill(){
+  document.getElementById('livr-drv').style.display='none';
+}
+window.openLivrDrill=openLivrDrill;
+window.closeLivrDrill=closeLivrDrill;
+window.renderLivraison=renderLivraison;
+
+// Ajouter les listeners livraison dans attachListeners
+(function(){
+  var ids=['livr-ann','livr-statut','livr-prg','livr-cf'];
+  ids.forEach(function(id){
+    var el=document.getElementById(id); if(!el) return;
+    el.removeEventListener('change',renderLivraison);
+    el.addEventListener('change',renderLivraison);
+  });
+})();
 
 </script>
 </body>
