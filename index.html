@@ -155,10 +155,11 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
   </div>
   <div class="tabs" style="flex-wrap:wrap;gap:2px">
     <!-- Groupe Budget -->
+    <div class="tab" id="tab-db" onclick="switchTab('db')" style="font-weight:700">🏠 Tableau de bord</div>
     <div class="tab-group">
       <div class="tab-group-label">📊 Budget</div>
       <div class="tab-group-items">
-        <div class="tab on" id="tab-s" onclick="switchTab('s')">Synthèse</div>
+        <div class="tab" id="tab-s" onclick="switchTab('s')">Synthèse</div>
         <div class="tab" id="tab-h" onclick="switchTab('h')">Histogramme</div>
         <div class="tab" id="tab-e" onclick="switchTab('e')">Évolution</div>
         <div class="tab" id="tab-x" onclick="switchTab('x')">Tableau croisé</div>
@@ -188,6 +189,9 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <div class="tab" id="tab-cc" onclick="switchTab('cc')">🏦 Centres de coûts</div>
     <div class="tab" id="tab-doc" onclick="switchTab('doc')">📖 Documentation</div>
   </div></div>
+
+  <!-- TABLEAU DE BORD -->
+  <div id="vw-db" style="display:none"><div id="db-content" style="padding:4px 0"></div></div>
 
   <!-- SYNTHÈSE -->
   <div id="vw-s">
@@ -952,7 +956,7 @@ async function lanceAnalyse(){
       if(cur) el.value=cur;
     });
     fillFilters();
-    switchTab('s');
+    switchTab('db');
   }catch(e){
     hideLd();
     document.getElementById('cfg-err').textContent='❌ '+e.message;
@@ -1153,7 +1157,7 @@ function fillFilters(){
 
 function switchTab(t){
   _currentTab=t;
-  ['s','h','e','x','f','d','r','om','nacres','pluri','open','cc','tl','doc'].forEach(function(k){
+  ['db','s','h','e','x','f','d','r','om','nacres','pluri','open','cc','tl','doc'].forEach(function(k){
     var tab=document.getElementById('tab-'+k);
     var vw=document.getElementById('vw-'+k);
     if(tab) tab.classList.toggle('on',k===t);
@@ -1161,6 +1165,7 @@ function switchTab(t){
   });
   var btnExp=document.getElementById('btn-export');
   if(btnExp) btnExp.style.display=['x','f','d','om','nacres','pluri','open','cc'].includes(t)?'':'none';
+  if(t==='db') renderDashboard();
   if(t==='s') renderSynthese();
   if(t==='e') renderEvol();
   if(t==='x') renderCross();
@@ -3496,6 +3501,233 @@ function renderTimeline(){
   document.getElementById('tl-timeline').innerHTML=svg;
 }
 window.renderTimeline=renderTimeline;
+
+// ════════════════════════════════════════════════════════
+// TABLEAU DE BORD EXÉCUTIF
+// ════════════════════════════════════════════════════════
+
+
+// ════════════════════════════════════════════════════════
+// TABLEAU DE BORD EXÉCUTIF
+// ════════════════════════════════════════════════════════
+function renderDashboard(){
+  var today = new Date();
+  var pi = window._PROG_INFO || {};
+
+  // Agrégation globale
+  var totBud=0, totConso=0, totCda=0, totPaye=0;
+  var byProg = {};
+  BUDGET.forEach(function(b){
+    totBud+=b.bud; totConso+=b.conso; totCda+=b.cda; totPaye+=b.paye;
+    if(!byProg[b.prog]) byProg[b.prog]={bud:0,conso:0,cda:0,rar:0,om:0,nf:0,paye:0};
+    var g=byProg[b.prog];
+    g.bud+=b.bud; g.conso+=b.conso; g.cda+=b.cda;
+    g.rar+=b.rar; g.om+=b.om; g.nf+=b.nf; g.paye+=b.paye;
+  });
+  var tauxG = totBud>0 ? totConso/totBud*100 : 0;
+  var clG   = tauxG>=90?'#16a34a':tauxG>=50?'#d97706':'#dc2626';
+
+  // Alertes
+  var alertes = [];
+  Object.keys(byProg).forEach(function(prog){
+    var g=byProg[prog], info=pi[prog]||{};
+    var eng = g.cda+g.rar+g.om+g.nf;
+    var taux = g.bud>0 ? g.conso/g.bud*100 : 0;
+    if(eng > g.bud && g.bud>0)
+      alertes.push({prog:prog, nom:info.nom||prog, niv:'er', msg:'Sur-engagement'});
+    else if(g.rar>0 && g.bud>0 && g.rar/g.bud>0.2)
+      alertes.push({prog:prog, nom:info.nom||prog, niv:'wn', msg:'RAR '+Math.round(g.rar/g.bud*100)+'%'});
+    if(info.dateFin){
+      var p=info.dateFin.split('-');
+      var fd=new Date(+p[0],+p[1]-1,28);
+      var j=Math.round((fd-today)/864e5);
+      if(j>=0 && j<=90 && taux<50)
+        alertes.push({prog:prog, nom:info.nom||prog, niv:'er', msg:'J-'+j+' — '+taux.toFixed(0)+'% conso'});
+      else if(j>=0 && j<=120)
+        alertes.push({prog:prog, nom:info.nom||prog, niv:'wn', msg:'Echéance J-'+j});
+    }
+  });
+
+  // Top sous-consommés (taux < 80%, budget > 1000)
+  var sousConso = Object.keys(byProg).map(function(p){
+    var g=byProg[p], t=g.bud>0?g.conso/g.bud*100:0;
+    return {prog:p, nom:(pi[p]&&pi[p].nom)||p, bud:g.bud, conso:g.conso, taux:t, nc:Math.max(0,g.bud-g.conso)};
+  }).filter(function(p){return p.bud>1000&&p.taux<80;})
+    .sort(function(a,b){return a.taux-b.taux;}).slice(0,3);
+
+  // Échéances proches (<=180j)
+  var echeances = [];
+  Object.keys(pi).forEach(function(prog){
+    var info=pi[prog]; if(!info||!info.dateFin) return;
+    var p=info.dateFin.split('-');
+    var fd=new Date(+p[0],+p[1]-1,28);
+    var j=Math.round((fd-today)/864e5);
+    if(j<0||j>180) return;
+    var g=byProg[prog]||{bud:0,conso:0};
+    echeances.push({prog:prog, nom:info.nom||prog, diff:j,
+      taux:g.bud>0?g.conso/g.bud*100:0, bud:g.bud, nc:Math.max(0,g.bud-g.conso)});
+  });
+  echeances.sort(function(a,b){return a.diff-b.diff;});
+
+  // Commandes non soldées
+  var cns = (window.NACRES_DATA||[]).filter(function(r){return r.rest>0;});
+  var nbCns = cns.length;
+  var totRest = cns.reduce(function(s,r){return s+r.rest;},0);
+
+  // ── Construction DOM sans concaténation de strings JS ──
+  var el = document.getElementById('db-content');
+  el.innerHTML = '';
+
+  // Styles inline pour la grille
+  function mkKPI(label, val, sub, color){
+    var d=document.createElement('div');
+    d.className='pnl';
+    d.style.cssText='text-align:center;padding:18px 12px';
+    d.innerHTML='<div style="font-size:.72rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">'+label+'</div>'+
+      '<div style="font-size:1.5rem;font-weight:800;color:'+(color||'inherit')+'">'+val+'</div>'+
+      (sub?'<div style="font-size:.78rem;color:var(--mu);margin-top:3px">'+sub+'</div>':'');
+    return d;
+  }
+
+  // KPIs row
+  var krow = document.createElement('div');
+  krow.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:18px';
+  krow.appendChild(mkKPI('Budget total AE', fmt(totBud)+' €', null, null));
+
+  var kTaux=mkKPI('Taux de consommation', tauxG.toFixed(1)+'%', null, clG);
+  var bar=document.createElement('div');
+  bar.style.cssText='height:6px;background:#f0f1f5;border-radius:3px;margin-top:8px;overflow:hidden';
+  var fill=document.createElement('div');
+  fill.style.cssText='height:100%;border-radius:3px;background:'+clG+';width:'+Math.min(tauxG,100).toFixed(1)+'%';
+  bar.appendChild(fill); kTaux.querySelector('.pnl').appendChild(bar);
+  krow.appendChild(kTaux);
+
+  var nbEr=alertes.filter(function(a){return a.niv==='er';}).length;
+  krow.appendChild(mkKPI('Alertes actives', alertes.length,
+    'dont '+nbEr+' critiques', alertes.length>0?(nbEr>0?'#dc2626':'#d97706'):null));
+  krow.appendChild(mkKPI('Cdes non soldées', nbCns,
+    fmt(totRest)+' € restants', nbCns>0?'#dc2626':null));
+  krow.appendChild(mkKPI('Payé CP', fmt(totPaye)+' €', null, null));
+  el.appendChild(krow);
+
+  // 3 panneaux
+  var grid=document.createElement('div');
+  grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px';
+
+  // Panneau alertes
+  var pA=document.createElement('div'); pA.className='pnl';
+  var titleA=document.createElement('div'); titleA.className='pnl-t';
+  titleA.textContent='Alertes ('+alertes.length+')'; pA.appendChild(titleA);
+  if(!alertes.length){
+    var ok=document.createElement('div');
+    ok.style.cssText='color:var(--ok);font-size:.85rem;padding:4px 0';
+    ok.textContent='Aucune alerte'; pA.appendChild(ok);
+  } else {
+    alertes.slice(0,6).forEach(function(a){
+      var row=document.createElement('div');
+      row.style.cssText='display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:1px solid #f0f1f5;cursor:pointer;gap:8px';
+      row.onclick=function(){switchTab('s');};
+      var nm=document.createElement('span');
+      nm.style.cssText='font-weight:600;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px';
+      nm.textContent=a.nom;
+      var mg=document.createElement('span');
+      mg.style.cssText='font-size:.76rem;color:'+(a.niv==='er'?'#dc2626':'#d97706')+';white-space:nowrap';
+      mg.textContent=a.msg;
+      row.appendChild(nm); row.appendChild(mg); pA.appendChild(row);
+    });
+    if(alertes.length>6){
+      var more=document.createElement('div');
+      more.style.cssText='font-size:.76rem;color:var(--mu);margin-top:6px;cursor:pointer';
+      more.textContent='+'+(alertes.length-6)+' autres → Synthèse';
+      more.onclick=function(){switchTab('s');};
+      pA.appendChild(more);
+    }
+  }
+  grid.appendChild(pA);
+
+  // Panneau sous-consommés
+  var pS=document.createElement('div'); pS.className='pnl';
+  var titleS=document.createElement('div'); titleS.className='pnl-t';
+  titleS.textContent='Top sous-consommés'; pS.appendChild(titleS);
+  if(!sousConso.length){
+    var okS=document.createElement('div');
+    okS.style.cssText='color:var(--ok);font-size:.85rem;padding:4px 0';
+    okS.textContent='Tous les programmes bien engagés'; pS.appendChild(okS);
+  } else {
+    sousConso.forEach(function(p){
+      var row=document.createElement('div');
+      row.style.cssText='padding:7px 0;border-bottom:1px solid #f0f1f5;cursor:pointer';
+      row.onclick=(function(pr){return function(){drillFromSynthese(pr);};})(p.prog);
+      var top=document.createElement('div');
+      top.style.cssText='display:flex;justify-content:space-between;margin-bottom:4px';
+      var nm=document.createElement('span');
+      nm.style.cssText='font-weight:600;font-size:.84rem';
+      nm.textContent=p.nom;
+      var pct=document.createElement('span');
+      pct.className='rb r-er';
+      pct.style.fontSize='.74rem';
+      pct.textContent=p.taux.toFixed(0)+'%';
+      top.appendChild(nm); top.appendChild(pct); row.appendChild(top);
+      var barW=document.createElement('div');
+      barW.style.cssText='height:5px;background:#f0f1f5;border-radius:3px;overflow:hidden';
+      var barF=document.createElement('div');
+      barF.style.cssText='height:100%;border-radius:3px;background:#dc2626;width:'+Math.min(p.taux,100).toFixed(1)+'%';
+      barW.appendChild(barF); row.appendChild(barW);
+      var sub=document.createElement('div');
+      sub.style.cssText='font-size:.74rem;color:var(--mu);margin-top:3px';
+      sub.textContent='Budget '+fmt(p.bud)+' € — '+fmt(p.nc)+' € non consommé';
+      row.appendChild(sub); pS.appendChild(row);
+    });
+  }
+  grid.appendChild(pS);
+
+  // Panneau échéances
+  var pE=document.createElement('div'); pE.className='pnl';
+  var titleE=document.createElement('div'); titleE.className='pnl-t';
+  titleE.textContent='Échéances proches (≤180j)'; pE.appendChild(titleE);
+  if(!echeances.length){
+    var noEch=document.createElement('div');
+    noEch.style.cssText='font-size:.85rem;color:var(--mu);padding:4px 0';
+    noEch.textContent='Aucune échéance dans les 180 jours'+(Object.keys(pi).length===0?' — configurez la Table Programmes':'');
+    pE.appendChild(noEch);
+  } else {
+    echeances.forEach(function(e){
+      var cl=e.diff<=30?'#dc2626':e.diff<=90?'#d97706':'#16a34a';
+      var row=document.createElement('div');
+      row.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #f0f1f5;cursor:pointer;gap:8px';
+      row.onclick=function(){switchTab('tl');};
+      var left=document.createElement('div');
+      var nm=document.createElement('div');
+      nm.style.cssText='font-weight:600;font-size:.82rem'; nm.textContent=e.nom;
+      var sub=document.createElement('div');
+      sub.style.cssText='font-size:.74rem;color:var(--mu)';
+      sub.textContent=fmt(e.bud)+' € — '+e.taux.toFixed(0)+'% conso';
+      left.appendChild(nm); left.appendChild(sub);
+      var jlabel=document.createElement('span');
+      jlabel.style.cssText='font-weight:700;font-size:.85rem;color:'+cl+';white-space:nowrap';
+      jlabel.textContent='J-'+e.diff;
+      row.appendChild(left); row.appendChild(jlabel); pE.appendChild(row);
+    });
+  }
+  grid.appendChild(pE);
+  el.appendChild(grid);
+
+  // Accès rapide
+  var nav=document.createElement('div');
+  nav.style.cssText='margin-top:14px;padding:10px 14px;background:#f7f8fb;border-radius:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center';
+  var navLabel=document.createElement('span');
+  navLabel.style.cssText='font-size:.72rem;font-weight:700;color:var(--mu);margin-right:4px';
+  navLabel.textContent='ACCÈS RAPIDE'; nav.appendChild(navLabel);
+  [['s','Synthèse'],['h','Histogramme'],['nacres','NACRES'],['open','Cdes non soldées'],['cc','Centres de coûts'],['tl','Échéances']].forEach(function(pair){
+    var btn=document.createElement('button');
+    btn.className='btn'; btn.textContent=pair[1];
+    btn.onclick=(function(t){return function(){switchTab(t);};})(pair[0]);
+    nav.appendChild(btn);
+  });
+  el.appendChild(nav);
+}
+window.renderDashboard=renderDashboard;
+
 </script>
 </body>
 </html>
