@@ -582,6 +582,14 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     </div>
   </div>
 <script>
+window.onerror=function(msg,src,line){
+  var d=document.getElementById('cfg-err')||document.body;
+  var e=document.createElement('div');
+  e.style='color:red;padding:8px;font-size:.8rem;border:1px solid red;margin:4px';
+  e.textContent='ERREUR JS: '+msg+' L'+line;
+  d.insertBefore(e,d.firstChild);
+  return false;
+};
 // ════════════════════════════════════════
 // STATE
 // ════════════════════════════════════════
