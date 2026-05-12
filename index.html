@@ -153,26 +153,14 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <button class="btn" onclick="retourCfg()">↩ Changer les sources</button>
     </div>
   </div>
-  <!-- BARRE RECHERCHE + FILTRE PÉRIODE -->
-  <div id="top-bar" style="display:none;gap:0;flex-direction:column;margin-bottom:10px;border:1px solid var(--bd);border-radius:8px;overflow:hidden">
-    <!-- Ligne 1 : Recherche -->
-    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f7f8fb;border-bottom:1px solid var(--bd)">
+  <!-- BARRE RECHERCHE -->
+  <div id="top-bar" style="display:none;margin-bottom:10px;border:1px solid var(--bd);border-radius:8px;overflow:hidden">
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f7f8fb">
       <span style="font-size:.78rem;font-weight:700;color:var(--mu);white-space:nowrap">🔍</span>
       <input id="search-input" type="text" placeholder="N° commande, OM, fournisseur, NACRES…"
         style="flex:1;border:1px solid var(--bd);border-radius:6px;padding:5px 10px;font-size:.82rem;outline:none;background:#fff"
         oninput="runSearch(this.value)" onkeydown="if(event.key==='Escape'){this.value='';runSearch('');}">
       <button class="btn" onclick="document.getElementById('search-input').value='';runSearch('');" style="padding:3px 8px;font-size:.8rem" title="Effacer">✕</button>
-    </div>
-    <!-- Ligne 2 : Filtre période -->
-    <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;background:#fff;flex-wrap:wrap">
-      <span style="font-size:.78rem;font-weight:700;color:var(--mu);white-space:nowrap">📅 Période</span>
-      <label style="font-size:.78rem;color:var(--mu)">Du</label>
-      <input id="period-from" type="date" style="border:1px solid var(--bd);border-radius:6px;padding:3px 8px;font-size:.82rem">
-      <label style="font-size:.78rem;color:var(--mu)">Au</label>
-      <input id="period-to" type="date" style="border:1px solid var(--bd);border-radius:6px;padding:3px 8px;font-size:.82rem">
-      <button class="btn" onclick="applyPeriod()" style="padding:3px 10px;font-size:.78rem;background:var(--pr);color:#fff;border-color:var(--pr)">Appliquer</button>
-      <button class="btn" id="period-active-btn" style="padding:3px 10px;font-size:.78rem;display:none" onclick="clearPeriod()">✕ Effacer période</button>
-      <span id="period-label" style="font-size:.75rem;color:var(--pr);font-style:italic;display:none"></span>
     </div>
   </div>
     <!-- RÉSULTATS RECHERCHE -->
@@ -744,7 +732,8 @@ function attachListeners(){
     [['s-ann','s-cf'],renderSynthese],
     [['cc-ann','cc-cf','cc-prg','cc-fnd'],renderCC],
     [['tl-ann','tl-statut','tl-vue'],renderTimeline],
-    [['livr-ann','livr-statut','livr-prg','livr-cf'],renderLivraison]
+    [['livr-ann','livr-statut','livr-prg','livr-cf'],renderLivraison],
+    [['x-ann','x-prg','x-fnd','x-from','x-to'],renderCross]
   ];
   pairs.forEach(function(pair){
     pair[0].forEach(function(id){
@@ -1319,6 +1308,7 @@ function openDrill(label){
   document.getElementById('cv').style.display='none';
   document.getElementById('drv').style.display='block';
   const gl=_grp==='prog'?'Programme':_grp==='fonds'?'Fonds':'Année';
+  window._lastDrillLabel=label;
   document.getElementById('dr-title').textContent=gl+' : '+label;
   const g=_grpd[label], p=g.bud>0?g.conso/g.bud*100:0, cl=p>=90?'c-ok':p>=50?'c-wn':'c-er';
   document.getElementById('dr-kpis').innerHTML=
@@ -1330,13 +1320,35 @@ function openDrill(label){
   const fp=_grp==='prog'?label:(f.prg&&f.prg!==''?f.prg:null);
   const ff=_grp==='fonds'?label:(f.fnd&&f.fnd!==''?f.fnd:null);
   // Filtre souple sur annee (string ou number)
-  _dRows=CONSO.filter(inPeriod).filter(function(r){
+  var _drFrom = (document.getElementById('dr-from')||{}).value||'';
+  var _drTo   = (document.getElementById('dr-to')||{}).value||'';
+  var _drFromD = _drFrom ? new Date(_drFrom) : null;
+  var _drToD   = _drTo   ? new Date(_drTo+'T23:59:59') : null;
+  _dRows=CONSO.filter(function(r){
     var okAnn = fann===null || Number(r.annee)===fann;
     var okPrg = fp===null   || r.p===fp;
     var okFnd = ff===null   || r.fo===ff;
-    return okAnn && okPrg && okFnd;
+    if(!okAnn||!okPrg||!okFnd) return false;
+    // Filtre période drill
+    if(_drFromD || _drToD){
+      if(!r.dt) return true;
+      var pts = r.dt.split('/');
+      if(pts.length===3){
+        var d=new Date(+pts[2],+pts[1]-1,+pts[0]);
+        if(_drFromD && d<_drFromD) return false;
+        if(_drToD   && d>_drToD)   return false;
+      }
+    }
+    return true;
   });
   _dSC=null; _dSD=1;
+  var _drLbl = document.getElementById('dr-period-lbl');
+  if(_drLbl){
+    var _pts=[];
+    if(_drFrom) _pts.push('du '+_drFrom.split('-').reverse().join('/'));
+    if(_drTo)   _pts.push('au '+_drTo.split('-').reverse().join('/'));
+    _drLbl.textContent = _pts.length ? _pts.join(' ') : '';
+  }
   renderDrill(_dRows,null,1);
 }
 function closeDrill(){
@@ -1496,6 +1508,27 @@ function renderEvol(){
 // ════════════════════════════════════════
 function renderCross(){
   const ann=document.getElementById('x-ann').value;
+  const xFrom=(document.getElementById('x-from')||{}).value||'';
+  const xTo=(document.getElementById('x-to')||{}).value||'';
+  // Bandeau période si filtre actif (s'applique au drill-down CONSO)
+  var xBanner=document.getElementById('x-period-banner');
+  if(!xBanner){
+    xBanner=document.createElement('div');xBanner.id='x-period-banner';
+    xBanner.style.cssText='background:#eff6ff;border:1px solid #93c5fd;border-radius:6px;padding:6px 12px;font-size:.78rem;color:#1d4ed8;margin-bottom:10px;display:none';
+    var xCont=document.getElementById('vw-x');if(xCont)xCont.insertBefore(xBanner,xCont.querySelector('.flt'));
+  }
+  if(xFrom||xTo){
+    var pts=[];
+    if(xFrom) pts.push('du '+xFrom.split('-').reverse().join('/'));
+    if(xTo)   pts.push('au '+xTo.split('-').reverse().join('/'));
+    xBanner.textContent="Filtre periode actif : "+pts.join(" ")+" applique au drill-down";
+    xBanner.style.display='';
+    // Appliquer aux dr-from/dr-to du drill-down
+    var drFrom=document.getElementById('dr-from'); if(drFrom) drFrom.value=xFrom;
+    var drTo=document.getElementById('dr-to');     if(drTo)   drTo.value=xTo;
+  } else {
+    xBanner.style.display='none';
+  }
   const prg=document.getElementById('x-prg').value;
   const fnd=document.getElementById('x-fnd').value;
   const cf=(document.getElementById('x-cf')||{}).value||'';
@@ -4164,6 +4197,19 @@ function inPeriod(r){
   return true;
 }
 window.inPeriod = inPeriod;
+
+
+function applyDrillPeriod(){
+  if(window._lastDrillLabel) openDrill(window._lastDrillLabel);
+}
+function clearDrillPeriod(){
+  var pf=document.getElementById('dr-from'); if(pf) pf.value='';
+  var pt=document.getElementById('dr-to');   if(pt) pt.value='';
+  var lbl=document.getElementById('dr-period-lbl'); if(lbl) lbl.textContent='';
+  if(window._lastDrillLabel) openDrill(window._lastDrillLabel);
+}
+window.applyDrillPeriod=applyDrillPeriod;
+window.clearDrillPeriod=clearDrillPeriod;
 
 </script>
 </body>
