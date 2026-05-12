@@ -168,10 +168,11 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <!-- Filtre période -->
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
       <span style="font-size:.8rem;font-weight:700;color:var(--mu);white-space:nowrap">📅 Période</span>
-      <input id="period-from" type="date" style="border:1px solid var(--bd);border-radius:6px;padding:4px 8px;font-size:.82rem" onchange="applyPeriod()">
+      <input id="period-from" type="date" style="border:1px solid var(--bd);border-radius:6px;padding:4px 8px;font-size:.82rem">
       <span style="font-size:.8rem;color:var(--mu)">→</span>
-      <input id="period-to" type="date" style="border:1px solid var(--bd);border-radius:6px;padding:4px 8px;font-size:.82rem" onchange="applyPeriod()">
-      <button class="btn" id="period-active-btn" style="padding:4px 10px;font-size:.78rem;display:none" onclick="clearPeriod()">✕ Période active</button>
+      <input id="period-to" type="date" style="border:1px solid var(--bd);border-radius:6px;padding:4px 8px;font-size:.82rem">
+      <button class="btn" onclick="applyPeriod()" style="padding:4px 10px;font-size:.78rem;background:var(--pr);color:#fff;border-color:var(--pr)">Appliquer</button>
+      <button class="btn" id="period-active-btn" style="padding:4px 10px;font-size:.78rem;display:none" onclick="clearPeriod()">✕ Effacer</button>
     </div>
   </div>
   <!-- RÉSULTATS RECHERCHE -->
@@ -4009,80 +4010,98 @@ function _doSearch(q){
   var sapBase = "https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&/C_PurchaseOrderTP(PurchaseOrder='";
   var sapSuf  = "',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)";
   var notBase = "https://esr-inrae.notilus-pio.cegid.cloud/#/OD/";
+  var notBaseOMP = "https://esr-inrae.notilus-pio.cegid.cloud/#/OMP/";
 
-  // Recherche dans CDA_CC (N° commande, fournisseur, NACRES)
+  // ── Recherche dans CDA_CC ──
   (window.CDA_CC||[]).forEach(function(r){
-    var match = false, why = '';
-    if(r.cmd && r.cmd.toLowerCase().indexOf(ql)>=0){ match=true; why='N° commande'; }
-    else if(r.four && r.four.toLowerCase().indexOf(ql)>=0){ match=true; why='Fournisseur'; }
-    else if(r.nacreCode && r.nacreCode.toLowerCase().indexOf(ql)>=0){ match=true; why='NACRES'; }
-    else if(r.nacreDesc && r.nacreDesc.toLowerCase().indexOf(ql)>=0){ match=true; why='NACRES'; }
-    else if(r.desig && r.desig.toLowerCase().indexOf(ql)>=0){ match=true; why='Désignation'; }
-    if(!match) return;
-    var cmdLink = r.cmd ?
-      '<a href="'+sapBase+encodeURIComponent(r.cmd)+sapSuf+'" target="_blank" style="color:var(--pr);font-weight:600;text-decoration:none">'+esc(r.cmd)+'</a>' :
-      '-';
+    var fields = [r.cmd||'', r.four||'', r.nacreCode||'', r.nacreDesc||'', r.desig||'', r.prog||'', r.cc||''];
+    if(!fields.some(function(f){return f.toLowerCase().indexOf(ql)>=0;})) return;
+    var why = r.cmd&&r.cmd.toLowerCase().indexOf(ql)>=0?'N° commande':
+              r.four&&r.four.toLowerCase().indexOf(ql)>=0?'Fournisseur':
+              (r.nacreCode+' '+r.nacreDesc).toLowerCase().indexOf(ql)>=0?'NACRES':'Désignation/CC';
+    var cmdLink = r.cmd?'<a href="'+sapBase+encodeURIComponent(r.cmd)+sapSuf+'" target="_blank" style="color:var(--pr);font-weight:600;text-decoration:none">'+esc(r.cmd)+'</a>':'-';
     results.push({
       type:'CDA', badge:'Commande', color:'#2563eb',
       main: cmdLink,
-      sub: esc(r.four||'') + (r.nacreCode?' — '+esc(r.nacreCode):'') + (r.cc?' — CC '+esc(r.cc):'') + ' — '+fmt(r.val)+' €',
-      why: why, annee: r.annee||''
+      sub: esc(r.four||'-')+' — '+esc(r.nacreCode||'-')+(r.cc?' — CC '+esc(r.cc):'')+(r.val?' — '+fmt(r.val)+' €':''),
+      why:why, annee:r.annee||''
     });
   });
 
-  // Recherche dans CONSO (N° OM Notilus, fournisseur, saisiPar)
+  // ── Recherche dans CONSO (toutes lignes) ──
   (CONSO||[]).forEach(function(r){
-    var match = false, why = '';
-    var nomPiece = r.nomPiece||'';
-    var saisiPar = r.saisiPar||'';
-    var fourR = r.four||'';
-    if(nomPiece && nomPiece.toLowerCase().indexOf(ql)>=0){ match=true; why='N° pièce'; }
-    else if(fourR && fourR.toLowerCase().indexOf(ql)>=0){ match=true; why='Fournisseur'; }
-    else if(saisiPar.toLowerCase()==='notilusbus' && ql.startsWith('om')){ match=true; why='Ordre mission'; }
-    if(!match) return;
-    // Essayer de construire lien Notilus depuis nomPiece
-    var omNum = nomPiece.replace(/\D/g,'');
-    var omLink = omNum ? '<a href="'+notBase+omNum+'" target="_blank" style="color:#7c3aed;font-weight:600;text-decoration:none">OM '+omNum+'</a>' : esc(nomPiece);
+    var isMission = (r.saisiPar||'').toUpperCase()==='NOTILUSBUS';
+    var fields = [r.cmd||'', r.refOM||'', r.cmdRef||'', r.f||'', r.saisiPar||'', r.cc||'', r.p||''];
+    if(!fields.some(function(f){return f.toLowerCase().indexOf(ql)>=0;})) return;
+    var why = r.cmd&&r.cmd.toLowerCase().indexOf(ql)>=0?'N° commande SAP':
+              r.refOM&&r.refOM.toLowerCase().indexOf(ql)>=0?'Réf. OM':
+              r.cmdRef&&r.cmdRef.toLowerCase().indexOf(ql)>=0?'Pièce réf.':
+              r.f&&r.f.toLowerCase().indexOf(ql)>=0?'Fournisseur':'CC/Programme';
+    // Lien : commande SAP ou OM Notilus
+    var mainLink;
+    if(isMission && r.refOM){
+      var omNum = r.refOM.replace(/\D/g,'');
+      var cptBud = r.cptBud||'';
+      var isOMP = cptBud.toUpperCase().startsWith('FG');
+      mainLink = '<a href="'+(isOMP?notBaseOMP:notBase)+omNum+'" target="_blank" style="color:#7c3aed;font-weight:600;text-decoration:none">'+
+        (isOMP?'OMP':'OM')+' '+esc(r.refOM)+'</a>';
+    } else if(r.cmd){
+      mainLink = '<a href="'+sapBase+encodeURIComponent(r.cmd)+sapSuf+'" target="_blank" style="color:var(--pr);font-weight:600;text-decoration:none">'+esc(r.cmd)+'</a>';
+    } else if(r.cmdRef){
+      mainLink = '<span style="font-weight:600">'+esc(r.cmdRef)+'</span>';
+    } else {
+      mainLink = '<span style="color:var(--mu)">—</span>';
+    }
     results.push({
-      type:'CONSO', badge: saisiPar==='NOTILUSBUS'?'Mission':'Opération SAP',
-      color: saisiPar==='NOTILUSBUS'?'#7c3aed':'#16a34a',
-      main: omLink,
-      sub: esc(fourR||'') + ' — '+fmt(r.m)+' €' + (r.p?' — '+esc(r.p):''),
-      why: why, annee: String(r.annee||'')
+      type:'CONSO', badge: isMission?'Mission':'Opération SAP',
+      color: isMission?'#7c3aed':'#16a34a',
+      main: mainLink,
+      sub: esc(r.f||'-')+' — '+fmt(r.m)+' €'+(r.p?' — '+esc(r.p):'')+(r.dt?' — '+esc(r.dt):''),
+      why:why, annee:String(r.annee||'')
+    });
+  });
+
+  // ── Recherche dans NACRES_DATA ──
+  (window.NACRES_DATA||[]).forEach(function(r){
+    var fields = [r.cmd||'', r.four||'', r.nacreCode||'', r.nacreDesc||'', r.desig||'', r.cc||''];
+    if(!fields.some(function(f){return f.toLowerCase().indexOf(ql)>=0;})) return;
+    var why = r.cmd&&r.cmd.toLowerCase().indexOf(ql)>=0?'N° commande':
+              r.four&&r.four.toLowerCase().indexOf(ql)>=0?'Fournisseur':'NACRES';
+    var cmdLink = r.cmd?'<a href="'+sapBase+encodeURIComponent(r.cmd)+sapSuf+'" target="_blank" style="color:var(--pr);font-weight:600;text-decoration:none">'+esc(r.cmd)+'</a>':'-';
+    results.push({
+      type:'NACRES', badge:'NACRES', color:'#d97706',
+      main: cmdLink,
+      sub: esc(r.four||'-')+' — '+esc(r.nacreCode||'-')+(r.cc?' — CC '+esc(r.cc):'')+(r.val?' — '+fmt(r.val)+' €':''),
+      why:why, annee:r.annee||''
     });
   });
 
   if(!results.length){
-    panel.innerHTML = '<div style="padding:16px;text-align:center;color:var(--mu);font-size:.85rem">Aucun résultat pour <strong>'+esc(q)+'</strong></div>';
-    panel.style.display = 'block';
-    return;
+    panel.innerHTML='<div style="padding:16px;text-align:center;color:var(--mu);font-size:.85rem">Aucun résultat pour <strong>'+esc(q)+'</strong></div>';
+    panel.style.display='block'; return;
   }
+  // Dédupliquer sur cmd+type
+  var seen=new Set();
+  var dedup=results.filter(function(r){
+    var k=r.type+'|'+r.main;
+    if(seen.has(k)) return false; seen.add(k); return true;
+  }).slice(0,60);
 
-  // Dédupliquer et limiter
-  var seen = new Set();
-  var dedup = results.filter(function(r){
-    var k = r.type+'|'+r.main+'|'+r.sub;
-    if(seen.has(k)) return false;
-    seen.add(k); return true;
-  }).slice(0, 50);
-
-  var html = '<div style="padding:8px 14px;border-bottom:1px solid var(--bd);font-size:.78rem;color:var(--mu);display:flex;justify-content:space-between">'
-    +'<span><strong>'+dedup.length+'</strong> résultat(s) pour «'+esc(q)+'»</span>'
+  var html='<div style="padding:8px 14px;border-bottom:1px solid var(--bd);font-size:.78rem;color:var(--mu);display:flex;justify-content:space-between">'
+    +'<span><strong>'+dedup.length+'</strong> résultat(s) pour «'+esc(q)+'»'+(results.length>60?' (60 max affichés)':'')+'</span>'
     +'<span style="cursor:pointer;color:var(--pr)" onclick="document.getElementById(\'search-input\').value=\'\';runSearch(\'\')">Fermer ✕</span>'
     +'</div>';
-
   dedup.forEach(function(r){
-    html += '<div style="padding:8px 14px;border-bottom:1px solid #f7f8fb;display:flex;align-items:baseline;gap:10px">'
+    html+='<div style="padding:7px 14px;border-bottom:1px solid #f7f8fb;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">'
       +'<span style="background:'+r.color+';color:#fff;border-radius:4px;padding:1px 6px;font-size:.68rem;font-weight:700;white-space:nowrap">'+r.badge+'</span>'
       +(r.annee?'<span style="font-size:.75rem;color:var(--mu);white-space:nowrap">'+r.annee+'</span>':'')
-      +'<span style="font-size:.82rem">'+r.main+'</span>'
-      +'<span style="font-size:.78rem;color:var(--mu);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+r.sub+'</span>'
+      +'<span style="font-size:.82rem;flex-shrink:0">'+r.main+'</span>'
+      +'<span style="font-size:.78rem;color:var(--mu);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+r.sub+'</span>'
       +'<span style="font-size:.72rem;color:var(--mu);white-space:nowrap;font-style:italic">'+r.why+'</span>'
       +'</div>';
   });
-
-  panel.innerHTML = html;
-  panel.style.display = 'block';
+  panel.innerHTML=html;
+  panel.style.display='block';
 }
 window.runSearch = runSearch;
 
@@ -4123,8 +4142,12 @@ window.clearPeriod = clearPeriod;
 // Fonction helper : filtrer une ligne CONSO par période
 function inPeriod(r){
   if(!window._periodFrom && !window._periodTo) return true;
-  if(!r.dt) return true; // pas de date → inclure
-  var d = new Date(r.dt);
+  if(!r.dt) return true;
+  // dt est au format 'DD/MM/YYYY'
+  var parts = r.dt.split('/');
+  if(parts.length!==3) return true;
+  var d = new Date(parseInt(parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
+  if(isNaN(d)) return true;
   if(window._periodFrom && d < window._periodFrom) return false;
   if(window._periodTo   && d > window._periodTo)   return false;
   return true;
