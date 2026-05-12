@@ -154,28 +154,28 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     </div>
   </div>
   <!-- BARRE RECHERCHE + FILTRE PÉRIODE -->
-  <div id="top-bar" style="display:none;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:10px 14px;background:#f7f8fb;border-radius:8px;border:1px solid var(--bd)">
-    <!-- Recherche -->
-    <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:220px">
-      <span style="font-size:.8rem;font-weight:700;color:var(--mu);white-space:nowrap">🔍 Recherche</span>
+  <div id="top-bar" style="display:none;gap:0;flex-direction:column;margin-bottom:10px;border:1px solid var(--bd);border-radius:8px;overflow:hidden">
+    <!-- Ligne 1 : Recherche -->
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f7f8fb;border-bottom:1px solid var(--bd)">
+      <span style="font-size:.78rem;font-weight:700;color:var(--mu);white-space:nowrap">🔍</span>
       <input id="search-input" type="text" placeholder="N° commande, OM, fournisseur, NACRES…"
-        style="flex:1;border:1px solid var(--bd);border-radius:6px;padding:5px 10px;font-size:.82rem;outline:none"
+        style="flex:1;border:1px solid var(--bd);border-radius:6px;padding:5px 10px;font-size:.82rem;outline:none;background:#fff"
         oninput="runSearch(this.value)" onkeydown="if(event.key==='Escape'){this.value='';runSearch('');}">
-      <button class="btn" onclick="document.getElementById('search-input').value='';runSearch('');" style="padding:4px 8px;font-size:.8rem">✕</button>
+      <button class="btn" onclick="document.getElementById('search-input').value='';runSearch('');" style="padding:3px 8px;font-size:.8rem" title="Effacer">✕</button>
     </div>
-    <!-- Séparateur -->
-    <div style="width:1px;height:28px;background:var(--bd)"></div>
-    <!-- Filtre période -->
-    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-      <span style="font-size:.8rem;font-weight:700;color:var(--mu);white-space:nowrap">📅 Période</span>
-      <input id="period-from" type="date" style="border:1px solid var(--bd);border-radius:6px;padding:4px 8px;font-size:.82rem">
-      <span style="font-size:.8rem;color:var(--mu)">→</span>
-      <input id="period-to" type="date" style="border:1px solid var(--bd);border-radius:6px;padding:4px 8px;font-size:.82rem">
-      <button class="btn" onclick="applyPeriod()" style="padding:4px 10px;font-size:.78rem;background:var(--pr);color:#fff;border-color:var(--pr)">Appliquer</button>
-      <button class="btn" id="period-active-btn" style="padding:4px 10px;font-size:.78rem;display:none" onclick="clearPeriod()">✕ Effacer</button>
+    <!-- Ligne 2 : Filtre période -->
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;background:#fff;flex-wrap:wrap">
+      <span style="font-size:.78rem;font-weight:700;color:var(--mu);white-space:nowrap">📅 Période</span>
+      <label style="font-size:.78rem;color:var(--mu)">Du</label>
+      <input id="period-from" type="date" style="border:1px solid var(--bd);border-radius:6px;padding:3px 8px;font-size:.82rem">
+      <label style="font-size:.78rem;color:var(--mu)">Au</label>
+      <input id="period-to" type="date" style="border:1px solid var(--bd);border-radius:6px;padding:3px 8px;font-size:.82rem">
+      <button class="btn" onclick="applyPeriod()" style="padding:3px 10px;font-size:.78rem;background:var(--pr);color:#fff;border-color:var(--pr)">Appliquer</button>
+      <button class="btn" id="period-active-btn" style="padding:3px 10px;font-size:.78rem;display:none" onclick="clearPeriod()">✕ Effacer période</button>
+      <span id="period-label" style="font-size:.75rem;color:var(--pr);font-style:italic;display:none"></span>
     </div>
   </div>
-  <!-- RÉSULTATS RECHERCHE -->
+    <!-- RÉSULTATS RECHERCHE -->
   <div id="search-results" style="display:none;margin-bottom:14px;background:#fff;border:1px solid var(--bd);border-radius:8px;max-height:360px;overflow-y:auto"></div>
 
   <div class="tabs" style="flex-wrap:wrap;gap:2px">
@@ -4117,8 +4117,22 @@ function applyPeriod(){
   window._periodFrom = f ? new Date(f) : null;
   window._periodTo   = t ? new Date(t+'T23:59:59') : null;
   var active = window._periodFrom || window._periodTo;
+  // Bouton effacer
   var btn = document.getElementById('period-active-btn');
   if(btn) btn.style.display = active ? '' : 'none';
+  // Label période active
+  var lbl = document.getElementById('period-label');
+  if(lbl){
+    if(active){
+      var parts = [];
+      if(f) parts.push('du ' + f.split('-').reverse().join('/'));
+      if(t) parts.push('au ' + t.split('-').reverse().join('/'));
+      lbl.textContent = 'Filtre actif : ' + parts.join(' ');
+      lbl.style.display = '';
+    } else {
+      lbl.style.display = 'none';
+    }
+  }
   // Rafraîchir l'onglet actif
   var tabs = ['s','h','e','x','f','d','r','om','nacres','pluri','open','cc','tl','db'];
   for(var i=0; i<tabs.length; i++){
@@ -4134,7 +4148,14 @@ function clearPeriod(){
   window._periodTo   = null;
   var btn = document.getElementById('period-active-btn');
   if(btn) btn.style.display = 'none';
-  applyPeriod();
+  var lbl = document.getElementById('period-label');
+  if(lbl) lbl.style.display = 'none';
+  // Rafraîchir sans rappeler applyPeriod (évite boucle)
+  var tabs = ['s','h','e','x','f','d','r','om','nacres','pluri','open','cc','tl','db'];
+  for(var i=0; i<tabs.length; i++){
+    var el = document.getElementById('tab-'+tabs[i]);
+    if(el && el.classList.contains('on')){ switchTab(tabs[i]); break; }
+  }
 }
 window.applyPeriod = applyPeriod;
 window.clearPeriod = clearPeriod;
