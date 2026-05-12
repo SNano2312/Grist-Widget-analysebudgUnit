@@ -153,6 +153,30 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <button class="btn" onclick="retourCfg()">↩ Changer les sources</button>
     </div>
   </div>
+  <!-- BARRE RECHERCHE + FILTRE PÉRIODE -->
+  <div id="top-bar" style="display:none;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:10px 14px;background:#f7f8fb;border-radius:8px;border:1px solid var(--bd)">
+    <!-- Recherche -->
+    <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:220px">
+      <span style="font-size:.8rem;font-weight:700;color:var(--mu);white-space:nowrap">🔍 Recherche</span>
+      <input id="search-input" type="text" placeholder="N° commande, OM, fournisseur, NACRES…"
+        style="flex:1;border:1px solid var(--bd);border-radius:6px;padding:5px 10px;font-size:.82rem;outline:none"
+        oninput="runSearch(this.value)" onkeydown="if(event.key==='Escape'){this.value='';runSearch('');}">
+      <button class="btn" onclick="document.getElementById('search-input').value='';runSearch('');" style="padding:4px 8px;font-size:.8rem">✕</button>
+    </div>
+    <!-- Séparateur -->
+    <div style="width:1px;height:28px;background:var(--bd)"></div>
+    <!-- Filtre période -->
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <span style="font-size:.8rem;font-weight:700;color:var(--mu);white-space:nowrap">📅 Période</span>
+      <input id="period-from" type="date" style="border:1px solid var(--bd);border-radius:6px;padding:4px 8px;font-size:.82rem" onchange="applyPeriod()">
+      <span style="font-size:.8rem;color:var(--mu)">→</span>
+      <input id="period-to" type="date" style="border:1px solid var(--bd);border-radius:6px;padding:4px 8px;font-size:.82rem" onchange="applyPeriod()">
+      <button class="btn" id="period-active-btn" style="padding:4px 10px;font-size:.78rem;display:none" onclick="clearPeriod()">✕ Période active</button>
+    </div>
+  </div>
+  <!-- RÉSULTATS RECHERCHE -->
+  <div id="search-results" style="display:none;margin-bottom:14px;background:#fff;border:1px solid var(--bd);border-radius:8px;max-height:360px;overflow-y:auto"></div>
+
   <div class="tabs" style="flex-wrap:wrap;gap:2px">
     <!-- Groupe Budget -->
     <div class="tab" id="tab-db" onclick="switchTab('db')" style="font-weight:700">🏠 Tableau de bord</div>
@@ -994,6 +1018,7 @@ async function lanceAnalyse(){
     hideLd();
     document.getElementById('cfg-screen').style.display='none';
     document.getElementById('dash').style.display='block';
+    document.getElementById('top-bar').style.display='flex';
     document.getElementById('dash-title').textContent='Analyse budgétaire'+(CF_LABEL?' — Centre financier '+CF_LABEL:'');
     fillNacresFilters();
     // Enrichir filtre CC depuis VCC
@@ -1306,7 +1331,7 @@ function openDrill(label){
   const fp=_grp==='prog'?label:(f.prg&&f.prg!==''?f.prg:null);
   const ff=_grp==='fonds'?label:(f.fnd&&f.fnd!==''?f.fnd:null);
   // Filtre souple sur annee (string ou number)
-  _dRows=CONSO.filter(function(r){
+  _dRows=CONSO.filter(inPeriod).filter(function(r){
     var okAnn = fann===null || Number(r.annee)===fann;
     var okPrg = fp===null   || r.p===fp;
     var okFnd = ff===null   || r.fo===ff;
@@ -1400,10 +1425,10 @@ function renderEvol(){
   const totRAR=budRows.reduce((s,r)=>s+r.rar,0);
   // Commandes d'achat Original en priorité ; fallback Factures si aucune commande
   const _filterBase=r=>(!ann||parseInt(r.annee)===parseInt(ann))&&(!prg||r.p===prg)&&(!fnd||r.fo===fnd)&&(!cf||r.cc===cf)&&r.tm==='Original';
-  let consoRows=CONSO.filter(r=>_filterBase(r)&&r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0);
+  let consoRows=CONSO.filter(inPeriod).filter(r=>_filterBase(r)&&r.tv.replace(/\u2019/g,"'").indexOf("Commandes d'achat")>=0);
   if(!consoRows.length){
     // Fallback : fonds consommé directement par factures (sans bon de commande)
-    consoRows=CONSO.filter(r=>_filterBase(r)&&r.tv==='Factures');
+    consoRows=CONSO.filter(inPeriod).filter(r=>_filterBase(r)&&r.tv==='Factures');
   }
   const monthly={};
   for(const r of consoRows){
@@ -1849,7 +1874,7 @@ function renderFournisseurs(){
 
   // Agrégation paiements par fournisseur
   var byF={};
-  (window.CONSO_PMT||[]).forEach(function(r){
+  (window.CONSO_PMT||[]).filter(inPeriod).forEach(function(r){
     if(r.m<=0) return;
     if(ann&&String(r.annee)!==ann) return;
     if(prg&&r.p!==prg) return;
@@ -1993,7 +2018,7 @@ function renderParetoComp(){
   var cf=(document.getElementById('f-cf')||{}).value||'';
 
   var by25={},by26={};
-  (window.CONSO_PMT||[]).forEach(function(r){
+  (window.CONSO_PMT||[]).filter(inPeriod).forEach(function(r){
     if(r.m<=0) return;
     if(prg&&r.p!==prg) return;
     if(fnd&&r.fo!==fnd) return;
@@ -2055,7 +2080,7 @@ function renderDelais(){
 
   // Index factures : cmdRef → dtMaj min (pour calculer le délai)
   var facIdx={};
-  CONSO.forEach(function(r){
+  CONSO.filter(inPeriod).forEach(function(r){
     if(r.tv!=='Factures') return;
     if(!r.cmdRef) return;
     if(!facIdx[r.cmdRef]||r.dtMaj<facIdx[r.cmdRef]) facIdx[r.cmdRef]=r.dtMaj;
@@ -2068,7 +2093,7 @@ function renderDelais(){
 
   // Construire lignes depuis CONSO_PMT (paiements > 0 uniquement)
   var rows=[];
-  (window.CONSO_PMT||[]).forEach(function(r){
+  (window.CONSO_PMT||[]).filter(inPeriod).forEach(function(r){
     if(r.m<=0) return;
     if(ann&&String(r.annee)!==ann) return;
     if(prg&&r.p!==prg) return;
@@ -2178,7 +2203,7 @@ function renderRepartition(){
   var fnd=document.getElementById('r-fnd').value;
   var cf=(document.getElementById('r-cf')||{}).value||'';
   if(ann==='comp') ann='';
-  var all=CONSO.concat(window.CONSO_PMT||[]);
+  var all=CONSO.filter(inPeriod).concat((window.CONSO_PMT||[]).filter(inPeriod));
   var byCat={},byPC={};
   all.forEach(function(r){
     if(ann&&parseInt(r.annee)!==parseInt(ann)) return;
@@ -2600,7 +2625,7 @@ function renderOM(){
   var vue=document.getElementById('om-vue').value;
 
   // Filtrer les lignes missions
-  var omRows=CONSO.filter(function(r){
+  var omRows=CONSO.filter(inPeriod).filter(function(r){
     if(r.saisiPar!=='NOTILUSBUS') return false;
     if(ann&&String(r.annee)!==ann) return false;
     if(prg&&r.p!==prg) return false;
@@ -3963,6 +3988,148 @@ window.renderLivraison=renderLivraison;
     el.addEventListener('change',renderLivraison);
   });
 })();
+
+
+// ════════════════════════════════════════════════════════
+// RECHERCHE GLOBALE
+// ════════════════════════════════════════════════════════
+var _searchTimer = null;
+
+function runSearch(q){
+  clearTimeout(_searchTimer);
+  var panel = document.getElementById('search-results');
+  if(!q || q.trim().length < 2){ panel.style.display='none'; return; }
+  _searchTimer = setTimeout(function(){ _doSearch(q.trim()); }, 250);
+}
+
+function _doSearch(q){
+  var panel = document.getElementById('search-results');
+  var ql = q.toLowerCase();
+  var results = [];
+  var sapBase = "https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&/C_PurchaseOrderTP(PurchaseOrder='";
+  var sapSuf  = "',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)";
+  var notBase = "https://esr-inrae.notilus-pio.cegid.cloud/#/OD/";
+
+  // Recherche dans CDA_CC (N° commande, fournisseur, NACRES)
+  (window.CDA_CC||[]).forEach(function(r){
+    var match = false, why = '';
+    if(r.cmd && r.cmd.toLowerCase().indexOf(ql)>=0){ match=true; why='N° commande'; }
+    else if(r.four && r.four.toLowerCase().indexOf(ql)>=0){ match=true; why='Fournisseur'; }
+    else if(r.nacreCode && r.nacreCode.toLowerCase().indexOf(ql)>=0){ match=true; why='NACRES'; }
+    else if(r.nacreDesc && r.nacreDesc.toLowerCase().indexOf(ql)>=0){ match=true; why='NACRES'; }
+    else if(r.desig && r.desig.toLowerCase().indexOf(ql)>=0){ match=true; why='Désignation'; }
+    if(!match) return;
+    var cmdLink = r.cmd ?
+      '<a href="'+sapBase+encodeURIComponent(r.cmd)+sapSuf+'" target="_blank" style="color:var(--pr);font-weight:600;text-decoration:none">'+esc(r.cmd)+'</a>' :
+      '-';
+    results.push({
+      type:'CDA', badge:'Commande', color:'#2563eb',
+      main: cmdLink,
+      sub: esc(r.four||'') + (r.nacreCode?' — '+esc(r.nacreCode):'') + (r.cc?' — CC '+esc(r.cc):'') + ' — '+fmt(r.val)+' €',
+      why: why, annee: r.annee||''
+    });
+  });
+
+  // Recherche dans CONSO (N° OM Notilus, fournisseur, saisiPar)
+  (CONSO||[]).forEach(function(r){
+    var match = false, why = '';
+    var nomPiece = r.nomPiece||'';
+    var saisiPar = r.saisiPar||'';
+    var fourR = r.four||'';
+    if(nomPiece && nomPiece.toLowerCase().indexOf(ql)>=0){ match=true; why='N° pièce'; }
+    else if(fourR && fourR.toLowerCase().indexOf(ql)>=0){ match=true; why='Fournisseur'; }
+    else if(saisiPar.toLowerCase()==='notilusbus' && ql.startsWith('om')){ match=true; why='Ordre mission'; }
+    if(!match) return;
+    // Essayer de construire lien Notilus depuis nomPiece
+    var omNum = nomPiece.replace(/\D/g,'');
+    var omLink = omNum ? '<a href="'+notBase+omNum+'" target="_blank" style="color:#7c3aed;font-weight:600;text-decoration:none">OM '+omNum+'</a>' : esc(nomPiece);
+    results.push({
+      type:'CONSO', badge: saisiPar==='NOTILUSBUS'?'Mission':'Opération SAP',
+      color: saisiPar==='NOTILUSBUS'?'#7c3aed':'#16a34a',
+      main: omLink,
+      sub: esc(fourR||'') + ' — '+fmt(r.m)+' €' + (r.p?' — '+esc(r.p):''),
+      why: why, annee: String(r.annee||'')
+    });
+  });
+
+  if(!results.length){
+    panel.innerHTML = '<div style="padding:16px;text-align:center;color:var(--mu);font-size:.85rem">Aucun résultat pour <strong>'+esc(q)+'</strong></div>';
+    panel.style.display = 'block';
+    return;
+  }
+
+  // Dédupliquer et limiter
+  var seen = new Set();
+  var dedup = results.filter(function(r){
+    var k = r.type+'|'+r.main+'|'+r.sub;
+    if(seen.has(k)) return false;
+    seen.add(k); return true;
+  }).slice(0, 50);
+
+  var html = '<div style="padding:8px 14px;border-bottom:1px solid var(--bd);font-size:.78rem;color:var(--mu);display:flex;justify-content:space-between">'
+    +'<span><strong>'+dedup.length+'</strong> résultat(s) pour «'+esc(q)+'»</span>'
+    +'<span style="cursor:pointer;color:var(--pr)" onclick="document.getElementById(\'search-input\').value=\'\';runSearch(\'\')">Fermer ✕</span>'
+    +'</div>';
+
+  dedup.forEach(function(r){
+    html += '<div style="padding:8px 14px;border-bottom:1px solid #f7f8fb;display:flex;align-items:baseline;gap:10px">'
+      +'<span style="background:'+r.color+';color:#fff;border-radius:4px;padding:1px 6px;font-size:.68rem;font-weight:700;white-space:nowrap">'+r.badge+'</span>'
+      +(r.annee?'<span style="font-size:.75rem;color:var(--mu);white-space:nowrap">'+r.annee+'</span>':'')
+      +'<span style="font-size:.82rem">'+r.main+'</span>'
+      +'<span style="font-size:.78rem;color:var(--mu);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+r.sub+'</span>'
+      +'<span style="font-size:.72rem;color:var(--mu);white-space:nowrap;font-style:italic">'+r.why+'</span>'
+      +'</div>';
+  });
+
+  panel.innerHTML = html;
+  panel.style.display = 'block';
+}
+window.runSearch = runSearch;
+
+// ════════════════════════════════════════════════════════
+// FILTRE PÉRIODE GLOBAL
+// ════════════════════════════════════════════════════════
+window._periodFrom = null;
+window._periodTo   = null;
+
+function applyPeriod(){
+  var f = document.getElementById('period-from').value;
+  var t = document.getElementById('period-to').value;
+  window._periodFrom = f ? new Date(f) : null;
+  window._periodTo   = t ? new Date(t+'T23:59:59') : null;
+  var active = window._periodFrom || window._periodTo;
+  var btn = document.getElementById('period-active-btn');
+  if(btn) btn.style.display = active ? '' : 'none';
+  // Rafraîchir l'onglet actif
+  var tabs = ['s','h','e','x','f','d','r','om','nacres','pluri','open','cc','tl','db'];
+  for(var i=0; i<tabs.length; i++){
+    var el = document.getElementById('tab-'+tabs[i]);
+    if(el && el.classList.contains('on')){ switchTab(tabs[i]); break; }
+  }
+}
+
+function clearPeriod(){
+  document.getElementById('period-from').value = '';
+  document.getElementById('period-to').value   = '';
+  window._periodFrom = null;
+  window._periodTo   = null;
+  var btn = document.getElementById('period-active-btn');
+  if(btn) btn.style.display = 'none';
+  applyPeriod();
+}
+window.applyPeriod = applyPeriod;
+window.clearPeriod = clearPeriod;
+
+// Fonction helper : filtrer une ligne CONSO par période
+function inPeriod(r){
+  if(!window._periodFrom && !window._periodTo) return true;
+  if(!r.dt) return true; // pas de date → inclure
+  var d = new Date(r.dt);
+  if(window._periodFrom && d < window._periodFrom) return false;
+  if(window._periodTo   && d > window._periodTo)   return false;
+  return true;
+}
+window.inPeriod = inPeriod;
 
 </script>
 </body>
