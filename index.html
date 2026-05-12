@@ -236,6 +236,14 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <span id="dr-title" style="font-weight:600;font-size:.95rem"></span>
       </div>
       <div class="dk" id="dr-kpis"></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;padding:8px 12px;background:#f7f8fb;border-radius:6px;font-size:.8rem">
+        <label style="font-weight:600;color:var(--mu)">Période</label>
+        <label>Du</label><input type="date" id="dr-from" style="border:1px solid var(--bd);border-radius:5px;padding:3px 7px;font-size:.8rem">
+        <label>Au</label><input type="date" id="dr-to" style="border:1px solid var(--bd);border-radius:5px;padding:3px 7px;font-size:.8rem">
+        <button class="btn" onclick="applyDrillPeriod()" style="padding:3px 10px;font-size:.78rem">Filtrer</button>
+        <button class="btn" onclick="clearDrillPeriod()" style="padding:3px 8px;font-size:.78rem">✕</button>
+        <span id="dr-period-lbl" style="color:var(--pr);font-style:italic"></span>
+      </div>
       <div id="dr-cnt" style="font-size:.78rem;color:var(--mu);margin-bottom:6px"></div>
       <div class="tw"><table><thead id="dr-th"></thead><tbody id="dr-tb"></tbody><tfoot id="dr-tf"></tfoot></table></div>
     </div>
@@ -259,6 +267,8 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="fg"><label>Programme</label><select id="x-prg" ><option value="">Tous</option></select></div>
       <div class="fg"><label>Fonds</label><select id="x-fnd" ><option value="">Tous</option></select></div>
       <div class="fg"><label>Centre de coûts</label><select id="x-cf"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Du</label><input type="date" id="x-from" style="border:1px solid var(--bd);border-radius:6px;padding:4px 8px;font-size:.82rem;width:100%"></div>
+      <div class="fg"><label>Au</label><input type="date" id="x-to" style="border:1px solid var(--bd);border-radius:6px;padding:4px 8px;font-size:.82rem;width:100%"></div>
     </div>
     <div class="tw"><table><thead id="x-th"></thead><tbody id="x-tb"></tbody></table></div>
     <div id="x-drv" style="display:none;margin-top:16px">
