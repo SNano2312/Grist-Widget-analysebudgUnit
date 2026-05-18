@@ -186,6 +186,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <div class="tab" id="tab-nacres" onclick="switchTab('nacres')">NACRES</div>
         <div class="tab" id="tab-open" onclick="switchTab('open')">Cdes non soldées</div>
         <div class="tab" id="tab-pluri" onclick="switchTab('pluri')">Engagements pluri.</div>
+        <div class="tab" id="tab-liq" onclick="switchTab('liq')">⚡ Liquidation AE→CP</div>
       </div>
     </div>
     <!-- Groupe Paiements -->
@@ -494,6 +495,16 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <div id="tl-table" style="display:none" class="tw"><table><thead id="tl-th"></thead><tbody id="tl-tb"></tbody></table></div>
   </div>
 
+  <!-- LIQUIDATION AE→CP -->
+  <div id="vw-liq" style="display:none">
+    <div class="flt">
+      <div class="fg"><label>Année</label><select id="liq-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      <div class="fg"><label>Programme</label><select id="liq-prg"><option value="">Tous</option></select></div>
+      <div class="fg"><label>Fonds</label><select id="liq-fnd"><option value="">Tous</option></select></div>
+    </div>
+    <div id="liq-content" style="margin-top:8px"></div>
+  </div>
+
   <!-- DOCUMENTATION -->
   <div id="vw-doc" style="display:none">
     <div style="max-width:960px;margin:0 auto">
@@ -651,6 +662,19 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">⚡ Liquidation AE→CP</div>
+        <p style="font-size:.82rem;line-height:1.8">
+          Disponible dans l'onglet <strong>⚡ Liquidation AE→CP</strong> (groupe Achats) et dans le <strong>Tableau de bord</strong>.<br><br>
+          <strong>Méthode</strong> : croisement entre les commandes AE Original (CONSO) et les paiements CP (CONSO_PMT) via le N° de pièce de référence SAP. Pour chaque commande liquidée, calcule le nombre de jours entre la date de commande et la date du premier paiement CP associé.<br><br>
+          <strong>KPIs</strong> : délai moyen, délai médian, nombre de commandes liquidées, répartition ≤30j / 31-60j / 61-90j / &gt;90j.<br><br>
+          <strong>Jauge de répartition</strong> : barre colorée montrant la proportion de commandes par tranche de délai (vert = rapide, rouge = lent).<br><br>
+          <strong>Vue par programme</strong> : délai moyen et médian par programme avec appréciation de fluidité (Rapide ≤30j / Normale ≤60j / Lente ≤90j / Très lente &gt;90j).<br><br>
+          <strong>Détail cliquable</strong> : top 10 des commandes les plus longues à liquider, avec N° commande (SIFAC+), fournisseur, montant AE, date de commande, date du 1er paiement et délai.<br><br>
+          <strong>Note</strong> : seules les commandes effectivement payées apparaissent (CONSO_PMT avec montant &gt; 0 et N° pièce de référence renseigné). Les commandes en cours de liquidation ne sont pas comptabilisées.
+        </p>
+      </div>
+
+      <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">🔗 Hyperliens</div>
         <p style="font-size:.82rem;line-height:1.8">
           <strong>SIFAC+</strong> :<br>
@@ -779,6 +803,7 @@ function attachListeners(){
     [['cc-ann','cc-cf','cc-prg','cc-fnd'],renderCC],
     [['tl-ann','tl-statut','tl-vue'],renderTimeline],
     [['livr-ann','livr-statut','livr-prg','livr-cf'],renderLivraison],
+    [['liq-ann','liq-prg','liq-fnd'],renderLiquidationTab],
     [['x-ann','x-prg','x-fnd','x-from','x-to'],renderCross]
   ];
   pairs.forEach(function(pair){
@@ -1267,7 +1292,7 @@ function fillFilters(){
 
 function switchTab(t){
   _currentTab=t;
-  ['db','s','h','e','x','f','d','r','om','nacres','pluri','open','cc','tl','doc'].forEach(function(k){
+  ['db','s','h','e','x','f','d','r','om','nacres','pluri','open','cc','tl','liq','doc'].forEach(function(k){
     var tab=document.getElementById('tab-'+k);
     var vw=document.getElementById('vw-'+k);
     if(tab) tab.classList.toggle('on',k===t);
@@ -1288,6 +1313,7 @@ function switchTab(t){
   if(t==='pluri') renderPluri();
   if(t==='open') renderOpenOrders();
   if(t==='tl') renderTimeline();
+  if(t==='liq') renderLiquidationTab();
 }
 // ════════════════════════════════════════
 // HISTOGRAMME
@@ -3922,6 +3948,12 @@ function renderDashboard(){
   riskDiv.className='pnl';
   riskDiv.style.marginTop='14px';
   riskDiv.innerHTML='<div class="pnl-t" style="margin-bottom:10px">⚠️ Indicateurs de risque — '+annDB+'</div>'+renderRiskPanel(annDB,null);
+
+  // Panneau liquidation dans le dashboard
+  var liqDiv=document.createElement('div');
+  liqDiv.className='pnl'; liqDiv.style.marginTop='14px';
+  liqDiv.innerHTML='<div class="pnl-t" style="margin-bottom:10px">⚡ Taux de liquidation AE→CP — '+annDB+'</div>'+renderLiquidationPanel(annDB,null,null);
+  el.appendChild(liqDiv);
   el.appendChild(riskDiv);
   setTimeout(refreshEngSansLivr,100);
 
@@ -4997,6 +5029,258 @@ window.calcBudgetUrgence=calcBudgetUrgence;
 window.calcCofinancement=calcCofinancement;
 window.renderBudgetUrgencePanel=renderBudgetUrgencePanel;
 window.renderCofinancementPanel=renderCofinancementPanel;
+
+
+// ════════════════════════════════════════════════════════
+// TAUX DE LIQUIDATION AE→CP
+// ════════════════════════════════════════════════════════
+/**
+ * Calcule le délai de liquidation AE→CP :
+ * Pour chaque N° commande présent dans CONSO (AE Original),
+ * on cherche le premier paiement dans CONSO_PMT où cmdRef = cmd.
+ * On mesure le délai en jours entre date commande et date premier paiement.
+ *
+ * @param {string} ann  - année ('2025', '2026', ou '')
+ * @param {string} prog - programme (ou null = global)
+ * @param {string} fnd  - fonds (ou null = global)
+ * @returns {Array} lignes [{cmd, prog, fonds, fournisseur, dateCmd, datePmt, delai, montantAE, montantCP}]
+ */
+function calcLiquidation(ann, prog, fnd){
+  var annEff = ann || '';
+
+  // Index des commandes AE : cmd → {date, montant, prog, fonds, fournisseur}
+  var cmdsAE = {};
+  CONSO.filter(function(r){
+    if(annEff && String(r.annee) !== annEff) return false;
+    if(prog && r.p !== prog) return false;
+    if(fnd && r.fo !== fnd) return false;
+    if(!r.cmd) return false;
+    if(!r.tv.replace(/\u2019/g,"'").includes("Commandes d'achat")) return false;
+    if(r.tm !== 'Original') return false;
+    if(!r.dt) return false;
+    return true;
+  }).forEach(function(r){
+    var key = r.cmd.trim();
+    if(!cmdsAE[key] || r.dt < cmdsAE[key].dt){ // garder la date la plus ancienne
+      cmdsAE[key] = {dt:r.dt, m:r.m, prog:r.p, fonds:r.fo, four:r.f||''};
+    }
+  });
+
+  // Index des paiements CP : cmdRef → date du premier paiement
+  var pmtsByCmd = {};
+  (window.CONSO_PMT||[]).filter(function(r){
+    if(!r.cmdRef) return false;
+    if(r.m <= 0) return false;
+    if(!r.dt) return false;
+    return true;
+  }).forEach(function(r){
+    var key = r.cmdRef.trim();
+    if(!pmtsByCmd[key] || r.dt < pmtsByCmd[key].dt){
+      pmtsByCmd[key] = {dt:r.dt, m:r.m};
+    }
+  });
+
+  // Construire les paires commande ↔ paiement
+  var lignes = [];
+  Object.keys(cmdsAE).forEach(function(cmd){
+    var ae = cmdsAE[cmd];
+    var pmt = pmtsByCmd[cmd];
+    if(!pmt) return; // pas encore payé
+
+    // Parser les dates DD/MM/YYYY
+    function parseDate(s){
+      var p=s.split('/'); return p.length===3?new Date(+p[2],+p[1]-1,+p[0]):null;
+    }
+    var dAE = parseDate(ae.dt);
+    var dCP = parseDate(pmt.dt);
+    if(!dAE||!dCP||isNaN(dAE)||isNaN(dCP)) return;
+
+    var delai = Math.round((dCP - dAE) / 864e5);
+    if(delai < 0) delai = 0; // paiement anticipé ou erreur de date
+
+    lignes.push({
+      cmd:cmd, prog:ae.prog, fonds:ae.fonds, fournisseur:ae.four,
+      dateCmd:ae.dt, datePmt:pmt.dt,
+      delai:delai, montantAE:ae.m, montantCP:pmt.m
+    });
+  });
+
+  return lignes.sort(function(a,b){return b.delai-a.delai;});
+}
+
+/**
+ * Calcule les statistiques de liquidation pour un ensemble de lignes
+ */
+function statsLiquidation(lignes){
+  if(!lignes.length) return null;
+  var delais = lignes.map(function(l){return l.delai;});
+  var sum = delais.reduce(function(s,d){return s+d;},0);
+  var sorted = delais.slice().sort(function(a,b){return a-b;});
+  var median = sorted.length%2===0?
+    (sorted[sorted.length/2-1]+sorted[sorted.length/2])/2:
+    sorted[Math.floor(sorted.length/2)];
+  var nb30  = delais.filter(function(d){return d<=30;}).length;
+  var nb60  = delais.filter(function(d){return d<=60;}).length;
+  var nb90  = delais.filter(function(d){return d<=90;}).length;
+  var nbPlus= delais.filter(function(d){return d>90;}).length;
+  return {
+    nb:lignes.length, moy:sum/lignes.length, median:median,
+    min:sorted[0], max:sorted[sorted.length-1],
+    nb30:nb30, nb60:nb60, nb90:nb90, nbPlus:nbPlus
+  };
+}
+window.calcLiquidation=calcLiquidation;
+window.statsLiquidation=statsLiquidation;
+
+/**
+ * Rendu HTML du panneau liquidation
+ */
+function renderLiquidationPanel(ann, prog, fnd){
+  var lignes = calcLiquidation(ann, prog, fnd);
+  var stats = statsLiquidation(lignes);
+
+  if(!lignes.length){
+    return '<div style="font-size:.82rem;color:var(--mu);padding:4px 0">'
+      +(!(window.CONSO_PMT||[]).length?
+        'Données de paiement CP non disponibles. Vérifiez que les tables Conso 2025/2026 contiennent des lignes de type Paiements.':
+        'Aucune commande soldée trouvée pour ces filtres — les paires Commande AE / Paiement CP ne peuvent pas être établies.')
+      +'</div>';
+  }
+
+  var html = '';
+
+  // ── KPIs ──
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px">';
+
+  var clMoy = stats.moy<=30?'#16a34a':stats.moy<=60?'#d97706':'#dc2626';
+  var clMed = stats.median<=30?'#16a34a':stats.median<=60?'#d97706':'#dc2626';
+  html += kpiBox('Délai moyen', Math.round(stats.moy)+' j', null, clMoy);
+  html += kpiBox('Délai médian', Math.round(stats.median)+' j', null, clMed);
+  html += kpiBox('Commandes liquidées', stats.nb, null, null);
+  html += kpiBox('≤30j (rapide)', stats.nb30+' ('+Math.round(stats.nb30/stats.nb*100)+'%)', null, '#16a34a');
+  html += kpiBox('>90j (lent)', stats.nbPlus+' ('+Math.round(stats.nbPlus/stats.nb*100)+'%)', null, stats.nbPlus>0?'#dc2626':null);
+  html += '</div>';
+
+  // ── Jauge de répartition ──
+  var pct30  = stats.nb30/stats.nb*100;
+  var pct60  = (stats.nb60-stats.nb30)/stats.nb*100;
+  var pct90  = (stats.nb90-stats.nb60)/stats.nb*100;
+  var pctPlus= stats.nbPlus/stats.nb*100;
+  html += '<div style="margin-bottom:10px">';
+  html += '<div style="font-size:.72rem;color:var(--mu);margin-bottom:4px">Répartition des délais de liquidation</div>';
+  html += '<div style="height:16px;border-radius:8px;overflow:hidden;display:flex;background:#f0f1f5">';
+  if(pct30>0)   html += '<div style="width:'+pct30.toFixed(1)+'%;background:#16a34a;transition:width .3s" title="≤30j: '+stats.nb30+'"></div>';
+  if(pct60>0)   html += '<div style="width:'+pct60.toFixed(1)+'%;background:#84cc16" title="31-60j: '+(stats.nb60-stats.nb30)+'"></div>';
+  if(pct90>0)   html += '<div style="width:'+pct90.toFixed(1)+'%;background:#d97706" title="61-90j: '+(stats.nb90-stats.nb60)+'"></div>';
+  if(pctPlus>0) html += '<div style="width:'+pctPlus.toFixed(1)+'%;background:#dc2626" title=">90j: '+stats.nbPlus+'"></div>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:12px;margin-top:4px;font-size:.7rem;color:var(--mu)">'
+    +'<span><span style="color:#16a34a">&#9632;</span> ≤30j</span>'
+    +'<span><span style="color:#84cc16">&#9632;</span> 31-60j</span>'
+    +'<span><span style="color:#d97706">&#9632;</span> 61-90j</span>'
+    +'<span><span style="color:#dc2626">&#9632;</span> &gt;90j</span>'
+    +'</div></div>';
+
+  // ── Vue par programme (agrégée) ──
+  var byProg = {};
+  lignes.forEach(function(l){
+    var k = l.prog||'NA';
+    if(!byProg[k]) byProg[k]={nb:0,sum:0,delais:[],fonds:l.fonds};
+    byProg[k].nb++; byProg[k].sum+=l.delai; byProg[k].delais.push(l.delai);
+  });
+  var progList = Object.keys(byProg).map(function(p){
+    var g=byProg[p];
+    var s2=g.delais.slice().sort(function(a,b){return a-b;});
+    return {prog:p,nb:g.nb,moy:g.sum/g.nb,
+      median:s2.length%2?s2[Math.floor(s2.length/2)]:(s2[s2.length/2-1]+s2[s2.length/2])/2};
+  }).sort(function(a,b){return b.moy-a.moy;});
+
+  html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.78rem;margin-bottom:8px">';
+  html += '<thead><tr style="border-bottom:2px solid var(--bd)">'
+    +'<th style="text-align:left;padding:4px 8px">Programme</th>'
+    +'<th style="text-align:right;padding:4px 8px">Nb liquidées</th>'
+    +'<th style="text-align:right;padding:4px 8px">Délai moyen</th>'
+    +'<th style="text-align:right;padding:4px 8px">Délai médian</th>'
+    +'<th style="padding:4px 8px">Fluidité</th>'
+    +'</tr></thead><tbody>';
+  progList.forEach(function(p){
+    var cl=p.moy<=30?'#16a34a':p.moy<=60?'#d97706':'#dc2626';
+    var lbl=p.moy<=30?'Rapide':p.moy<=60?'Normale':p.moy<=90?'Lente':'Très lente';
+    html += '<tr style="border-bottom:1px solid #f0f1f5">'
+      +'<td style="padding:4px 8px;font-weight:500">'+esc(p.prog)+'</td>'
+      +'<td style="text-align:right;padding:4px 8px">'+p.nb+'</td>'
+      +'<td style="text-align:right;padding:4px 8px;font-weight:700;color:'+cl+'">'+Math.round(p.moy)+' j</td>'
+      +'<td style="text-align:right;padding:4px 8px;color:var(--mu)">'+Math.round(p.median)+' j</td>'
+      +'<td style="padding:4px 8px;font-size:.74rem;color:'+cl+'">'+lbl+'</td>'
+      +'</tr>';
+  });
+  html += '</tbody></table></div>';
+
+  // ── Top 5 délais les plus longs ──
+  html += '<details><summary style="font-size:.76rem;cursor:pointer;color:var(--pr);margin-top:4px">Voir les commandes les plus longues à liquider</summary>';
+  html += '<div style="overflow-x:auto;margin-top:6px"><table style="width:100%;border-collapse:collapse;font-size:.74rem">';
+  html += '<thead><tr style="border-bottom:1px solid var(--bd)">'
+    +'<th style="text-align:left;padding:3px 6px">N° Commande</th>'
+    +'<th style="text-align:left;padding:3px 6px">Programme</th>'
+    +'<th style="text-align:left;padding:3px 6px">Fournisseur</th>'
+    +'<th style="text-align:right;padding:3px 6px">Montant AE</th>'
+    +'<th style="text-align:left;padding:3px 6px">Date cmd</th>'
+    +'<th style="text-align:left;padding:3px 6px">1er paiement</th>'
+    +'<th style="text-align:right;padding:3px 6px">Délai</th>'
+    +'</tr></thead><tbody>';
+  var sapBase="https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&/C_PurchaseOrderTP(PurchaseOrder='";
+  var sapSuf="',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)";
+  lignes.slice(0,10).forEach(function(l){
+    var cl=l.delai<=30?'#16a34a':l.delai<=60?'#d97706':l.delai<=90?'#f59e0b':'#dc2626';
+    var cmdLink='<a href="'+sapBase+encodeURIComponent(l.cmd)+sapSuf+'" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">'+esc(l.cmd)+'</a>';
+    html += '<tr style="border-bottom:1px solid #f0f1f5">'
+      +'<td style="padding:3px 6px">'+cmdLink+'</td>'
+      +'<td style="padding:3px 6px">'+esc(l.prog||'-')+'</td>'
+      +'<td style="padding:3px 6px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(l.fournisseur||'-')+'</td>'
+      +'<td style="text-align:right;padding:3px 6px">'+fmt(l.montantAE)+' €</td>'
+      +'<td style="padding:3px 6px;white-space:nowrap">'+esc(l.dateCmd)+'</td>'
+      +'<td style="padding:3px 6px;white-space:nowrap">'+esc(l.datePmt)+'</td>'
+      +'<td style="text-align:right;padding:3px 6px;font-weight:700;color:'+cl+'">'+l.delai+' j</td>'
+      +'</tr>';
+  });
+  html += '</tbody></table></div></details>';
+  return html;
+}
+window.renderLiquidationPanel=renderLiquidationPanel;
+
+// Helper KPI box
+function kpiBox(label, val, sub, color){
+  return '<div style="background:#f9fafb;border:1px solid var(--bd);border-radius:6px;padding:8px 10px;text-align:center">'
+    +'<div style="font-size:.68rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">'+label+'</div>'
+    +'<div style="font-size:1.15rem;font-weight:800;color:'+(color||'inherit')+'">'+val+'</div>'
+    +(sub?'<div style="font-size:.7rem;color:var(--mu)">'+sub+'</div>':'')
+    +'</div>';
+}
+
+
+
+function renderLiquidationTab(){
+  var ann=(document.getElementById('liq-ann')||{}).value||'';
+  var prg=(document.getElementById('liq-prg')||{}).value||'';
+  var fnd=(document.getElementById('liq-fnd')||{}).value||'';
+  // Peupler les filtres
+  var allPrg=[...new Set(CONSO.map(function(r){return r.p;}).filter(Boolean))].sort();
+  var allFnd=[...new Set(CONSO.map(function(r){return r.fo;}).filter(Boolean))].sort();
+  [['liq-prg',allPrg],['liq-fnd',allFnd]].forEach(function(pair){
+    var el=document.getElementById(pair[0]); if(!el) return;
+    var cur=el.value;
+    el.innerHTML='<option value="">Tous</option>';
+    pair[1].forEach(function(v){el.innerHTML+='<option value="'+esc(v)+'">'+esc(v)+'</option>';});
+    if(cur) el.value=cur;
+  });
+  var el=document.getElementById('liq-content');
+  if(!el) return;
+  el.innerHTML='<div style="padding:20px;text-align:center;color:var(--mu);font-size:.85rem">Calcul en cours…</div>';
+  setTimeout(function(){
+    el.innerHTML=renderLiquidationPanel(ann,prg||null,fnd||null);
+  },50);
+}
+window.renderLiquidationTab=renderLiquidationTab;
 
 </script>
 </body>
