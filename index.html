@@ -1926,6 +1926,18 @@ function renderSynthese(){
   }
   _sPredEl.innerHTML = renderPredictivePanel(ann, cfF||null);
 
+  // Panneau prédictifs sous la synthèse
+  var spEl=document.getElementById('s-predictive');
+  if(!spEl){
+    spEl=document.createElement('div');
+    spEl.id='s-predictive';
+    spEl.className='pnl';
+    spEl.style.marginTop='14px';
+    var sCont=document.getElementById('synthese-content');
+    if(sCont) sCont.insertAdjacentElement('afterend',spEl);
+  }
+  spEl.innerHTML='<div class="pnl-t" style="margin-bottom:10px">🔮 Indicateurs prédictifs — '+(ann||'Toutes')+' '+(cfF?'/ CC '+cfF:'')+'</div>'+renderPredictivePanel(ann||String(new Date().getFullYear()),null);
+
   document.querySelectorAll('#synthese-content .synth-card').forEach(function(el){
     el.addEventListener('click',function(){drillFromSynthese(this.getAttribute('data-prog'));});
   });
@@ -3858,6 +3870,14 @@ function renderDashboard(){
   grid.appendChild(pE);
   el.appendChild(grid);
 
+  // Panneau prédictifs dans le dashboard
+  var predDiv=document.createElement('div');
+  predDiv.className='pnl';
+  predDiv.style.cssText='margin-top:14px';
+  var annDB=String(new Date().getFullYear());
+  predDiv.innerHTML='<div class="pnl-t" style="margin-bottom:10px">🔮 Indicateurs prédictifs — '+annDB+'</div>'+renderPredictivePanel(annDB,null);
+  el.appendChild(predDiv);
+
   // Accès rapide
   var nav=document.createElement('div');
   nav.style.cssText='margin-top:14px;padding:10px 14px;background:#f7f8fb;border-radius:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center';
@@ -4245,6 +4265,143 @@ function clearDrillPeriod(){
 }
 window.applyDrillPeriod=applyDrillPeriod;
 window.clearDrillPeriod=clearDrillPeriod;
+
+
+
+// ════════════════════════════════════════════════════════
+// INDICATEURS PRÉDICTIFS
+// ════════════════════════════════════════════════════════
+function calcProjection(prog, ann){
+  var today=new Date();
+  var yearInt=ann?parseInt(ann):today.getFullYear();
+  var fin31=new Date(yearInt,11,31);
+  var jRestants=Math.max(0,Math.round((fin31-today)/864e5));
+  var budRows=BUDGET.filter(function(b){return String(b.annee)===String(yearInt)&&(!prog||b.prog===prog);});
+  var budg=budRows.reduce(function(s,b){return s+b.bud;},0);
+  var cdaCur=budRows.reduce(function(s,b){return s+b.cda;},0);
+  if(budg<=0) return null;
+  var ilya3mois=new Date(today); ilya3mois.setMonth(ilya3mois.getMonth()-3);
+  var recentRows=CONSO.filter(function(r){
+    if(String(r.annee)!==String(yearInt)) return false;
+    if(prog&&r.p!==prog) return false;
+    if(!r.tv.replace(/\u2019/g,"'").includes("Commandes d'achat")) return false;
+    if(r.tm!=='Original') return false;
+    if(!r.dt) return false;
+    var pts=r.dt.split('/');
+    if(pts.length!==3) return false;
+    var d=new Date(+pts[2],+pts[1]-1,+pts[0]);
+    return d>=ilya3mois;
+  });
+  var moisSet=new Set(recentRows.map(function(r){return r.dt.split('/').slice(1).join('-');}));
+  var nbMois=Math.max(1,moisSet.size);
+  var totalRecent=recentRows.reduce(function(s,r){return s+r.m;},0);
+  var rythme=totalRecent/nbMois;
+  var moisRestants=jRestants/30.5;
+  var projCda=cdaCur+rythme*moisRestants;
+  var projTaux=budg>0?Math.min(projCda/budg*100,150):0;
+  var alerte=projTaux<80&&jRestants>30;
+  return {cda:cdaCur,budg:budg,rythme:rythme,projTaux:projTaux,projCda:projCda,jRestants:jRestants,alerte:alerte};
+}
+
+function calcDelaiEngagement(prog, ann){
+  var yearInt=ann?parseInt(ann):new Date().getFullYear();
+  var debut=new Date(yearInt,0,1);
+  var cmdRows=CONSO.filter(function(r){
+    if(String(r.annee)!==String(yearInt)) return false;
+    if(prog&&r.p!==prog) return false;
+    if(!r.tv.replace(/\u2019/g,"'").includes("Commandes d'achat")) return false;
+    if(r.tm!=='Original') return false;
+    if(!r.dt) return false;
+    return true;
+  }).map(function(r){
+    var pts=r.dt.split('/');
+    return {d:new Date(+pts[2],+pts[1]-1,+pts[0]),m:r.m};
+  }).filter(function(r){return !isNaN(r.d.getTime());})
+    .sort(function(a,b){return a.d-b.d;});
+  if(!cmdRows.length) return null;
+  var premCmd=cmdRows[0].d;
+  var delai=Math.round((premCmd-debut)/864e5);
+  return {delai:delai,datePremCmd:premCmd,nb:cmdRows.length};
+}
+
+function calcVelocite(prog, ann){
+  var today=new Date();
+  var yearInt=ann?parseInt(ann):today.getFullYear();
+  var t1Start=new Date(today); t1Start.setMonth(t1Start.getMonth()-3);
+  var t2Start=new Date(today); t2Start.setMonth(t2Start.getMonth()-6);
+  var t2End=new Date(t1Start);
+  function sumPeriod(from,to){
+    return CONSO.filter(function(r){
+      if(String(r.annee)!==String(yearInt)) return false;
+      if(prog&&r.p!==prog) return false;
+      if(!r.tv.replace(/\u2019/g,"'").includes("Commandes d'achat")) return false;
+      if(r.tm!=='Original') return false;
+      if(!r.dt) return false;
+      var pts=r.dt.split('/');
+      if(pts.length!==3) return false;
+      var d=new Date(+pts[2],+pts[1]-1,+pts[0]);
+      return d>=from&&d<to;
+    }).reduce(function(s,r){return s+r.m;},0);
+  }
+  var rythmeActuel=sumPeriod(t1Start,today)/3;
+  var rythmePrecedent=sumPeriod(t2Start,t2End)/3;
+  var delta=rythmePrecedent>0?(rythmeActuel-rythmePrecedent)/rythmePrecedent*100:0;
+  var tendance=delta>10?'acceleration':delta<-10?'ralentissement':'stable';
+  return {rythmeActuel:rythmeActuel,rythmePrecedent:rythmePrecedent,delta:delta,tendance:tendance};
+}
+
+function renderPredictivePanel(ann, prog){
+  var annEff=ann||String(new Date().getFullYear());
+  var proj=calcProjection(prog,annEff);
+  var del=calcDelaiEngagement(prog,annEff);
+  var vel=calcVelocite(prog,annEff);
+
+  var html='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">';
+
+  // Projection
+  if(proj){
+    var clP=proj.projTaux>=90?'#16a34a':proj.projTaux>=80?'#d97706':'#dc2626';
+    html+='<div style="border:1px solid var(--bd);border-radius:8px;padding:12px;background:#f9fafb">'
+      +'<div style="font-size:.7rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">📈 Projection fin '+annEff+'</div>'
+      +'<div style="font-size:1.4rem;font-weight:800;color:'+clP+'">'+proj.projTaux.toFixed(1)+'%</div>'
+      +'<div style="height:5px;background:#e5e7eb;border-radius:3px;margin:6px 0;overflow:hidden"><div style="height:100%;background:'+clP+';width:'+Math.min(proj.projTaux,100).toFixed(1)+'%;border-radius:3px"></div></div>'
+      +'<div style="font-size:.74rem;color:var(--mu)">Rythme: '+fmt(proj.rythme)+'&euro;/mois &bull; J-'+proj.jRestants+'</div>'
+      +(proj.alerte?'<div style="margin-top:6px;padding:4px 8px;background:#fef2f2;border-radius:4px;font-size:.72rem;color:#dc2626;font-weight:600">⚠️ Risque sous-consommation</div>':'')
+      +'</div>';
+  } else {
+    html+='<div style="border:1px solid var(--bd);border-radius:8px;padding:12px;background:#f9fafb;color:var(--mu);font-size:.82rem">📈 Projection : données insuffisantes</div>';
+  }
+
+  // Délai engagement
+  if(del){
+    var clD=del.delai<=30?'#16a34a':del.delai<=90?'#d97706':'#dc2626';
+    var lblD=del.delai<=30?'Démarrage rapide':del.delai<=90?'Démarrage modéré':'Démarrage tardif';
+    html+='<div style="border:1px solid var(--bd);border-radius:8px;padding:12px;background:#f9fafb">'
+      +'<div style="font-size:.7rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">⏱ Délai 1ère commande</div>'
+      +'<div style="font-size:1.4rem;font-weight:800;color:'+clD+'">'+del.delai+' j</div>'
+      +'<div style="font-size:.74rem;color:var(--mu);margin-top:4px">'+lblD+' &bull; '+del.nb+' commandes</div>'
+      +'<div style="font-size:.72rem;color:var(--mu)">1ère cmd: '+del.datePremCmd.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+'</div>'
+      +'</div>';
+  } else {
+    html+='<div style="border:1px solid var(--bd);border-radius:8px;padding:12px;background:#f9fafb;color:var(--mu);font-size:.82rem">⏱ Délai engagement: aucune commande</div>';
+  }
+
+  // Vélocité
+  var iconV=vel.tendance==='acceleration'?'🚀':vel.tendance==='ralentissement'?'🐌':'➡️';
+  var clV=vel.tendance==='acceleration'?'#16a34a':vel.tendance==='ralentissement'?'#dc2626':'#d97706';
+  var signV=vel.delta>=0?'+':'';
+  var lblV=vel.tendance==='acceleration'?'Accélération':vel.tendance==='ralentissement'?'Ralentissement':'Stable';
+  html+='<div style="border:1px solid var(--bd);border-radius:8px;padding:12px;background:#f9fafb">'
+    +'<div style="font-size:.7rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">'+iconV+' Vélocité engagement</div>'
+    +'<div style="font-size:1.4rem;font-weight:800;color:'+clV+'">'+signV+vel.delta.toFixed(0)+'%</div>'
+    +'<div style="font-size:.74rem;color:'+clV+';font-weight:600;margin-top:4px">'+lblV+'</div>'
+    +'<div style="font-size:.72rem;color:var(--mu)">T-1: '+fmt(vel.rythmePrecedent)+'&euro;/m &rarr; T0: '+fmt(vel.rythmeActuel)+'&euro;/m</div>'
+    +'</div>';
+
+  html+='</div>';
+  return html;
+}
+window.renderPredictivePanel=renderPredictivePanel;
 
 </script>
 </body>
