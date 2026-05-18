@@ -1952,6 +1952,23 @@ function renderSynthese(){
   }
   spEl.innerHTML='<div class="pnl-t" style="margin-bottom:10px">🔮 Indicateurs prédictifs — '+(ann||'Toutes')+' '+(cfF?'/ CC '+cfF:'')+'</div>'+renderPredictivePanel(ann||String(new Date().getFullYear()),null);
 
+  // Panneau risques sous les prédictifs
+  var srEl=document.getElementById('s-risk');
+  if(!srEl){
+    srEl=document.createElement('div');
+    srEl.id='s-risk';
+    srEl.className='pnl';
+    srEl.style.marginTop='14px';
+    var spEl2=document.getElementById('s-predictive');
+    if(spEl2) spEl2.insertAdjacentElement('afterend',srEl);
+    else {
+      var sCont2=document.getElementById('synthese-content');
+      if(sCont2) sCont2.insertAdjacentElement('afterend',srEl);
+    }
+  }
+  srEl.innerHTML='<div class="pnl-t" style="margin-bottom:10px">⚠️ Indicateurs de risque — '+(ann||String(new Date().getFullYear()))+'</div>'+renderRiskPanel(ann||String(new Date().getFullYear()),null);
+  setTimeout(refreshEngSansLivr,100);
+
   document.querySelectorAll('#synthese-content .synth-card').forEach(function(el){
     el.addEventListener('click',function(){drillFromSynthese(this.getAttribute('data-prog'));});
   });
@@ -3892,6 +3909,14 @@ function renderDashboard(){
   predDiv.innerHTML='<div class="pnl-t" style="margin-bottom:10px">🔮 Indicateurs prédictifs — '+annDB+'</div>'+renderPredictivePanel(annDB,null);
   el.appendChild(predDiv);
 
+  // Panneau risques dans le dashboard
+  var riskDiv=document.createElement('div');
+  riskDiv.className='pnl';
+  riskDiv.style.marginTop='14px';
+  riskDiv.innerHTML='<div class="pnl-t" style="margin-bottom:10px">⚠️ Indicateurs de risque — '+annDB+'</div>'+renderRiskPanel(annDB,null);
+  el.appendChild(riskDiv);
+  setTimeout(refreshEngSansLivr,100);
+
   // Accès rapide
   var nav=document.createElement('div');
   nav.style.cssText='margin-top:14px;padding:10px 14px;background:#f7f8fb;border-radius:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center';
@@ -4416,6 +4441,313 @@ function renderPredictivePanel(ann, prog){
   return html;
 }
 window.renderPredictivePanel=renderPredictivePanel;
+
+
+// ════════════════════════════════════════════════════════
+// INDICATEURS DE RISQUE
+// ════════════════════════════════════════════════════════
+
+/**
+ * SCORE DE RISQUE — note 0-10 par programme
+ * Pondération :
+ *   - Taux conso faible          : 0-3 pts (plus c'est bas, plus c'est risqué)
+ *   - Sur-engagement (CDa>bud)   : 0-2 pts
+ *   - RAR élevé (>20% bud)       : 0-2 pts
+ *   - Proximité échéance (<90j)  : 0-2 pts
+ *   - Projection fin d'année <80%: 0-1 pt
+ */
+function calcRiskScore(prog, ann){
+  var yearInt = ann ? parseInt(ann) : new Date().getFullYear();
+  var budRows = BUDGET.filter(function(b){
+    return String(b.annee)===String(yearInt) && b.prog===prog;
+  });
+  if(!budRows.length) return null;
+  var bud  = budRows.reduce(function(s,b){return s+b.bud;},0);
+  var cda  = budRows.reduce(function(s,b){return s+b.cda;},0);
+  var rar  = budRows.reduce(function(s,b){return s+b.rar;},0);
+  var conso= budRows.reduce(function(s,b){return s+b.conso;},0);
+  if(bud <= 0) return null;
+
+  var score = 0; var details = [];
+
+  // 1. Taux de consommation (max 3 pts)
+  var taux = conso/bud*100;
+  var ptsTaux = taux<20?3:taux<40?2:taux<60?1:0;
+  score += ptsTaux;
+  if(ptsTaux>0) details.push({label:'Sous-consommation ('+taux.toFixed(0)+'%)',pts:ptsTaux,niv:'er'});
+
+  // 2. Sur-engagement (max 2 pts)
+  if(cda>bud){ score+=2; details.push({label:'Sur-engagement',pts:2,niv:'er'}); }
+  else if(cda>bud*0.95){ score+=1; details.push({label:'Engagement > 95%',pts:1,niv:'wn'}); }
+
+  // 3. RAR élevé (max 2 pts)
+  var rarPct = bud>0?rar/bud*100:0;
+  var ptsRAR = rarPct>40?2:rarPct>20?1:0;
+  score += ptsRAR;
+  if(ptsRAR>0) details.push({label:'RAR élevé ('+rarPct.toFixed(0)+'%)',pts:ptsRAR,niv:'wn'});
+
+  // 4. Proximité échéance (max 2 pts)
+  var pi = window._PROG_INFO||{};
+  var info = pi[prog];
+  if(info && info.dateFin){
+    var p2=info.dateFin.split('-');
+    var fd=new Date(+p2[0],+p2[1]-1,28);
+    var diff=Math.round((fd-new Date())/864e5);
+    var ptsEch = diff<0?2:diff<30?2:diff<90?1:0;
+    score += ptsEch;
+    if(ptsEch>0) details.push({label:'Échéance '+(diff<0?'dépassée':'dans '+diff+'j'),pts:ptsEch,niv:diff<30?'er':'wn'});
+  }
+
+  // 5. Projection fin d'année (max 1 pt)
+  var proj = calcProjection(prog, String(yearInt));
+  if(proj && proj.alerte){ score+=1; details.push({label:'Projection <80%',pts:1,niv:'wn'}); }
+
+  score = Math.min(10, score);
+  var niveau = score>=7?'er':score>=4?'wn':'ok';
+  return {score:score, niveau:niveau, details:details, taux:taux, bud:bud, cda:cda, rar:rar};
+}
+
+/**
+ * CONCENTRATION FOURNISSEUR
+ * Pour un programme/année : part du total engagé sur chaque fournisseur
+ */
+function calcConcentrationFour(prog, ann){
+  var yearInt = ann ? parseInt(ann) : new Date().getFullYear();
+  var rows = (window.CDA_CC||[]).filter(function(r){
+    return String(r.annee)===String(yearInt) && (!prog||r.prog===prog);
+  });
+  if(!rows.length) return null;
+
+  var byFour = {};
+  rows.forEach(function(r){
+    var k = r.four||'Inconnu';
+    byFour[k] = (byFour[k]||0) + r.val;
+  });
+  var total = Object.values(byFour).reduce(function(s,v){return s+v;},0);
+  if(total<=0) return null;
+
+  var fourList = Object.keys(byFour).map(function(k){
+    return {four:k, val:byFour[k], pct:byFour[k]/total*100};
+  }).sort(function(a,b){return b.val-a.val;});
+
+  // Indice HHI (Herfindahl) : somme des carrés des parts
+  var hhi = fourList.reduce(function(s,f){return s+Math.pow(f.pct/100,2);},0);
+  var risque = hhi>0.25?'er':hhi>0.15?'wn':'ok'; // >0.25 = concentré, >0.15 = modéré
+
+  return {fourList:fourList, total:total, hhi:hhi, risque:risque};
+}
+
+/**
+ * ENGAGEMENTS SANS LIVRAISON
+ * Commandes avec RAR livraison dépassé depuis plus de X jours
+ */
+function calcEngSansLivr(seuilJours, prog, ann){
+  var today = new Date(); today.setHours(0,0,0,0);
+  var yearInt = ann ? parseInt(ann) : new Date().getFullYear();
+  var retards = (window.CDA_CC||[]).filter(function(r){
+    if(!r.dateLivr) return false;
+    if(r.resteLivr<=0) return false;
+    if(ann && r.annee!==String(yearInt)) return false;
+    if(prog && r.prog!==prog) return false;
+    var fd=new Date(r.dateLivr); fd.setHours(0,0,0,0);
+    return Math.round((today-fd)/864e5) >= seuilJours;
+  });
+  if(!retards.length) return {retards:[], byFour:{}, totRAR:0};
+
+  var byFour = {};
+  retards.forEach(function(r){
+    var k=r.four||'Inconnu';
+    if(!byFour[k]) byFour[k]={four:k,nb:0,rar:0,maxRetard:0,cmds:[]};
+    var fd=new Date(r.dateLivr);
+    var retardJ=Math.round((today-fd)/864e5);
+    byFour[k].nb++;
+    byFour[k].rar+=r.resteLivr;
+    byFour[k].maxRetard=Math.max(byFour[k].maxRetard,retardJ);
+    byFour[k].cmds.push(r);
+  });
+  var totRAR=retards.reduce(function(s,r){return s+r.resteLivr;},0);
+  return {retards:retards, byFour:byFour, totRAR:totRAR};
+}
+window.calcRiskScore=calcRiskScore;
+window.calcConcentrationFour=calcConcentrationFour;
+window.calcEngSansLivr=calcEngSansLivr;
+
+// ════════════════════════════════════════════════════════
+// PANNEAU RISQUES — rendu HTML
+// ════════════════════════════════════════════════════════
+function renderRiskPanel(ann, prog){
+  var annEff = ann || String(new Date().getFullYear());
+  var html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px">';
+
+  // ── 1. Scores de risque par programme ──
+  var progs = prog ? [prog] :
+    [...new Set(BUDGET.filter(function(b){return String(b.annee)===annEff;}).map(function(b){return b.prog;}))];
+
+  var scores = progs.map(function(p){
+    return {prog:p, s:calcRiskScore(p, annEff)};
+  }).filter(function(x){return x.s;}).sort(function(a,b){return b.s.score-a.s.score;});
+
+  html += '<div style="border:1px solid var(--bd);border-radius:8px;padding:12px;background:#f9fafb">';
+  html += '<div style="font-size:.7rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">🎯 Scores de risque — '+annEff+'</div>';
+
+  if(!scores.length){
+    html += '<div style="font-size:.82rem;color:var(--mu)">Aucun programme avec données suffisantes</div>';
+  } else {
+    scores.forEach(function(x){
+      var s=x.s;
+      var cl=s.niveau==='er'?'#dc2626':s.niveau==='wn'?'#d97706':'#16a34a';
+      var bg=s.niveau==='er'?'#fef2f2':s.niveau==='wn'?'#fff7ed':'#f0fdf4';
+      html+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f0f1f5">'
+        +'<div style="min-width:26px;height:26px;border-radius:50%;background:'+cl+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:800;flex-shrink:0">'+s.score+'</div>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:.8rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.prog)+'</div>'
+        +'<div style="font-size:.72rem;color:var(--mu)">'
+        +s.details.map(function(d){return'<span style="color:'+(d.niv==='er'?'#dc2626':'#d97706')+'">'+esc(d.label)+'</span>';}).join(' &bull; ')
+        +'</div></div>'
+        +'<div style="font-size:.72rem;color:var(--mu);white-space:nowrap">'+s.taux.toFixed(0)+'%</div>'
+        +'</div>';
+    });
+    var nbEr=scores.filter(function(x){return x.s.niveau==='er';}).length;
+    var nbWn=scores.filter(function(x){return x.s.niveau==='wn';}).length;
+    if(nbEr||nbWn) html+='<div style="font-size:.74rem;color:var(--mu);margin-top:6px">'+
+      (nbEr?'<span style="color:#dc2626;font-weight:600">'+nbEr+' critique'+(nbEr>1?'s':'')+'</span> ':'')+
+      (nbWn?'<span style="color:#d97706">'+nbWn+' avertissement'+(nbWn>1?'s':'')+'</span>':'')+'</div>';
+  }
+  html += '</div>';
+
+  // ── 2. Concentration fournisseur ──
+  var conc = calcConcentrationFour(prog||null, annEff);
+  html += '<div style="border:1px solid var(--bd);border-radius:8px;padding:12px;background:#f9fafb">';
+  html += '<div style="font-size:.7rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">🏭 Concentration fournisseur</div>';
+  if(!conc){
+    html += '<div style="font-size:.82rem;color:var(--mu)">Aucune donnée CDA disponible</div>';
+  } else {
+    var clH=conc.risque==='er'?'#dc2626':conc.risque==='wn'?'#d97706':'#16a34a';
+    var lblH=conc.risque==='er'?'Concentration élevée':conc.risque==='wn'?'Concentration modérée':'Diversifié';
+    html+='<div style="font-size:1.2rem;font-weight:800;color:'+clH+'">'+lblH+'</div>';
+    html+='<div style="font-size:.72rem;color:var(--mu);margin-bottom:8px">Indice HHI : '+(conc.hhi*100).toFixed(1)+'%</div>';
+    // Top 3 fournisseurs
+    conc.fourList.slice(0,3).forEach(function(f,i){
+      var w=Math.min(f.pct,100);
+      var clF=f.pct>40?'#dc2626':f.pct>25?'#d97706':'#2563eb';
+      html+='<div style="margin-bottom:5px">'
+        +'<div style="display:flex;justify-content:space-between;font-size:.76rem;margin-bottom:2px">'
+        +'<span style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">'+esc(f.four)+'</span>'
+        +'<span style="color:'+clF+';font-weight:700;white-space:nowrap">'+f.pct.toFixed(1)+'%</span></div>'
+        +'<div style="height:5px;background:#e5e7eb;border-radius:3px;overflow:hidden">'
+        +'<div style="height:100%;background:'+clF+';width:'+w.toFixed(1)+'%;border-radius:3px"></div></div>'
+        +'<div style="font-size:.7rem;color:var(--mu)">'+fmt(f.val)+' €</div>'
+        +'</div>';
+    });
+    if(conc.fourList.length>3) html+='<div style="font-size:.72rem;color:var(--mu);margin-top:4px">+'+(conc.fourList.length-3)+' autres fournisseurs</div>';
+    // Matrice programme × fournisseur (top 3)
+    if(!prog){
+      html+='<details style="margin-top:8px"><summary style="font-size:.74rem;cursor:pointer;color:var(--pr)">Voir matrice Programme × Fournisseur</summary>';
+      html+='<div style="overflow-x:auto;margin-top:6px"><table style="font-size:.72rem;border-collapse:collapse;width:100%">';
+      var top3 = conc.fourList.slice(0,3).map(function(f){return f.four;});
+      html+='<tr><th style="text-align:left;padding:3px 6px;border-bottom:1px solid #e5e7eb">Programme</th>';
+      top3.forEach(function(f){html+='<th style="text-align:right;padding:3px 6px;border-bottom:1px solid #e5e7eb;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis">'+esc(f)+'</th>';});
+      html+='</tr>';
+      var byProgF={};
+      (window.CDA_CC||[]).filter(function(r){return String(r.annee)===annEff;}).forEach(function(r){
+        var p=r.prog||'NA';
+        if(!byProgF[p]) byProgF[p]={};
+        byProgF[p][r.four||'Inconnu']=(byProgF[p][r.four||'Inconnu']||0)+r.val;
+      });
+      Object.keys(byProgF).sort().slice(0,8).forEach(function(p){
+        var totP=Object.values(byProgF[p]).reduce(function(s,v){return s+v;},0);
+        html+='<tr><td style="padding:3px 6px;border-bottom:1px solid #f0f1f5;font-weight:500">'+esc(p)+'</td>';
+        top3.forEach(function(f){
+          var v=byProgF[p][f]||0;
+          var pct=totP>0?v/totP*100:0;
+          var clC=pct>40?'#dc2626':pct>25?'#d97706':'inherit';
+          html+='<td style="text-align:right;padding:3px 6px;border-bottom:1px solid #f0f1f5;color:'+clC+'">'+
+            (pct>0?pct.toFixed(0)+'%':'-')+'</td>';
+        });
+        html+='</tr>';
+      });
+      html+='</table></div></details>';
+    }
+  }
+  html += '</div>';
+
+  // ── 3. Engagements sans livraison ──
+  html += '<div style="border:1px solid var(--bd);border-radius:8px;padding:12px;background:#f9fafb">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    +'<div style="font-size:.7rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.05em">📦 Engagements sans livraison</div>'
+    +'<div style="display:flex;align-items:center;gap:4px">'
+    +'<label style="font-size:.72rem;color:var(--mu)">Seuil:</label>'
+    +'<input type="number" id="risk-seuil" value="60" min="1" max="365" '
+    +'style="width:48px;border:1px solid var(--bd);border-radius:4px;padding:2px 4px;font-size:.76rem;text-align:center" '
+    +'onchange="refreshEngSansLivr()" oninput="refreshEngSansLivr()">'
+    +'<label style="font-size:.72rem;color:var(--mu)">j</label>'
+    +'</div></div>';
+  html += '<div id="eng-sans-livr-content"></div>';
+  html += '</div>';
+
+  html += '</div>'; // fin grille
+  return html;
+}
+window.renderRiskPanel=renderRiskPanel;
+
+function refreshEngSansLivr(){
+  var seuil=parseInt((document.getElementById('risk-seuil')||{}).value||'60');
+  var ann=document.getElementById('s-ann')?document.getElementById('s-ann').value:'';
+  var cf=document.getElementById('s-cf')?document.getElementById('s-cf').value:'';
+  var prog=null;
+  var annEff=ann||String(new Date().getFullYear());
+  var res=calcEngSansLivr(seuil,prog,annEff);
+  var el=document.getElementById('eng-sans-livr-content');
+  if(!el) return;
+  var sapBase="https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&/C_PurchaseOrderTP(PurchaseOrder='";
+  var sapSuf="',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)";
+  if(!res.retards.length){
+    el.innerHTML='<div style="font-size:.82rem;color:var(--ok)">✅ Aucun retard de livraison &gt;'+seuil+'j</div>';
+    return;
+  }
+  var fourList=Object.values(res.byFour).sort(function(a,b){return b.rar-a.rar;});
+  var html='<div style="font-size:.78rem;font-weight:600;color:#dc2626;margin-bottom:6px">'+
+    res.retards.length+' ligne(s) — RAR total : '+fmt(res.totRAR)+' €</div>';
+  // Vue agrégée par fournisseur
+  fourList.slice(0,5).forEach(function(g){
+    html+='<div style="padding:5px 0;border-bottom:1px solid #f0f1f5">'
+      +'<div style="display:flex;justify-content:space-between;font-size:.78rem">'
+      +'<span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">'+esc(g.four)+'</span>'
+      +'<span style="color:#dc2626;font-weight:700;white-space:nowrap">'+fmt(g.rar)+' €</span></div>'
+      +'<div style="font-size:.72rem;color:var(--mu)">'+g.nb+' cmd — max '+g.maxRetard+' j de retard</div>'
+      +'</div>';
+  });
+  if(fourList.length>5) html+='<div style="font-size:.72rem;color:var(--mu);margin-top:4px">+'+(fourList.length-5)+' autres fournisseurs</div>';
+  // Détail cliquable
+  html+='<details style="margin-top:8px"><summary style="font-size:.74rem;cursor:pointer;color:var(--pr)">Voir le détail des commandes</summary><div style="overflow-x:auto;margin-top:6px">';
+  html+='<table style="font-size:.72rem;border-collapse:collapse;width:100%"><thead><tr>'
+    +'<th style="text-align:left;padding:3px 6px;border-bottom:1px solid #e5e7eb">N° Commande</th>'
+    +'<th style="text-align:left;padding:3px 6px;border-bottom:1px solid #e5e7eb">Fournisseur</th>'
+    +'<th style="text-align:left;padding:3px 6px;border-bottom:1px solid #e5e7eb">CC</th>'
+    +'<th style="text-align:right;padding:3px 6px;border-bottom:1px solid #e5e7eb">RAR livr.</th>'
+    +'<th style="text-align:left;padding:3px 6px;border-bottom:1px solid #e5e7eb">Date prévue</th>'
+    +'<th style="text-align:right;padding:3px 6px;border-bottom:1px solid #e5e7eb">Retard</th>'
+    +'</tr></thead><tbody>';
+  var today=new Date(); today.setHours(0,0,0,0);
+  res.retards.sort(function(a,b){
+    var fa=new Date(a.dateLivr),fb=new Date(b.dateLivr);
+    return fa-fb;
+  }).slice(0,30).forEach(function(r){
+    var fd=new Date(r.dateLivr);
+    var retardJ=Math.round((today-fd)/864e5);
+    var cmdLink=r.cmd?'<a href="'+sapBase+encodeURIComponent(r.cmd)+sapSuf+'" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">'+esc(r.cmd)+'</a>':'-';
+    html+='<tr style="background:#fff5f5"><td style="padding:3px 6px;border-bottom:1px solid #f0f1f5">'+cmdLink+'</td>'
+      +'<td style="padding:3px 6px;border-bottom:1px solid #f0f1f5;overflow:hidden;text-overflow:ellipsis;max-width:100px;white-space:nowrap">'+esc(r.four||'-')+'</td>'
+      +'<td style="padding:3px 6px;border-bottom:1px solid #f0f1f5">'+esc(r.cc||'-')+'</td>'
+      +'<td style="text-align:right;padding:3px 6px;border-bottom:1px solid #f0f1f5;font-weight:600">'+fmt(r.resteLivr)+' €</td>'
+      +'<td style="padding:3px 6px;border-bottom:1px solid #f0f1f5">'+esc(r.dateLivr)+'</td>'
+      +'<td style="text-align:right;padding:3px 6px;border-bottom:1px solid #f0f1f5;color:#dc2626;font-weight:700">'+retardJ+'j</td>'
+      +'</tr>';
+  });
+  html+='</tbody></table></div></details>';
+  el.innerHTML=html;
+}
+window.refreshEngSansLivr=refreshEngSansLivr;
 
 </script>
 </body>
