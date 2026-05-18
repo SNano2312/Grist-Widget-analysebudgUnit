@@ -4969,10 +4969,10 @@ function renderCofinancementPanel(ann){
       var clTaux = f.tauxCda>=90?'#16a34a':f.tauxCda>=50?'#d97706':'#dc2626';
       html += '<div style="display:flex;align-items:center;gap:5px;font-size:.75rem">'
         +'<div style="width:10px;height:10px;border-radius:2px;background:'+cl+';flex-shrink:0"></div>'
-        +'<div><span style="font-weight:600">'+esc(f.fonds)+'</span>'
+        +'<div><span style="font-weight:600">'+esc(f.fonds)+'</span>'+(f.isSalaire?'<span style="font-size:.68rem;background:#ede9fe;color:#7c3aed;border-radius:3px;padding:0 4px;margin-left:3px">salaires</span>':'')
         +' <span style="color:var(--mu)">'+f.pct.toFixed(0)+'%</span>'
         +' — <span style="font-weight:500">'+fmt(f.bud)+' €</span>'
-        +' — Cda <span style="color:'+clTaux+'">'+f.tauxCda.toFixed(0)+'%</span>'
+        +' — '+(f.isSalaire?'Payé CP':'Cda')+' <span style="color:'+clTaux+'">'+f.tauxCda.toFixed(0)+'%</span>'
         +'</div></div>';
     });
     html += '</div></div>';
