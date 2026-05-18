@@ -4873,13 +4873,17 @@ function calcCofinancement(ann){
     results.push({
       prog: prog, nom: nom,
       fondsList: fondsList.map(function(f){
+        var isSalaire = (f === 'RPC_141');
+        var conso = isSalaire ? fonds[f].paye : fonds[f].cda;
         return {
           fonds: f,
           bud: fonds[f].bud,
           cda: fonds[f].cda,
           paye: fonds[f].paye,
+          conso: conso,
+          isSalaire: isSalaire,
           pct: fonds[f].bud / totalBud * 100,
-          tauxCda: fonds[f].bud>0 ? fonds[f].cda/fonds[f].bud*100 : 0
+          tauxCda: fonds[f].bud>0 ? conso/fonds[f].bud*100 : 0
         };
       }).sort(function(a,b){ return b.bud-a.bud; }),
       totalBud: totalBud, totalCda: totalCda,
@@ -4956,6 +4960,15 @@ function renderCofinancementPanel(ann){
 
     // Barres empilées par fonds
     var colors = ['#2563eb','#16a34a','#d97706','#7c3aed','#dc2626','#0891b2'];
+    // Couleurs par famille de fonds pour cohérence visuelle
+    var fondsCouleurs = {
+      'SE': '#2563eb', 'RPC_120': '#16a34a', 'RPC_121': '#dc2626',
+      'RPC_141': '#9333ea', 'RPC_300': '#2563eb', 'RPNC': '#d97706',
+      'RAO': '#0891b2'
+    };
+    function couleurFonds(nom, idx){
+      return fondsCouleurs[nom] || colors[idx % colors.length];
+    }
     html += '<div style="height:14px;border-radius:6px;overflow:hidden;display:flex;margin-bottom:6px">';
     r.fondsList.forEach(function(f, fi){
       html += '<div style="width:'+f.pct.toFixed(1)+'%;background:'+colors[fi%colors.length]+';transition:width .3s" title="'+esc(f.fonds)+' : '+f.pct.toFixed(1)+'%"></div>';
@@ -4965,7 +4978,7 @@ function renderCofinancementPanel(ann){
     // Légende et détail par fonds
     html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:4px">';
     r.fondsList.forEach(function(f, fi){
-      var cl = colors[fi%colors.length];
+      var cl = couleurFonds(f.fonds, fi);
       var clTaux = f.tauxCda>=90?'#16a34a':f.tauxCda>=50?'#d97706':'#dc2626';
       html += '<div style="display:flex;align-items:center;gap:5px;font-size:.75rem">'
         +'<div style="width:10px;height:10px;border-radius:2px;background:'+cl+';flex-shrink:0"></div>'
