@@ -1914,6 +1914,17 @@ function renderSynthese(){
       '</div>'
       :'<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 16px;margin-bottom:16px;font-size:.83rem;color:#16a34a">✅ Aucune alerte budgétaire détectée</div>')+
     '<div class="synth-grid">'+cards+'</div>';
+  // Panneau prédictifs sous les cartes synthèse
+  var _sPredEl = document.getElementById('s-predictive');
+  if(!_sPredEl){
+    _sPredEl = document.createElement('div');
+    _sPredEl.id = 's-predictive';
+    _sPredEl.className = 'pnl';
+    _sPredEl.style.marginTop = '14px';
+    var _sCont = document.getElementById('synthese-content');
+    if(_sCont) _sCont.insertAdjacentElement('afterend', _sPredEl);
+  }
+  _sPredEl.innerHTML = renderPredictivePanel(ann, cfF||null);
 
   document.querySelectorAll('#synthese-content .synth-card').forEach(function(el){
     el.addEventListener('click',function(){drillFromSynthese(this.getAttribute('data-prog'));});
