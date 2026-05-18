@@ -5048,7 +5048,17 @@ window.renderCofinancementPanel=renderCofinancementPanel;
 function calcLiquidation(ann, prog, fnd){
   var annEff = ann || '';
 
-  // Index des commandes AE : cmd → {date, montant, prog, fonds, fournisseur}
+  function parseDate(s){
+    if(!s) return null;
+    var p=s.split('/');
+    if(p.length===3) return new Date(+p[2],+p[1]-1,+p[0]);
+    // format YYYY-MM-DD
+    p=s.split('-');
+    if(p.length===3) return new Date(+p[0],+p[1]-1,+p[2]);
+    return null;
+  }
+
+  // Index des commandes AE : cmd → {dt, m, prog, fonds, four}
   var cmdsAE = {};
   CONSO.filter(function(r){
     if(annEff && String(r.annee) !== annEff) return false;
@@ -5056,17 +5066,36 @@ function calcLiquidation(ann, prog, fnd){
     if(fnd && r.fo !== fnd) return false;
     if(!r.cmd) return false;
     if(!r.tv.replace(/\u2019/g,"'").includes("Commandes d'achat")) return false;
-    if(r.tm !== 'Original') return false;
     if(!r.dt) return false;
     return true;
   }).forEach(function(r){
     var key = r.cmd.trim();
-    if(!cmdsAE[key] || r.dt < cmdsAE[key].dt){ // garder la date la plus ancienne
-      cmdsAE[key] = {dt:r.dt, m:r.m, prog:r.p, fonds:r.fo, four:r.f||''};
+    var d = parseDate(r.dt);
+    if(!d || isNaN(d)) return;
+    // Garder la date la plus ancienne pour cette commande
+    if(!cmdsAE[key] || d < cmdsAE[key].d){
+      cmdsAE[key] = {d:d, dt:r.dt, m:Math.abs(r.m), prog:r.p, fonds:r.fo, four:r.f||''};
     }
   });
 
-  // Index des paiements CP : cmdRef → date du premier paiement
+  // Index des factures dans CONSO : cmdRef=N°commande → date première facture
+  // Les factures ont tv contenant "Factures" et cmdRef = N° commande d'achat
+  var factsByCmd = {};
+  CONSO.filter(function(r){
+    if(!r.cmdRef) return false;
+    if(!r.tv.includes('Facture')) return false;
+    if(!r.dt) return false;
+    return true;
+  }).forEach(function(r){
+    var key = r.cmdRef.trim();
+    var d = parseDate(r.dt);
+    if(!d || isNaN(d)) return;
+    if(!factsByCmd[key] || d < factsByCmd[key].d){
+      factsByCmd[key] = {d:d, dt:r.dt, m:Math.abs(r.m)};
+    }
+  });
+
+  // Fallback : paiements CP via CONSO_PMT (cmdRef peut référencer la commande directement)
   var pmtsByCmd = {};
   (window.CONSO_PMT||[]).filter(function(r){
     if(!r.cmdRef) return false;
@@ -5075,33 +5104,29 @@ function calcLiquidation(ann, prog, fnd){
     return true;
   }).forEach(function(r){
     var key = r.cmdRef.trim();
-    if(!pmtsByCmd[key] || r.dt < pmtsByCmd[key].dt){
-      pmtsByCmd[key] = {dt:r.dt, m:r.m};
+    var d = parseDate(r.dt);
+    if(!d || isNaN(d)) return;
+    if(!pmtsByCmd[key] || d < pmtsByCmd[key].d){
+      pmtsByCmd[key] = {d:d, dt:r.dt, m:r.m};
     }
   });
 
-  // Construire les paires commande ↔ paiement
+  // Construire les paires commande ↔ (facture ou paiement)
   var lignes = [];
   Object.keys(cmdsAE).forEach(function(cmd){
     var ae = cmdsAE[cmd];
-    var pmt = pmtsByCmd[cmd];
-    if(!pmt) return; // pas encore payé
+    // Priorité : facture dans CONSO, sinon paiement dans CONSO_PMT
+    var target = factsByCmd[cmd] || pmtsByCmd[cmd];
+    if(!target) return;
 
-    // Parser les dates DD/MM/YYYY
-    function parseDate(s){
-      var p=s.split('/'); return p.length===3?new Date(+p[2],+p[1]-1,+p[0]):null;
-    }
-    var dAE = parseDate(ae.dt);
-    var dCP = parseDate(pmt.dt);
-    if(!dAE||!dCP||isNaN(dAE)||isNaN(dCP)) return;
+    var delai = Math.round((target.d - ae.d) / 864e5);
+    if(delai < 0) delai = 0;
 
-    var delai = Math.round((dCP - dAE) / 864e5);
-    if(delai < 0) delai = 0; // paiement anticipé ou erreur de date
-
+    var typeTarget = factsByCmd[cmd] ? 'Facture' : 'Paiement CP';
     lignes.push({
       cmd:cmd, prog:ae.prog, fonds:ae.fonds, fournisseur:ae.four,
-      dateCmd:ae.dt, datePmt:pmt.dt,
-      delai:delai, montantAE:ae.m, montantCP:pmt.m
+      dateCmd:ae.dt, datePmt:target.dt, typeTarget:typeTarget,
+      delai:delai, montantAE:ae.m, montantCP:target.m
     });
   });
 
@@ -5141,9 +5166,7 @@ function renderLiquidationPanel(ann, prog, fnd){
 
   if(!lignes.length){
     return '<div style="font-size:.82rem;color:var(--mu);padding:4px 0">'
-      +(!(window.CONSO_PMT||[]).length?
-        'Données de paiement CP non disponibles. Vérifiez que les tables Conso 2025/2026 contiennent des lignes de type Paiements.':
-        'Aucune commande soldée trouvée pour ces filtres — les paires Commande AE / Paiement CP ne peuvent pas être établies.')
+      +'Aucune paire Commande → Facture trouvée. Vérifiez que les tables Conso contiennent des lignes de type Factures avec N° de pièce de référence renseigné (colonne Numéro de pièce de la pièce de référence = N° commande d\'achat).'
       +'</div>';
   }
 
@@ -5225,7 +5248,7 @@ function renderLiquidationPanel(ann, prog, fnd){
     +'<th style="text-align:left;padding:3px 6px">Fournisseur</th>'
     +'<th style="text-align:right;padding:3px 6px">Montant AE</th>'
     +'<th style="text-align:left;padding:3px 6px">Date cmd</th>'
-    +'<th style="text-align:left;padding:3px 6px">1er paiement</th>'
+    +'<th style="text-align:left;padding:3px 6px">Date facture/paiement</th>'
     +'<th style="text-align:right;padding:3px 6px">Délai</th>'
     +'</tr></thead><tbody>';
   var sapBase="https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&/C_PurchaseOrderTP(PurchaseOrder='";
