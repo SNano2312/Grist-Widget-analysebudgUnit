@@ -513,46 +513,71 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">🔍 Barre de recherche</div>
         <p style="font-size:.82rem;line-height:1.8">
-          Disponible en permanence en haut du widget. Recherche simultanément (min. 2 caractères) dans :<br>
+          Disponible en permanence en haut du widget après chargement. Recherche simultanée (min. 2 caractères) dans :<br>
           &bull; <strong>CDA par CC</strong> : N° commande SAP (lien SIFAC+), fournisseur, code NACRES, désignation, CC<br>
           &bull; <strong>CONSO</strong> : N° commande SAP, réf. OM Notilus (lien /#/OD ou /#/OMP), pièce de référence, fournisseur<br>
           &bull; <strong>NACRES</strong> : N° commande, fournisseur, code NACRES<br>
-          Les résultats s'affichent avec badge coloré (Commande / Mission / NACRES), année et montant. Touche Échap pour effacer.
+          Résultats avec badge coloré (Commande / Mission / NACRES), année et montant. Touche Échap pour effacer.
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">📅 Filtre période personnalisable (Du / Au)</div>
         <p style="font-size:.82rem;line-height:1.8">
-          Disponible dans deux onglets pour filtrer les <strong>lignes de consommation CONSO</strong> sur une plage de dates comptables personnalisée (ex : du 01/09/2025 au 31/08/2026), en complément du filtre Année existant.<br><br>
-          <strong>Onglet Tableau croisé</strong> : champs Du/Au dans la barre de filtres. Quand remplis, les dates se propagent automatiquement au drill-down des lignes de détail. Un bandeau bleu confirme que la période est active.<br><br>
-          <strong>Drill-down Histogramme</strong> : barre Période (Du/Au + bouton Filtrer + ✕) au-dessus du tableau de lignes. Permet de restreindre les lignes CONSO affichées à une période précise après avoir cliqué sur une barre.<br><br>
-          <strong>⚠️ Onglets non concernés</strong> : Synthèse, Histogramme (barres), Centres de coûts, NACRES, Cdes non soldées — ces onglets lisent les agrégats budgétaires SAP (<code>BUDGET</code>) ou les postes de commandes (<code>CDA_CC</code>), qui sont des totaux annuels sans date d'opération individuelle.
+          Disponible dans deux contextes pour filtrer les lignes de consommation CONSO par date comptable :<br><br>
+          <strong>Tableau croisé</strong> : champs Du/Au dans la barre de filtres. Les dates se propagent au drill-down. Bandeau bleu actif quand filtre en place.<br>
+          <strong>Drill-down Histogramme</strong> : barre Période (Du/Au + Filtrer + ✕) au-dessus du tableau de lignes de détail.<br><br>
+          <strong>⚠️ Onglets non concernés</strong> : Synthèse, Histogramme (barres), CC, NACRES, Cdes non soldées — ces onglets lisent des agrégats budgétaires annuels sans date individuelle.
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
-        <div class="pnl-t">💡 Subtilité AE / CP — Pourquoi CDa ou Payé peuvent dépasser le Budget</div>
+        <div class="pnl-t">💡 Subtilité AE / CP</div>
         <p style="font-size:.82rem;line-height:1.8">
-          SAP gère deux comptabilités indépendantes :<br><br>
-          <strong>AE (Autorisations d'Engagement)</strong> : enregistre les engagements juridiques (commandes d'achat). Une commande passée en 2025 consomme du budget AE 2025, même si livraison et facture arrivent en 2026 ou 2027.<br><br>
-          <strong>CP (Crédits de Paiement)</strong> : enregistre les décaissements effectifs. Un paiement 2026 peut liquider une commande engagée en 2025 — il apparaît dans Payé de l'exercice courant, indépendamment de l'année d'engagement.<br><br>
+          <strong>AE (Autorisations d'Engagement)</strong> : enregistre les commandes d'achat. Une commande passée en 2025 consomme du budget AE 2025, même si livraison et facture arrivent en 2026.<br>
+          <strong>CP (Crédits de Paiement)</strong> : enregistre les décaissements. Un paiement 2026 peut liquider une commande de 2025 — il apparaît dans Payé de l'exercice courant.<br><br>
           <strong>Conséquences visibles :</strong><br>
-          &bull; <strong>Payé (CP) &gt; Budget AE N</strong> : normal — les paiements incluent la liquidation d'engagements antérieurs.<br>
-          &bull; <strong>CDa &gt; Budget AE N</strong> : sur-engagement — alerte déclenchée automatiquement.<br>
-          &bull; <strong>Non engagé = 0</strong> : budget entièrement engagé ou sur-engagé — <code>MAX(0, Budget − CDa)</code>.
+          &bull; <strong>Payé (CP) &gt; Budget AE N</strong> : normal — liquidation d'engagements antérieurs.<br>
+          &bull; <strong>CDa &gt; Budget AE N</strong> : sur-engagement — alerte automatique.<br>
+          &bull; <strong>Non engagé = 0</strong> : <code>MAX(0, Budget − CDa)</code> — ne peut pas être négatif.
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">🏠 Tableau de bord exécutif</div>
         <p style="font-size:.82rem;line-height:1.8">
-          Affiché automatiquement au chargement :<br>
-          &bull; <strong>5 KPIs globaux</strong> : Budget total AE, Taux de consommation (avec jauge), Alertes actives, Commandes non soldées, Payé CP<br>
+          Affiché automatiquement au chargement. Contient :<br>
+          &bull; <strong>5 KPIs globaux</strong> : Budget total AE, Taux de consommation (jauge), Alertes actives, Commandes non soldées, Payé CP<br>
           &bull; <strong>Alertes par programme</strong> : sur-engagement, RAR élevé, échéances proches — clic → Synthèse<br>
-          &bull; <strong>Top sous-consommés</strong> : 3 programmes les plus en retard — clic → drill-down<br>
-          &bull; <strong>Échéances proches ≤180j</strong> : triées par urgence J-X — clic → Échéances<br>
+          &bull; <strong>Top 3 sous-consommés</strong> : programmes les plus en retard — clic → drill-down<br>
+          &bull; <strong>Échéances proches ≤180j</strong> : triées par J-X — clic → Échéances<br>
+          &bull; <strong>🔮 Indicateurs prédictifs</strong> (voir section dédiée ci-dessous)<br>
           &bull; <strong>Accès rapide</strong> : boutons vers les onglets principaux
+        </p>
+      </div>
+
+      <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">🔮 Indicateurs prédictifs — Aide à la décision</div>
+        <p style="font-size:.82rem;line-height:1.8">
+          Affichés dans le <strong>Tableau de bord</strong> (année en cours, global) et dans l'onglet <strong>Synthèse</strong> (dynamiques selon les filtres Année et CC). Calculés en temps réel depuis les données CONSO.<br><br>
+
+          <strong>📈 Projection fin d'année</strong><br>
+          Calcule le rythme d'engagement mensuel des <em>3 derniers mois</em> (commandes AE Original dans CONSO), l'extrapole jusqu'au 31/12, et affiche le <em>taux de consommation projeté</em>.<br>
+          &bull; Vert ≥90% &bull; Orange ≥80% &bull; Rouge &lt;80%<br>
+          &bull; ⚠️ Alerte "Risque sous-consommation" si projection &lt;80% avec plus de 30 jours restants<br>
+          &bull; Affiche le rythme en €/mois et le nombre de jours restants avant le 31/12<br><br>
+
+          <strong>⏱ Délai d'engagement — 1ère commande</strong><br>
+          Mesure le nombre de jours entre le 01/01 de l'année et la première commande d'achat SAP identifiée dans CONSO (type "Commandes AE Original"). Identifie les programmes qui démarrent lentement.<br>
+          &bull; Vert ≤30j (démarrage rapide) &bull; Orange ≤90j (modéré) &bull; Rouge &gt;90j (tardif)<br>
+          &bull; Affiche la date de la première commande et le nombre total de commandes<br><br>
+
+          <strong>🚀/🐌 Vélocité d'engagement</strong><br>
+          Compare le rythme d'engagement du <em>trimestre courant</em> (3 derniers mois) vs le <em>trimestre précédent</em> (3–6 mois avant). Détecte les accélérations ou ralentissements.<br>
+          &bull; 🚀 Accélération si variation &gt;+10% &bull; 🐌 Ralentissement si &lt;-10% &bull; ➡️ Stable sinon<br>
+          &bull; Affiche le rythme en €/mois pour les deux trimestres et la variation en %<br><br>
+
+          <strong>Note méthodologique</strong> : ces indicateurs utilisent uniquement les lignes CONSO de type "Commandes d'achat Original" pour mesurer les engagements réels. Les lignes de type Factures, Paiements CP ou corrections sont exclues du calcul du rythme.
         </p>
       </div>
 
@@ -562,9 +587,8 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
           <strong>Taux de consommation</strong> : Conso AE N &divide; Budget AE N — Vert &ge;90% &bull; Orange &ge;50% &bull; Rouge &lt;50%<br>
           <strong>Taux d'engagement</strong> : MIN((CDa+RAR+OM+NF) &divide; Budget AE N, 100%)<br>
           <strong>Reste à engager</strong> : MAX(0, Budget AE N &minus; CDa &minus; RAR &minus; OM &minus; NF)<br>
-          <strong>Drill-down Synthèse</strong> : clic sur une tuile → lignes CONSO détaillées avec N° Commande (SIFAC+) + filtre période Du/Au<br>
-          <strong>Drill-down Histogramme</strong> : clic sur une barre → lignes CONSO + filtre période Du/Au intégré<br>
-          <strong>Comparaison 2025/2026</strong> : barres groupées (Histogramme) ou courbes (Évolution)
+          <strong>Drill-down</strong> : clic sur une tuile ou une barre → lignes CONSO détaillées avec N° Commande (SIFAC+) + filtre période Du/Au<br>
+          <strong>Comparaison 2025/2026</strong> : barres groupées (Histogramme) ou courbes superposées (Évolution)
         </p>
       </div>
 
@@ -572,7 +596,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <div class="pnl-t">🔀 Tableau croisé</div>
         <p style="font-size:.82rem;line-height:1.8">
           Vue tabulaire Budget AE, Conso AE, CDa, RAR, Payé, Reste à payer, Taux. Filtres : Année, Programme, Fonds, CC, <strong>Du/Au (période)</strong>.<br>
-          Quand la période est active, un bandeau bleu l'indique et les dates sont propagées au drill-down de détail.<br>
+          Drill-down sur ligne → détail CONSO filtré par la période sélectionnée.<br>
           <strong>Comparaison 2025/2026</strong> : Budget, Conso, Taux, Payé côte à côte avec évolution %.
         </p>
       </div>
@@ -581,9 +605,9 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <div class="pnl-t">🏦 Centres de coûts</div>
         <p style="font-size:.82rem;line-height:1.8">
           4 sous-onglets : <strong>Synthèse</strong> (cartes + tableau + alertes) &bull; <strong>Évolution</strong> (courbes mensuelles par CC) &bull; <strong>Comparaison CC</strong> (Budget/CDa/Payé côte à côte) &bull; <strong>NACRES par CC</strong>.<br>
-          Cartes CC : Budget alloué, Non engagé, Reste à facturer, Prévision d'épuisement (rythme 3 derniers mois), Taux d'engagement (CDa/Budget), Taux paiement CP (Payé/Budget).<br>
+          Cartes CC : Budget alloué, Non engagé, Reste à facturer, Prévision d'épuisement (rythme 3 mois), Taux d'engagement (CDa/Budget), Taux paiement CP.<br>
           Alertes auto : sur-engagement, RAR &gt;20%, sous-engagement &lt;10%.<br>
-          Drill-down → commandes CDA + opérations SAP + boutons <em>Voir NACRES</em> et <em>Voir Missions</em> filtrés sur ce CC.<br>
+          Drill-down → commandes CDA + opérations CONSO + boutons <em>Voir NACRES</em> et <em>Voir Missions</em>.<br>
           Export CSV disponible.
         </p>
       </div>
@@ -591,29 +615,19 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">📅 Échéances</div>
         <p style="font-size:.82rem;line-height:1.8">
-          Source : colonne C (Date de fin) de la Table Programmes. Seuls les programmes ayant une date renseignée s'affichent.<br>
-          <strong>Vue Timeline SVG</strong> : barre de progression = taux de consommation AE, point = date de fin. Code couleur : gris=expiré, rouge=urgent faible conso, orange=urgent bonne conso, vert=OK.<br>
+          Source : colonne C (Date de fin) de la Table Programmes.<br>
+          <strong>Vue Timeline SVG</strong> : barre = taux de consommation AE, point = date de fin. Gris=expiré, Rouge=urgent faible conso, Orange=urgent, Vert=OK.<br>
           <strong>Vue Tableau</strong> : budget, conso, taux, J restants — clic → drill-down Histogramme filtré.<br>
           Filtres : Année, Statut (expiré/urgent/proche/OK).
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
-        <div class="pnl-t">🧪 NACRES</div>
+        <div class="pnl-t">🧪 NACRES &amp; 🔴 Commandes non soldées</div>
         <p style="font-size:.82rem;line-height:1.8">
-          Source : CDA par CC 2025/2026. Vues : par code NACRES, par fournisseur, détail ligne par ligne.<br>
-          <strong>Sur marché</strong> : OSMA &bull; <strong>Agence voyage DC.01</strong> : carte logée CAMA (violet) &bull; <strong>Hors marché</strong> : OSBC, CA, CAMA hors DC.01.<br>
-          <strong>Drill-down</strong> : clic → toutes les commandes avec KPIs, N° commande (SIFAC+), CC, RAR et reste à facturer.
-        </p>
-      </div>
-
-      <div class="pnl" style="margin-bottom:16px">
-        <div class="pnl-t">🔴 Commandes non soldées &amp; 📦 Délais de livraison</div>
-        <p style="font-size:.82rem;line-height:1.8">
+          <strong>NACRES</strong> : source CDA par CC. Vues : par code NACRES, par fournisseur, détail. Sur marché (OSMA) / Agence voyage DC.01 (violet) / Hors marché. Drill-down → commandes avec SIFAC+, CC, RAR.<br>
           <strong>Non soldées</strong> : lignes CDA avec Reste à facturer &gt; 0, triées par reste décroissant. N° Commande → SIFAC+.<br>
-          <strong>Délais livraison</strong> (sous-onglet) : lignes CDA avec date de livraison prévue (<code>Date_de_livraison_suivante</code>) et RAR &gt; 0.<br>
-          Statuts : <span style="color:#dc2626">En retard</span> &bull; <span style="color:#d97706">Proche (&lt;30j)</span> &bull; <span style="color:#16a34a">À venir (&gt;30j)</span><br>
-          Vue agrégée par fournisseur (RAR, retards, prochaine livraison) — clic → drill-down détail commandes.
+          <strong>Délais livraison</strong> (sous-onglet) : lignes CDA avec date de livraison prévue et RAR &gt; 0. Statuts : <span style="color:#dc2626">Retard</span> / <span style="color:#d97706">Proche &lt;30j</span> / <span style="color:#16a34a">À venir</span>. Vue agrégée par fournisseur + drill-down.
         </p>
       </div>
 
@@ -621,9 +635,9 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <div class="pnl-t">💰 Paiements — Fournisseurs, Délais, Répartition, Missions</div>
         <p style="font-size:.82rem;line-height:1.8">
           <strong>Top fournisseurs</strong> : classement par montant payé CP, avec comparaison 2025/2026.<br>
-          <strong>Délais paiement</strong> : délai entre facture et paiement via N° pièce SAP. Vue par fournisseur ou détail. Rouge &gt;60j, orange &gt;30j.<br>
-          <strong>Répartition</strong> : graphique donut par type de valeur + tableau par programme/fonds.<br>
-          <strong>Missions</strong> : détection via <code>Saisi par = NOTILUSBUS</code>. Lien Notilus <code>/#/OD/XXX</code> (OM) ou <code>/#/OMP/XXX</code> (ordre permanent via compte FG). Vues : par programme, par OM, évolution mensuelle.
+          <strong>Délais paiement</strong> : délai facture → paiement. Rouge &gt;60j, orange &gt;30j. Vue fournisseur ou détail.<br>
+          <strong>Répartition</strong> : donut par type de valeur + tableau par programme/fonds.<br>
+          <strong>Missions</strong> : via <code>Saisi par = NOTILUSBUS</code>. Lien Notilus <code>/#/OD/XXX</code> (OM) ou <code>/#/OMP/XXX</code> (FG). Vues : par programme, par OM, évolution mensuelle.
         </p>
       </div>
 
