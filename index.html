@@ -5130,6 +5130,17 @@ function calcLiquidation(ann, prog, fnd){
     });
   });
 
+  console.log('[LIQ] cmdsAE='+Object.keys(cmdsAE).length
+    +' factsByCmd='+Object.keys(factsByCmd).length
+    +' pmtsByCmd='+Object.keys(pmtsByCmd).length
+    +' lignes='+lignes.length);
+  // Exemples de valeurs brutes
+  var exCmd=CONSO.find(function(r){return r.cmd&&r.tv&&r.tv.replace(/\u2019/g,"'").includes("Commandes d'achat");});
+  var exFact=CONSO.find(function(r){return r.cmdRef&&r.tv&&r.tv.includes('Facture');});
+  if(exCmd) console.log('[LIQ] ex cmd: cmd='+exCmd.cmd+' tv='+exCmd.tv+' tm='+exCmd.tm+' dt='+exCmd.dt);
+  if(exFact) console.log('[LIQ] ex fact: cmdRef='+exFact.cmdRef+' tv='+exFact.tv+' dt='+exFact.dt);
+  if(!exCmd) console.log('[LIQ] AUCUNE COMMANDE trouvée — tv examples:',CONSO.slice(0,3).map(function(r){return r.tv;}));
+  if(!exFact) console.log('[LIQ] AUCUNE FACTURE trouvée — cmdRef examples:',CONSO.filter(function(r){return r.cmdRef;}).slice(0,3).map(function(r){return r.tv+'/'+r.cmdRef;}));
   return lignes.sort(function(a,b){return b.delai-a.delai;});
 }
 
