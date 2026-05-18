@@ -504,7 +504,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
           <strong>Budget_2025 / Budget_2026</strong> : données budgétaires agrégées par CF/Programme/Fonds (Budget AE N, Conso AE N, CDa, RAR, OM, Payé CP…).<br>
           <strong>Conso_2025 / Conso_2026</strong> : opérations SAP ligne à ligne avec date comptable, montant, fournisseur, CC, type de valeur…<br>
           <strong>Table Programmes</strong> (optionnel) : Col. A = N° programme &bull; Col. B = Acronyme &bull; Col. C = Date de fin.<br>
-          <strong>CDA par CC 2025 / CDA par CC 2026</strong> (optionnel) : postes de commandes SAP par CC. Colonnes clés : <em>Centre de coûts, Grpe de marchandises, Commande d'achat, Type de document, Fournisseur, Désignation, Valeur nette répartie, Valeur restante à livrer, Valeur restante à facturer, Élément d'OTP, Fonds, Date de livraison suivante</em>.<br>
+          <strong>CDA par CC 2025 / CDA par CC 2026</strong> (optionnel) : postes de commandes SAP par CC. Colonnes : <em>Centre de coûts, Grpe de marchandises, Commande d'achat, Type de document, Fournisseur, Désignation, Valeur nette répartie, Valeur restante à livrer, Valeur restante à facturer, Élément d'OTP, Fonds, Date de livraison suivante</em>.<br>
           <strong>Ventilation CC 2025 / Ventilation CC 2026</strong> (optionnel) : budget ventilé par CC. Colonnes : <em>Programme de financement, Fonds, Budget AE N</em> + une colonne par CC. Programmes sans OTP → <code>Programme = NA</code>.<br>
           <strong>⚠️ Noms de colonnes CC</strong> : doivent correspondre exactement aux CC des tables CDA et Conso. Un bandeau d'alerte signale toute discordance dans l'onglet Centres de coûts.
         </p>
@@ -513,33 +513,32 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">🔍 Barre de recherche</div>
         <p style="font-size:.82rem;line-height:1.8">
-          Disponible en permanence en haut du widget après chargement. Recherche simultanée (min. 2 caractères) dans :<br>
-          &bull; <strong>CDA par CC</strong> : N° commande SAP (lien SIFAC+), fournisseur, code NACRES, désignation, CC<br>
-          &bull; <strong>CONSO</strong> : N° commande SAP, réf. OM Notilus (lien /#/OD ou /#/OMP), pièce de référence, fournisseur<br>
+          Permanente en haut du widget. Recherche simultanée (min. 2 caractères) dans :<br>
+          &bull; <strong>CDA par CC</strong> : N° commande (SIFAC+), fournisseur, code NACRES, désignation, CC<br>
+          &bull; <strong>CONSO</strong> : N° commande, réf. OM Notilus (/#/OD ou /#/OMP), fournisseur<br>
           &bull; <strong>NACRES</strong> : N° commande, fournisseur, code NACRES<br>
-          Résultats avec badge coloré (Commande / Mission / NACRES), année et montant. Touche Échap pour effacer.
+          Résultats avec badge coloré, année et montant. Touche Échap pour effacer.
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">📅 Filtre période personnalisable (Du / Au)</div>
         <p style="font-size:.82rem;line-height:1.8">
-          Disponible dans deux contextes pour filtrer les lignes de consommation CONSO par date comptable :<br><br>
-          <strong>Tableau croisé</strong> : champs Du/Au dans la barre de filtres. Les dates se propagent au drill-down. Bandeau bleu actif quand filtre en place.<br>
-          <strong>Drill-down Histogramme</strong> : barre Période (Du/Au + Filtrer + ✕) au-dessus du tableau de lignes de détail.<br><br>
-          <strong>⚠️ Onglets non concernés</strong> : Synthèse, Histogramme (barres), CC, NACRES, Cdes non soldées — ces onglets lisent des agrégats budgétaires annuels sans date individuelle.
+          Filtre les <strong>lignes de consommation CONSO</strong> par date comptable, en complément du filtre Année.<br>
+          &bull; <strong>Tableau croisé</strong> : champs Du/Au dans la barre de filtres, propagés au drill-down<br>
+          &bull; <strong>Drill-down Histogramme</strong> : barre Période (Du/Au + Filtrer + ✕) au-dessus du tableau de lignes<br>
+          <strong>⚠️</strong> Non applicable à Synthèse, Histogramme (barres), CC, NACRES — ces onglets lisent des agrégats budgétaires annuels.
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">💡 Subtilité AE / CP</div>
         <p style="font-size:.82rem;line-height:1.8">
-          <strong>AE (Autorisations d'Engagement)</strong> : enregistre les commandes d'achat. Une commande passée en 2025 consomme du budget AE 2025, même si livraison et facture arrivent en 2026.<br>
-          <strong>CP (Crédits de Paiement)</strong> : enregistre les décaissements. Un paiement 2026 peut liquider une commande de 2025 — il apparaît dans Payé de l'exercice courant.<br><br>
-          <strong>Conséquences visibles :</strong><br>
-          &bull; <strong>Payé (CP) &gt; Budget AE N</strong> : normal — liquidation d'engagements antérieurs.<br>
-          &bull; <strong>CDa &gt; Budget AE N</strong> : sur-engagement — alerte automatique.<br>
-          &bull; <strong>Non engagé = 0</strong> : <code>MAX(0, Budget − CDa)</code> — ne peut pas être négatif.
+          <strong>AE</strong> : enregistre les commandes d'achat. Une commande 2025 consomme du budget AE 2025, même si livraison et facture arrivent en 2026.<br>
+          <strong>CP</strong> : enregistre les décaissements. Un paiement 2026 peut liquider une commande 2025 — il apparaît dans Payé de l'exercice courant.<br>
+          &bull; <strong>Payé (CP) &gt; Budget AE N</strong> : normal — liquidation d'engagements antérieurs<br>
+          &bull; <strong>CDa &gt; Budget AE N</strong> : sur-engagement — alerte automatique<br>
+          &bull; <strong>Non engagé = 0</strong> : <code>MAX(0, Budget − CDa)</code>
         </p>
       </div>
 
@@ -547,37 +546,52 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <div class="pnl-t">🏠 Tableau de bord exécutif</div>
         <p style="font-size:.82rem;line-height:1.8">
           Affiché automatiquement au chargement. Contient :<br>
-          &bull; <strong>5 KPIs globaux</strong> : Budget total AE, Taux de consommation (jauge), Alertes actives, Commandes non soldées, Payé CP<br>
-          &bull; <strong>Alertes par programme</strong> : sur-engagement, RAR élevé, échéances proches — clic → Synthèse<br>
-          &bull; <strong>Top 3 sous-consommés</strong> : programmes les plus en retard — clic → drill-down<br>
-          &bull; <strong>Échéances proches ≤180j</strong> : triées par J-X — clic → Échéances<br>
-          &bull; <strong>🔮 Indicateurs prédictifs</strong> (voir section dédiée ci-dessous)<br>
-          &bull; <strong>Accès rapide</strong> : boutons vers les onglets principaux
+          &bull; <strong>5 KPIs globaux</strong> : Budget total AE, Taux de consommation, Alertes actives, Cdes non soldées, Payé CP<br>
+          &bull; <strong>Alertes, Top sous-consommés, Échéances proches ≤180j</strong><br>
+          &bull; <strong>🔮 Indicateurs prédictifs</strong> (voir ci-dessous)<br>
+          &bull; <strong>⚠️ Indicateurs de risque</strong> (voir ci-dessous)<br>
+          &bull; <strong>Accès rapide</strong> vers les onglets principaux
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
-        <div class="pnl-t">🔮 Indicateurs prédictifs — Aide à la décision</div>
+        <div class="pnl-t">🔮 Indicateurs prédictifs</div>
         <p style="font-size:.82rem;line-height:1.8">
-          Affichés dans le <strong>Tableau de bord</strong> (année en cours, global) et dans l'onglet <strong>Synthèse</strong> (dynamiques selon les filtres Année et CC). Calculés en temps réel depuis les données CONSO.<br><br>
+          Affichés dans le <strong>Tableau de bord</strong> et l'onglet <strong>Synthèse</strong> (dynamiques selon les filtres Année et CC). Calculés depuis les lignes CONSO "Commandes AE Original".<br><br>
+          <strong>📈 Projection fin d'année</strong> : rythme mensuel des 3 derniers mois extrapolé au 31/12 → taux de consommation projeté. ⚠️ Alerte si projection &lt;80% avec &gt;30j restants.<br><br>
+          <strong>⏱ Délai 1ère commande</strong> : jours entre le 01/01 et la première commande SAP. Vert ≤30j, orange ≤90j, rouge &gt;90j.<br><br>
+          <strong>🚀/🐌 Vélocité d'engagement</strong> : rythme du trimestre courant (3 derniers mois) vs trimestre précédent (3–6 mois). Accélération si &gt;+10%, ralentissement si &lt;-10%.
+        </p>
+      </div>
 
-          <strong>📈 Projection fin d'année</strong><br>
-          Calcule le rythme d'engagement mensuel des <em>3 derniers mois</em> (commandes AE Original dans CONSO), l'extrapole jusqu'au 31/12, et affiche le <em>taux de consommation projeté</em>.<br>
-          &bull; Vert ≥90% &bull; Orange ≥80% &bull; Rouge &lt;80%<br>
-          &bull; ⚠️ Alerte "Risque sous-consommation" si projection &lt;80% avec plus de 30 jours restants<br>
-          &bull; Affiche le rythme en €/mois et le nombre de jours restants avant le 31/12<br><br>
+      <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">⚠️ Indicateurs de risque</div>
+        <p style="font-size:.82rem;line-height:1.8">
+          Affichés dans le <strong>Tableau de bord</strong> et l'onglet <strong>Synthèse</strong>, panneau séparé des indicateurs prédictifs. Contient 5 analyses :<br><br>
 
-          <strong>⏱ Délai d'engagement — 1ère commande</strong><br>
-          Mesure le nombre de jours entre le 01/01 de l'année et la première commande d'achat SAP identifiée dans CONSO (type "Commandes AE Original"). Identifie les programmes qui démarrent lentement.<br>
-          &bull; Vert ≤30j (démarrage rapide) &bull; Orange ≤90j (modéré) &bull; Rouge &gt;90j (tardif)<br>
-          &bull; Affiche la date de la première commande et le nombre total de commandes<br><br>
+          <strong>🎯 Score de risque par programme — note 0 à 10</strong><br>
+          Synthèse pondérée : sous-consommation (0-3 pts), sur-engagement (0-2 pts), RAR élevé (0-2 pts), proximité échéance (0-2 pts), projection &lt;80% (1 pt).<br>
+          Note &ge;7 = rouge critique &bull; &ge;4 = orange &bull; &lt;4 = vert<br><br>
 
-          <strong>🚀/🐌 Vélocité d'engagement</strong><br>
-          Compare le rythme d'engagement du <em>trimestre courant</em> (3 derniers mois) vs le <em>trimestre précédent</em> (3–6 mois avant). Détecte les accélérations ou ralentissements.<br>
-          &bull; 🚀 Accélération si variation &gt;+10% &bull; 🐌 Ralentissement si &lt;-10% &bull; ➡️ Stable sinon<br>
-          &bull; Affiche le rythme en €/mois pour les deux trimestres et la variation en %<br><br>
+          <strong>🏭 Concentration fournisseur</strong><br>
+          Indice HHI (Herfindahl) calculé depuis CDA_CC : &gt;0,25 = concentration élevée (rouge), &gt;0,15 = modérée (orange), ≤0,15 = diversifié (vert).<br>
+          Top 3 fournisseurs avec barres et %. Section dépliable : matrice Programme × Fournisseur.<br><br>
 
-          <strong>Note méthodologique</strong> : ces indicateurs utilisent uniquement les lignes CONSO de type "Commandes d'achat Original" pour mesurer les engagements réels. Les lignes de type Factures, Paiements CP ou corrections sont exclues du calcul du rythme.
+          <strong>📦 Engagements sans livraison</strong><br>
+          Commandes CDA avec RAR livraison &gt; 0 et date prévue dépassée depuis &gt; X jours (seuil paramétrable, défaut 60j). Vue par fournisseur + détail cliquable (SIFAC+). Nécessite la colonne <code>Date_de_livraison_suivante</code>.<br><br>
+
+          <strong>⏰ Budget restant engageable avant échéance</strong><br>
+          Pour chaque programme avec budget non engagé, calcule le montant mensuel nécessaire pour consommer tout le budget avant l'échéance :<br>
+          <code>€/mois = (Budget − CDa − RAR) ÷ Mois restants avant échéance</code><br>
+          Si pas de date de fin dans Table Programmes → utilise le 31/12 de l'année. Niveaux d'urgence :<br>
+          &bull; 🔴 &gt;50 000 €/mois &bull; 🟠 &gt;20 000 €/mois &bull; 🟡 &gt;5 000 €/mois &bull; 🟢 ≤5 000 €/mois<br><br>
+
+          <strong>🔀 Effet de levier co-financement</strong><br>
+          Détecte automatiquement les programmes financés par plusieurs fonds (données Budget). Pour chaque programme multi-fonds :<br>
+          &bull; Barre empilée proportionnelle au budget de chaque fonds<br>
+          &bull; Légende avec fonds, % du total, budget en €, et taux de consommation CDa par fonds<br>
+          &bull; Coefficient de déséquilibre (écart-type des parts) : très déséquilibré / déséquilibré / équilibré<br>
+          Un déséquilibre important peut signaler un risque de sous-consommation sur le fonds le moins engagé.
         </p>
       </div>
 
@@ -585,30 +599,26 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <div class="pnl-t">📊 Synthèse &amp; Histogramme</div>
         <p style="font-size:.82rem;line-height:1.8">
           <strong>Taux de consommation</strong> : Conso AE N &divide; Budget AE N — Vert &ge;90% &bull; Orange &ge;50% &bull; Rouge &lt;50%<br>
-          <strong>Taux d'engagement</strong> : MIN((CDa+RAR+OM+NF) &divide; Budget AE N, 100%)<br>
-          <strong>Reste à engager</strong> : MAX(0, Budget AE N &minus; CDa &minus; RAR &minus; OM &minus; NF)<br>
-          <strong>Drill-down</strong> : clic sur une tuile ou une barre → lignes CONSO détaillées avec N° Commande (SIFAC+) + filtre période Du/Au<br>
-          <strong>Comparaison 2025/2026</strong> : barres groupées (Histogramme) ou courbes superposées (Évolution)
+          <strong>Taux d'engagement</strong> : MIN((CDa+RAR+OM+NF) &divide; Budget, 100%)<br>
+          <strong>Drill-down</strong> : clic sur tuile ou barre → lignes CONSO avec N° Commande (SIFAC+) + filtre période Du/Au<br>
+          <strong>Comparaison 2025/2026</strong> : barres groupées (Histogramme) ou courbes (Évolution)
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">🔀 Tableau croisé</div>
         <p style="font-size:.82rem;line-height:1.8">
-          Vue tabulaire Budget AE, Conso AE, CDa, RAR, Payé, Reste à payer, Taux. Filtres : Année, Programme, Fonds, CC, <strong>Du/Au (période)</strong>.<br>
-          Drill-down sur ligne → détail CONSO filtré par la période sélectionnée.<br>
-          <strong>Comparaison 2025/2026</strong> : Budget, Conso, Taux, Payé côte à côte avec évolution %.
+          Vue tabulaire Budget AE, Conso AE, CDa, RAR, Payé, Reste à payer, Taux. Filtres : Année, Programme, Fonds, CC, <strong>Du/Au</strong>.<br>
+          Drill-down → détail CONSO filtré par période. Comparaison 2025/2026 avec évolution %.
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">🏦 Centres de coûts</div>
         <p style="font-size:.82rem;line-height:1.8">
-          4 sous-onglets : <strong>Synthèse</strong> (cartes + tableau + alertes) &bull; <strong>Évolution</strong> (courbes mensuelles par CC) &bull; <strong>Comparaison CC</strong> (Budget/CDa/Payé côte à côte) &bull; <strong>NACRES par CC</strong>.<br>
-          Cartes CC : Budget alloué, Non engagé, Reste à facturer, Prévision d'épuisement (rythme 3 mois), Taux d'engagement (CDa/Budget), Taux paiement CP.<br>
-          Alertes auto : sur-engagement, RAR &gt;20%, sous-engagement &lt;10%.<br>
-          Drill-down → commandes CDA + opérations CONSO + boutons <em>Voir NACRES</em> et <em>Voir Missions</em>.<br>
-          Export CSV disponible.
+          4 sous-onglets : <strong>Synthèse</strong> (cartes + tableau + alertes) &bull; <strong>Évolution</strong> (courbes mensuelles) &bull; <strong>Comparaison CC</strong> &bull; <strong>NACRES par CC</strong>.<br>
+          Cartes : Budget, Non engagé, Reste à facturer, Prévision épuisement, Taux engagement, Taux paiement CP.<br>
+          Drill-down → commandes CDA + CONSO + boutons <em>Voir NACRES</em> et <em>Voir Missions</em>. Export CSV.
         </p>
       </div>
 
@@ -616,28 +626,27 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <div class="pnl-t">📅 Échéances</div>
         <p style="font-size:.82rem;line-height:1.8">
           Source : colonne C (Date de fin) de la Table Programmes.<br>
-          <strong>Vue Timeline SVG</strong> : barre = taux de consommation AE, point = date de fin. Gris=expiré, Rouge=urgent faible conso, Orange=urgent, Vert=OK.<br>
-          <strong>Vue Tableau</strong> : budget, conso, taux, J restants — clic → drill-down Histogramme filtré.<br>
-          Filtres : Année, Statut (expiré/urgent/proche/OK).
+          <strong>Timeline SVG</strong> : barre = taux conso AE, point = date de fin. Gris=expiré, Rouge=urgent faible conso, Orange=urgent, Vert=OK.<br>
+          <strong>Tableau</strong> : budget, conso, taux, J restants — clic → drill-down Histogramme.
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">🧪 NACRES &amp; 🔴 Commandes non soldées</div>
         <p style="font-size:.82rem;line-height:1.8">
-          <strong>NACRES</strong> : source CDA par CC. Vues : par code NACRES, par fournisseur, détail. Sur marché (OSMA) / Agence voyage DC.01 (violet) / Hors marché. Drill-down → commandes avec SIFAC+, CC, RAR.<br>
-          <strong>Non soldées</strong> : lignes CDA avec Reste à facturer &gt; 0, triées par reste décroissant. N° Commande → SIFAC+.<br>
-          <strong>Délais livraison</strong> (sous-onglet) : lignes CDA avec date de livraison prévue et RAR &gt; 0. Statuts : <span style="color:#dc2626">Retard</span> / <span style="color:#d97706">Proche &lt;30j</span> / <span style="color:#16a34a">À venir</span>. Vue agrégée par fournisseur + drill-down.
+          <strong>NACRES</strong> : vues par code, fournisseur, détail. Sur marché (OSMA) / DC.01 agence voyage (violet) / Hors marché. Drill-down → commandes SIFAC+.<br>
+          <strong>Non soldées</strong> : CDA avec Reste à facturer &gt; 0. N° Commande → SIFAC+.<br>
+          <strong>Délais livraison</strong> (sous-onglet) : CDA avec date prévue et RAR &gt; 0. Statuts : Retard / Proche &lt;30j / À venir. Vue fournisseur + drill-down.
         </p>
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
-        <div class="pnl-t">💰 Paiements — Fournisseurs, Délais, Répartition, Missions</div>
+        <div class="pnl-t">💰 Paiements</div>
         <p style="font-size:.82rem;line-height:1.8">
-          <strong>Top fournisseurs</strong> : classement par montant payé CP, avec comparaison 2025/2026.<br>
-          <strong>Délais paiement</strong> : délai facture → paiement. Rouge &gt;60j, orange &gt;30j. Vue fournisseur ou détail.<br>
-          <strong>Répartition</strong> : donut par type de valeur + tableau par programme/fonds.<br>
-          <strong>Missions</strong> : via <code>Saisi par = NOTILUSBUS</code>. Lien Notilus <code>/#/OD/XXX</code> (OM) ou <code>/#/OMP/XXX</code> (FG). Vues : par programme, par OM, évolution mensuelle.
+          <strong>Top fournisseurs</strong> : classement par montant payé CP, comparaison 2025/2026.<br>
+          <strong>Délais paiement</strong> : délai facture → paiement. Rouge &gt;60j, orange &gt;30j.<br>
+          <strong>Répartition</strong> : donut par type de valeur + tableau par programme.<br>
+          <strong>Missions</strong> : via <code>Saisi par = NOTILUSBUS</code>. Lien Notilus <code>/#/OD/</code> ou <code>/#/OMP/</code>. Vues : programme, OM, évolution mensuelle.
         </p>
       </div>
 
@@ -656,8 +665,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <p style="font-size:.82rem;line-height:1.8">
           <strong>Tables obligatoires</strong> : Budget 2025, Budget 2026, Conso AE 2025, Conso AE 2026.<br>
           <strong>Tables optionnelles</strong> : Programmes &bull; CDA par CC 2025/2026 &bull; Ventilation CC 2025/2026.<br>
-          La configuration est mémorisée dans le navigateur (localStorage) et rechargée automatiquement.<br>
-          <strong>Actualiser</strong> : recharge toutes les données Grist sans repasser par la configuration.
+          Configuration mémorisée dans le navigateur (localStorage). Bouton <strong>Actualiser</strong> pour recharger les données sans repasser par la configuration.
         </p>
       </div>
 
@@ -4685,6 +4693,21 @@ function renderRiskPanel(ann, prog){
   html += '<div id="eng-sans-livr-content"></div>';
   html += '</div>';
 
+  // ── 4. Budget urgence ──
+  html += '<div style="border:1px solid var(--bd);border-radius:8px;padding:12px;background:#f9fafb;grid-column:1/-1">';
+  html += '<div style="font-size:.7rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">⏰ Budget restant engageable avant échéance</div>';
+  html += renderBudgetUrgencePanel(ann);
+  html += '</div>';
+
+  // ── 5. Co-financement ──
+  var cofin = calcCofinancement(ann);
+  if(cofin.length){
+    html += '<div style="border:1px solid var(--bd);border-radius:8px;padding:12px;background:#f9fafb;grid-column:1/-1">';
+    html += '<div style="font-size:.7rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">🔀 Effet de levier co-financement ('+cofin.length+' programme'+(cofin.length>1?'s multi-fonds':'s multi-fonds')+')</div>';
+    html += renderCofinancementPanel(ann);
+    html += '</div>';
+  }
+
   html += '</div>'; // fin grille
   return html;
 }
@@ -4748,6 +4771,218 @@ function refreshEngSansLivr(){
   el.innerHTML=html;
 }
 window.refreshEngSansLivr=refreshEngSansLivr;
+
+
+// ════════════════════════════════════════════════════════
+// INDICATEUR : BUDGET RESTANT ENGAGEABLE AVANT ÉCHÉANCE
+// ════════════════════════════════════════════════════════
+function calcBudgetUrgence(ann){
+  var today = new Date();
+  var yearInt = ann ? parseInt(ann) : today.getFullYear();
+  var pi = window._PROG_INFO || {};
+
+  var progs = [...new Set(
+    BUDGET.filter(function(b){ return String(b.annee)===String(yearInt); })
+          .map(function(b){ return b.prog; })
+  )];
+
+  return progs.map(function(prog){
+    var budRows = BUDGET.filter(function(b){
+      return String(b.annee)===String(yearInt) && b.prog===prog;
+    });
+    var bud  = budRows.reduce(function(s,b){return s+b.bud;},0);
+    var cda  = budRows.reduce(function(s,b){return s+b.cda;},0);
+    var rar  = budRows.reduce(function(s,b){return s+b.rar;},0);
+    var nonEngage = Math.max(0, bud - cda - rar);
+    if(bud <= 0 || nonEngage <= 0) return null;
+
+    var info = pi[prog];
+    var echeance = null;
+    var moisRestants = null;
+    var urgence = null; // €/mois nécessaires
+
+    if(info && info.dateFin){
+      var p2 = info.dateFin.split('-');
+      var fd = new Date(+p2[0], +p2[1]-1, 28);
+      var diff = Math.round((fd - today) / 864e5);
+      if(diff > 0){
+        echeance = diff;
+        moisRestants = Math.max(0.5, diff / 30.5);
+        urgence = nonEngage / moisRestants;
+      }
+    } else {
+      // Pas de date → utiliser le 31/12 de l'année
+      var fin31 = new Date(yearInt, 11, 31);
+      var diff31 = Math.round((fin31 - today) / 864e5);
+      if(diff31 > 0){
+        echeance = diff31;
+        moisRestants = Math.max(0.5, diff31 / 30.5);
+        urgence = nonEngage / moisRestants;
+      }
+    }
+
+    return {
+      prog: prog,
+      nom: (info && info.nom) || prog,
+      bud: bud, cda: cda, rar: rar,
+      nonEngage: nonEngage,
+      echeance: echeance,
+      moisRestants: moisRestants,
+      urgence: urgence,
+      hasFin: !!(info && info.dateFin)
+    };
+  }).filter(Boolean).sort(function(a,b){ return b.urgence - a.urgence; });
+}
+
+// ════════════════════════════════════════════════════════
+// INDICATEUR : EFFET DE LEVIER CO-FINANCEMENT
+// ════════════════════════════════════════════════════════
+function calcCofinancement(ann){
+  var yearInt = ann ? parseInt(ann) : new Date().getFullYear();
+
+  // Agréger budget par programme × fonds
+  var byProgFonds = {};
+  BUDGET.filter(function(b){ return String(b.annee)===String(yearInt); })
+    .forEach(function(b){
+      if(!byProgFonds[b.prog]) byProgFonds[b.prog] = {};
+      var g = byProgFonds[b.prog];
+      if(!g[b.fonds]) g[b.fonds] = {bud:0, cda:0, paye:0};
+      g[b.fonds].bud  += b.bud;
+      g[b.fonds].cda  += b.cda;
+      g[b.fonds].paye += b.paye;
+    });
+
+  var results = [];
+  Object.keys(byProgFonds).forEach(function(prog){
+    var fonds = byProgFonds[prog];
+    var fondsList = Object.keys(fonds).filter(function(f){ return fonds[f].bud > 0; });
+    if(fondsList.length < 2) return; // pas de co-financement
+    var totalBud = fondsList.reduce(function(s,f){ return s+fonds[f].bud; }, 0);
+    var totalCda = fondsList.reduce(function(s,f){ return s+fonds[f].cda; }, 0);
+    var pi = window._PROG_INFO || {};
+    var nom = (pi[prog] && pi[prog].nom) || prog;
+
+    // Calculer les proportions et déséquilibres (écart-type des parts)
+    var parts = fondsList.map(function(f){ return fonds[f].bud / totalBud; });
+    var mean = 1 / fondsList.length;
+    var variance = parts.reduce(function(s,p){ return s+Math.pow(p-mean,2); }, 0) / fondsList.length;
+    var ecartType = Math.sqrt(variance);
+    // 0 = parfaitement équilibré, 0.5 = tout sur un fonds
+    var desequilibre = ecartType / mean; // coefficient de variation
+
+    results.push({
+      prog: prog, nom: nom,
+      fondsList: fondsList.map(function(f){
+        return {
+          fonds: f,
+          bud: fonds[f].bud,
+          cda: fonds[f].cda,
+          paye: fonds[f].paye,
+          pct: fonds[f].bud / totalBud * 100,
+          tauxCda: fonds[f].bud>0 ? fonds[f].cda/fonds[f].bud*100 : 0
+        };
+      }).sort(function(a,b){ return b.bud-a.bud; }),
+      totalBud: totalBud, totalCda: totalCda,
+      desequilibre: desequilibre,
+      nbFonds: fondsList.length
+    });
+  });
+
+  return results.sort(function(a,b){ return b.totalBud - a.totalBud; });
+}
+
+// ════════════════════════════════════════════════════════
+// RENDU HTML — Budget urgence + Co-financement
+// ════════════════════════════════════════════════════════
+function renderBudgetUrgencePanel(ann){
+  var rows = calcBudgetUrgence(ann);
+  var html = '';
+
+  if(!rows.length){
+    return '<div style="font-size:.82rem;color:var(--mu)">Aucun programme avec budget non engagé</div>';
+  }
+
+  // En-tête
+  html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.78rem">';
+  html += '<thead><tr style="border-bottom:2px solid var(--bd)">'
+    +'<th style="text-align:left;padding:5px 8px">Programme</th>'
+    +'<th style="text-align:right;padding:5px 8px">Non engagé</th>'
+    +'<th style="text-align:right;padding:5px 8px">Échéance</th>'
+    +'<th style="text-align:right;padding:5px 8px;color:#1d4ed8">€/mois nécessaires</th>'
+    +'<th style="padding:5px 8px">Urgence</th>'
+    +'</tr></thead><tbody>';
+
+  rows.forEach(function(r){
+    var urgenceLabel, urgenceCl, urgenceBg;
+    if(!r.urgence){ urgenceLabel='—'; urgenceCl='var(--mu)'; urgenceBg=''; }
+    else if(r.urgence > 50000){ urgenceLabel='🔴 Très élevée'; urgenceCl='#dc2626'; urgenceBg='background:#fef2f2'; }
+    else if(r.urgence > 20000){ urgenceLabel='🟠 Élevée'; urgenceCl='#d97706'; urgenceBg='background:#fff7ed'; }
+    else if(r.urgence > 5000) { urgenceLabel='🟡 Modérée'; urgenceCl='#d97706'; urgenceBg=''; }
+    else                      { urgenceLabel='🟢 Faible';  urgenceCl='#16a34a'; urgenceBg=''; }
+
+    var echeanceTxt = r.echeance!==null ?
+      (r.hasFin ? 'J-'+r.echeance : '31/12 (J-'+r.echeance+')') : '—';
+
+    html += '<tr style="border-bottom:1px solid #f0f1f5;'+urgenceBg+'">'
+      +'<td style="padding:5px 8px;font-weight:500">'+esc(r.nom)+'</td>'
+      +'<td style="text-align:right;padding:5px 8px;color:#1d4ed8;font-weight:600">'+fmt(r.nonEngage)+' €</td>'
+      +'<td style="text-align:right;padding:5px 8px;color:var(--mu)">'+echeanceTxt+'</td>'
+      +'<td style="text-align:right;padding:5px 8px;font-weight:700;color:'+urgenceCl+'">'
+        +(r.urgence ? fmt(Math.round(r.urgence))+' €/mois' : '—')+'</td>'
+      +'<td style="padding:5px 8px;font-size:.76rem;color:'+urgenceCl+'">'+urgenceLabel+'</td>'
+      +'</tr>';
+  });
+  html += '</tbody></table></div>';
+  return html;
+}
+
+function renderCofinancementPanel(ann){
+  var rows = calcCofinancement(ann);
+  var html = '';
+
+  if(!rows.length){
+    return '<div style="font-size:.82rem;color:var(--mu)">Aucun programme multi-fonds détecté</div>';
+  }
+
+  rows.forEach(function(r, idx){
+    var clDeseq = r.desequilibre > 1.5 ? '#dc2626' : r.desequilibre > 0.8 ? '#d97706' : '#16a34a';
+    var lblDeseq = r.desequilibre > 1.5 ? 'Très déséquilibré' : r.desequilibre > 0.8 ? 'Déséquilibré' : 'Équilibré';
+
+    html += '<div style="margin-bottom:12px;'+(idx>0?'border-top:1px solid #f0f1f5;padding-top:10px':'')+'">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">'
+      +'<div style="font-weight:600;font-size:.83rem">'+esc(r.nom)+'</div>'
+      +'<div style="font-size:.74rem;color:'+clDeseq+';font-weight:600">'+lblDeseq+'</div>'
+      +'</div>';
+
+    // Barres empilées par fonds
+    var colors = ['#2563eb','#16a34a','#d97706','#7c3aed','#dc2626','#0891b2'];
+    html += '<div style="height:14px;border-radius:6px;overflow:hidden;display:flex;margin-bottom:6px">';
+    r.fondsList.forEach(function(f, fi){
+      html += '<div style="width:'+f.pct.toFixed(1)+'%;background:'+colors[fi%colors.length]+';transition:width .3s" title="'+esc(f.fonds)+' : '+f.pct.toFixed(1)+'%"></div>';
+    });
+    html += '</div>';
+
+    // Légende et détail par fonds
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:4px">';
+    r.fondsList.forEach(function(f, fi){
+      var cl = colors[fi%colors.length];
+      var clTaux = f.tauxCda>=90?'#16a34a':f.tauxCda>=50?'#d97706':'#dc2626';
+      html += '<div style="display:flex;align-items:center;gap:5px;font-size:.75rem">'
+        +'<div style="width:10px;height:10px;border-radius:2px;background:'+cl+';flex-shrink:0"></div>'
+        +'<div><span style="font-weight:600">'+esc(f.fonds)+'</span>'
+        +' <span style="color:var(--mu)">'+f.pct.toFixed(0)+'%</span>'
+        +' — <span style="font-weight:500">'+fmt(f.bud)+' €</span>'
+        +' — Cda <span style="color:'+clTaux+'">'+f.tauxCda.toFixed(0)+'%</span>'
+        +'</div></div>';
+    });
+    html += '</div></div>';
+  });
+  return html;
+}
+window.calcBudgetUrgence=calcBudgetUrgence;
+window.calcCofinancement=calcCofinancement;
+window.renderBudgetUrgencePanel=renderBudgetUrgencePanel;
+window.renderCofinancementPanel=renderCofinancementPanel;
 
 </script>
 </body>
