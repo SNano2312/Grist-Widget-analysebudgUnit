@@ -5353,6 +5353,11 @@ window.switchOMTab = switchOMTab;
 
 // ── INDICATEUR 1 : Régularisation des ordres de mission ──
 function renderRegularisation(){
+  // LOG DIAGNOSTIC
+  var exOM = CONSO.filter(function(r){return r.saisiPar==='NOTILUSBUS';}).slice(0,3);
+  console.log('[REGUL] Exemple missions CONSO:', JSON.stringify(exOM.map(function(r){return {refOM:r.refOM,cmdRef:r.cmdRef,tv:r.tv,dt:r.dt,m:r.m};})));
+  var exPMT = (window.CONSO_PMT||[]).slice(0,3);
+  console.log('[REGUL] Exemple CONSO_PMT:', JSON.stringify(exPMT.map(function(r){return {cmdRef:r.cmdRef,tv:r.tv,dt:r.dt,m:r.m,f:r.f};})));
   var ann = (document.getElementById('regul-ann')||{}).value||'';
   var prg = (document.getElementById('regul-prg')||{}).value||'';
   var seuil = parseInt((document.getElementById('regul-seuil')||{}).value||'30');
