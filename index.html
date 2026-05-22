@@ -5353,7 +5353,12 @@ window.switchOMTab = switchOMTab;
 
 // ── INDICATEUR 1 : Régularisation des ordres de mission ──
 function renderRegularisation(){
-  // LOG supprimé après diagnostic
+  // LOG diagnostic champs disponibles
+  var exM = CONSO.filter(function(r){return r.saisiPar==='NOTILUSBUS';}).slice(0,2);
+  console.log('[REGUL] Champs missions:', JSON.stringify(exM.map(function(r){
+    return {refOM:r.refOM, cmdRef:r.cmdRef, cmd:r.cmd, pmtNum:r.pmtNum,
+            piecePrec:r.piecePrec, d:r.d, cptBud:r.cptBud, f:r.f, tv:r.tv};
+  })));
   var ann = (document.getElementById('regul-ann')||{}).value||'';
   var prg = (document.getElementById('regul-prg')||{}).value||'';
   var seuil = parseInt((document.getElementById('regul-seuil')||{}).value||'30');
@@ -5386,16 +5391,18 @@ function renderRegularisation(){
   }).forEach(function(r){
     var key = (r.f||'Inconnu').trim();
     if(!byFour[key]) byFour[key] = {
-      fournisseur:key, prog:r.p, fonds:r.fo,
+      fournisseur:key, prog:r.p, fonds:r.fo, cmdRefs:new Set(),
       datesAll:[], montant:0,
       aDesLignesPmt: fournisPaies.has(key.toLowerCase())
     };
     byFour[key].montant += Math.abs(r.m);
+    if(r.cmdRef) byFour[key].cmdRefs.add(r.cmdRef.trim());
     if(r.dt) byFour[key].datesAll.push(r.dt);
   });
 
   // Calculer dates et statuts
   var omList = Object.values(byFour).map(function(om){
+    om.cmdRefsArr = [...(om.cmdRefs||new Set())];
     var dates = om.datesAll.map(function(d){
       var p=d.split('/');
       return p.length===3 ? new Date(+p[2],+p[1]-1,+p[0]) : null;
@@ -5429,7 +5436,7 @@ function renderRegularisation(){
     '<div class="kpi"><div class="kl">Montant total</div><div class="kv">'+fmt(totMt)+' €</div></div>';
 
   document.getElementById('regul-th').innerHTML =
-    '<tr><th>Bénéficiaire</th><th>Programme</th>'
+    '<tr><th>Bénéficiaire / Réf. commandes SAP</th><th>Programme</th>'
     +'<th style="text-align:right">Montant</th>'
     +'<th>1ère dépense</th><th>Dernière dépense</th>'
     +'<th style="text-align:right">J sans mvt</th><th>Statut</th></tr>';
@@ -5444,7 +5451,7 @@ function renderRegularisation(){
       om.estZombie ? '<span style="color:#dc2626;font-weight:700">⚠️ À régulariser</span>' :
       '<span style="color:#2563eb">↻ Actif</span>';
     return '<tr style="'+cl+';border-bottom:1px solid #f0f1f5">'
-      +'<td style="padding:4px 8px;font-weight:500">'+esc(om.fournisseur)+'</td>'
+      +'<td style="padding:4px 8px">'+'<div style="font-weight:600">'+esc(om.fournisseur)+'</div>'+(om.cmdRefsArr&&om.cmdRefsArr.length?'<div style="font-size:.72rem;color:var(--mu);margin-top:2px">'+om.cmdRefsArr.slice(0,3).map(function(c){var url="https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&/C_PurchaseOrderTP(PurchaseOrder='"+encodeURIComponent(c)+"',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)";return '<a href="'+url+'" target="_blank" style="color:var(--pr);text-decoration:none;margin-right:8px">'+esc(c)+'</a>';}).join('')+(om.cmdRefsArr.length>3?'…':'')+'</div>':'')+'</td>'
       +'<td style="padding:4px 8px">'+esc(om.prog||'—')+'</td>'
       +'<td style="text-align:right;padding:4px 8px;font-weight:500">'+fmt(om.montant)+' €</td>'
       +'<td style="padding:4px 8px">'+fmtDate(om.premDate)+'</td>'
