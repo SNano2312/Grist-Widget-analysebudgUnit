@@ -330,6 +330,13 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
 
   <!-- MISSIONS -->
   <div id="vw-om" style="display:none">
+    <!-- Sous-onglets Missions -->
+    <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+      <button id="om-tab-main" class="btn" style="background:var(--pr);color:#fff;border-color:var(--pr)" onclick="switchOMTab('main')">✈️ Missions</button>
+      <button id="om-tab-regul" class="btn" onclick="switchOMTab('regul')">🗓️ Régularisation</button>
+      <button id="om-tab-ratio" class="btn" onclick="switchOMTab('ratio')">💶 Ratio Mission/Budget</button>
+    </div>
+    <div id="om-view-main">
     <div class="flt">
       <div class="fg"><label>Année</label><select id="om-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
       <div class="fg"><label>Programme</label><select id="om-prg"><option value="">Tous</option></select></div>
@@ -384,6 +391,40 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     </div>
     <div class="ks" id="pluri-kpis"></div>
     <div class="tw"><table><thead id="pluri-th"></thead><tbody id="pluri-tb"></tbody><tfoot id="pluri-tf"></tfoot></table></div>
+  </div>
+    </div><!-- om-view-main -->
+
+    <!-- Vue Régularisation -->
+    <div id="om-view-regul" style="display:none">
+      <div class="flt">
+        <div class="fg"><label>Année</label><select id="regul-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+        <div class="fg"><label>Seuil retard</label>
+          <div style="display:flex;gap:4px;align-items:center">
+            <input type="number" id="regul-seuil" value="30" min="1" max="365" style="width:60px;border:1px solid var(--bd);border-radius:6px;padding:4px 6px;font-size:.82rem">
+            <span style="font-size:.82rem;color:var(--mu)">jours</span>
+          </div>
+        </div>
+        <div class="fg"><label>Programme</label><select id="regul-prg"><option value="">Tous</option></select></div>
+      </div>
+      <div class="ks" id="regul-kpis"></div>
+      <div class="tw" style="margin-top:10px"><table><thead id="regul-th"></thead><tbody id="regul-tb"></tbody></table></div>
+    </div>
+
+    <!-- Vue Ratio Mission/Budget -->
+    <div id="om-view-ratio" style="display:none">
+      <div class="flt">
+        <div class="fg"><label>Année</label><select id="ratio-ann"><option value="">Toutes</option><option value="2025">2025</option><option value="2026">2026</option></select></div>
+      </div>
+      <div class="ks" id="ratio-kpis"></div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px">
+        <div class="pnl" style="flex:1;min-width:280px"><div class="pnl-t">Ratio Mission / Budget par programme</div>
+          <div class="tw"><table><thead id="ratio-th"></thead><tbody id="ratio-tb"></tbody><tfoot id="ratio-tf"></tfoot></table></div>
+        </div>
+        <div class="pnl" style="flex:1;min-width:280px"><div class="pnl-t">Évolution mensuelle missions</div>
+          <canvas id="chRatioEvol" style="max-height:260px"></canvas>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- COMMANDES NON SOLDÉES -->
@@ -804,6 +845,8 @@ function attachListeners(){
     [['tl-ann','tl-statut','tl-vue'],renderTimeline],
     [['livr-ann','livr-statut','livr-prg','livr-cf'],renderLivraison],
     [['liq-ann','liq-prg','liq-fnd'],renderLiquidationTab],
+    [['regul-ann','regul-seuil','regul-prg'],renderRegularisation],
+    [['ratio-ann'],renderRatioMission],
     [['x-ann','x-prg','x-fnd','x-from','x-to'],renderCross]
   ];
   pairs.forEach(function(pair){
@@ -2970,6 +3013,7 @@ function openOMDrill(type, key1, key2, anneeF){
 
 function closeOMDrill(){
   document.getElementById('om-drv').style.display='none';
+  if(typeof _omSubTab!=='undefined'&&_omSubTab!=='main') switchOMTab(_omSubTab);
 }
 
 function renderOMDrill(rows, sc, sd){
@@ -5282,6 +5326,223 @@ function renderLiquidationTab(){
   },50);
 }
 window.renderLiquidationTab=renderLiquidationTab;
+
+
+// ════════════════════════════════════════════════════════
+// MISSIONS — SOUS-ONGLETS
+// ════════════════════════════════════════════════════════
+var _omSubTab = 'main';
+var _ratioChart = null;
+
+function switchOMTab(tab){
+  _omSubTab = tab;
+  ['main','regul','ratio'].forEach(function(t){
+    var v = document.getElementById('om-view-'+t);
+    var b = document.getElementById('om-tab-'+t);
+    if(v) v.style.display = t===tab ? '' : 'none';
+    if(b){
+      b.style.background = t===tab ? 'var(--pr)' : '';
+      b.style.color = t===tab ? '#fff' : '';
+      b.style.borderColor = t===tab ? 'var(--pr)' : '';
+    }
+  });
+  if(tab==='regul') renderRegularisation();
+  if(tab==='ratio') renderRatioMission();
+}
+window.switchOMTab = switchOMTab;
+
+// ── INDICATEUR 1 : Régularisation des ordres de mission ──
+function renderRegularisation(){
+  var ann = (document.getElementById('regul-ann')||{}).value||'';
+  var prg = (document.getElementById('regul-prg')||{}).value||'';
+  var seuil = parseInt((document.getElementById('regul-seuil')||{}).value||'30');
+  var today = new Date();
+
+  // Peupler filtre programme
+  var allPrg = [...new Set(CONSO.filter(function(r){return r.saisiPar==='NOTILUSBUS'&&r.p;}).map(function(r){return r.p;}))].sort();
+  var prgEl = document.getElementById('regul-prg');
+  if(prgEl){
+    var cur = prgEl.value;
+    prgEl.innerHTML = '<option value="">Tous</option>';
+    allPrg.forEach(function(p){ prgEl.innerHTML += '<option value="'+esc(p)+'">'+esc(p)+'</option>'; });
+    if(cur) prgEl.value = cur;
+  }
+
+  // Grouper les missions par refOM
+  var byOM = {};
+  CONSO.filter(function(r){
+    if(r.saisiPar !== 'NOTILUSBUS') return false;
+    if(ann && String(r.annee) !== ann) return false;
+    if(prg && r.p !== prg) return false;
+    return true;
+  }).forEach(function(r){
+    var key = r.refOM || r.cmdRef || 'OM-inconnu';
+    if(!byOM[key]) byOM[key] = {
+      refOM:key, prog:r.p, fonds:r.fo, four:r.f||'',
+      datesAll:[], montant:0, dernDt:null
+    };
+    byOM[key].montant += r.m;
+    if(r.dt){
+      byOM[key].datesAll.push(r.dt);
+    }
+  });
+
+  // Pour chaque OM, calculer la date de première dépense et dernière mise à jour
+  var omList = Object.values(byOM).map(function(om){
+    var dates = om.datesAll.map(function(d){
+      var p=d.split('/');
+      return p.length===3 ? new Date(+p[2],+p[1]-1,+p[0]) : null;
+    }).filter(Boolean).sort(function(a,b){return a-b;});
+    var premDate = dates.length ? dates[0] : null;
+    var dernDate = dates.length ? dates[dates.length-1] : null;
+    var joursSansMouvement = dernDate ? Math.round((today-dernDate)/864e5) : null;
+    var joursDepuisDebut = premDate ? Math.round((today-premDate)/864e5) : null;
+    var estZombie = joursSansMouvement !== null && joursSansMouvement >= seuil;
+    return Object.assign({}, om, {
+      premDate:premDate, dernDate:dernDate,
+      joursSansMouvement:joursSansMouvement,
+      joursDepuisDebut:joursDepuisDebut,
+      estZombie:estZombie
+    });
+  }).sort(function(a,b){
+    if(a.estZombie && !b.estZombie) return -1;
+    if(!a.estZombie && b.estZombie) return 1;
+    return (b.joursSansMouvement||0)-(a.joursSansMouvement||0);
+  });
+
+  var nbZombie = omList.filter(function(o){return o.estZombie;}).length;
+  var nbTotal = omList.length;
+  var totMt = omList.reduce(function(s,o){return s+o.montant;},0);
+  var totZombie = omList.filter(function(o){return o.estZombie;}).reduce(function(s,o){return s+o.montant;},0);
+  var moyJours = nbZombie > 0 ? Math.round(omList.filter(function(o){return o.estZombie;}).reduce(function(s,o){return s+(o.joursSansMouvement||0);},0)/nbZombie) : 0;
+
+  document.getElementById('regul-kpis').innerHTML =
+    '<div class="kpi"><div class="kl">Ordres de mission</div><div class="kv">'+nbTotal+'</div></div>'+
+    '<div class="kpi"><div class="kl">Sans mouvement &gt;'+seuil+'j</div><div class="kv c-er">'+nbZombie+'</div></div>'+
+    (nbZombie?'<div class="kpi"><div class="kl">Montant bloqué</div><div class="kv c-wn">'+fmt(totZombie)+' €</div></div>':'')+''+
+    '<div class="kpi"><div class="kl">Retard moyen</div><div class="kv '+(moyJours>60?'c-er':moyJours>30?'c-wn':'')+'">'+moyJours+' j</div></div>'+
+    '<div class="kpi"><div class="kl">Montant total</div><div class="kv">'+fmt(totMt)+' €</div></div>';
+
+  document.getElementById('regul-th').innerHTML =
+    '<tr><th>Réf. OM</th><th>Programme</th><th>Fournisseur</th>'
+    +'<th style="text-align:right">Montant</th>'
+    +'<th>1ère dépense</th><th>Dernière dépense</th>'
+    +'<th style="text-align:right">J sans mouvement</th><th>Statut</th></tr>';
+
+  document.getElementById('regul-tb').innerHTML = omList.map(function(om){
+    var cl = om.estZombie ? 'background:#fef2f2' : '';
+    var statut = om.joursSansMouvement === null ? '—' :
+      om.estZombie ? '<span style="color:#dc2626;font-weight:700">⚠️ À régulariser</span>' :
+      '<span style="color:#16a34a">✓ Actif</span>';
+    var notilus = om.refOM && om.refOM !== 'OM-inconnu' ?
+      '<a href="https://esr-inrae.notilus-pio.cegid.cloud/#/OD/'+encodeURIComponent(om.refOM)+'" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">'+esc(om.refOM)+'</a>' :
+      esc(om.refOM||'—');
+    var fmtDate = function(d){ return d ? d.toLocaleDateString('fr-FR') : '—'; };
+    return '<tr style="'+cl+';border-bottom:1px solid #f0f1f5">'
+      +'<td style="padding:4px 8px">'+notilus+'</td>'
+      +'<td style="padding:4px 8px">'+esc(om.prog||'—')+'</td>'
+      +'<td style="padding:4px 8px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(om.four||'—')+'</td>'
+      +'<td style="text-align:right;padding:4px 8px;font-weight:500">'+fmt(om.montant)+' €</td>'
+      +'<td style="padding:4px 8px">'+fmtDate(om.premDate)+'</td>'
+      +'<td style="padding:4px 8px">'+fmtDate(om.dernDate)+'</td>'
+      +'<td style="text-align:right;padding:4px 8px;font-weight:700;color:'+(om.estZombie?'#dc2626':'inherit')+'">'+
+        (om.joursSansMouvement!==null?om.joursSansMouvement+' j':'—')+'</td>'
+      +'<td style="padding:4px 8px">'+statut+'</td>'
+      +'</tr>';
+  }).join('') || '<tr><td colspan="8" style="text-align:center;padding:16px;color:var(--mu)">Aucune mission</td></tr>';
+}
+window.renderRegularisation = renderRegularisation;
+
+// ── INDICATEUR 2 : Ratio Mission / Budget ──
+function renderRatioMission(){
+  var ann = (document.getElementById('ratio-ann')||{}).value||'';
+
+  // Montant missions par programme
+  var missionsByProg = {};
+  var missionsByMois = {};
+  CONSO.filter(function(r){
+    if(r.saisiPar !== 'NOTILUSBUS') return false;
+    if(ann && String(r.annee) !== ann) return false;
+    return true;
+  }).forEach(function(r){
+    var p = r.p||'NA';
+    missionsByProg[p] = (missionsByProg[p]||0) + r.m;
+    if(r.dtMois){
+      missionsByMois[r.dtMois] = (missionsByMois[r.dtMois]||0) + r.m;
+    }
+  });
+
+  // Budget par programme
+  var annEff = ann || String(new Date().getFullYear());
+  var budgetByProg = {};
+  BUDGET.filter(function(b){
+    return (!ann || String(b.annee)===ann);
+  }).forEach(function(b){
+    budgetByProg[b.prog] = (budgetByProg[b.prog]||0) + b.bud;
+  });
+
+  var totMissions = Object.values(missionsByProg).reduce(function(s,v){return s+v;},0);
+  var totBudget = Object.values(budgetByProg).reduce(function(s,v){return s+v;},0);
+  var ratioGlobal = totBudget > 0 ? totMissions/totBudget*100 : 0;
+
+  document.getElementById('ratio-kpis').innerHTML =
+    '<div class="kpi"><div class="kl">Total missions</div><div class="kv">'+fmt(totMissions)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">Ratio global</div><div class="kv '+(ratioGlobal>15?'c-er':ratioGlobal>8?'c-wn':'c-ok')+'">'+ratioGlobal.toFixed(1)+'%</div></div>'+
+    '<div class="kpi"><div class="kl">Budget total</div><div class="kv">'+fmt(totBudget)+' €</div></div>';
+
+  // Tableau par programme
+  var rows = Object.keys(missionsByProg).map(function(p){
+    var bud = budgetByProg[p]||0;
+    var mt = missionsByProg[p]||0;
+    var ratio = bud>0 ? mt/bud*100 : 0;
+    return {prog:p, mt:mt, bud:bud, ratio:ratio};
+  }).filter(function(r){return r.mt > 0;})
+    .sort(function(a,b){return b.ratio-a.ratio;});
+
+  document.getElementById('ratio-th').innerHTML =
+    '<tr><th>Programme</th><th style="text-align:right">Missions</th>'+
+    '<th style="text-align:right">Budget</th><th style="text-align:right">Ratio</th>'+
+    '<th>Intensité</th></tr>';
+  document.getElementById('ratio-tb').innerHTML = rows.map(function(r){
+    var cl = r.ratio>15?'#dc2626':r.ratio>8?'#d97706':'#16a34a';
+    var lbl = r.ratio>15?'🔴 Élevée':r.ratio>8?'🟠 Modérée':'🟢 Faible';
+    return '<tr style="border-bottom:1px solid #f0f1f5">'
+      +'<td style="padding:4px 8px;font-weight:500">'+esc(r.prog)+'</td>'
+      +'<td style="text-align:right;padding:4px 8px">'+fmt(r.mt)+' €</td>'
+      +'<td style="text-align:right;padding:4px 8px;color:var(--mu)">'+fmt(r.bud)+' €</td>'
+      +'<td style="text-align:right;padding:4px 8px;font-weight:700;color:'+cl+'">'+r.ratio.toFixed(1)+'%</td>'
+      +'<td style="padding:4px 8px;font-size:.8rem">'+lbl+'</td>'
+      +'</tr>';
+  }).join('');
+  var totRatio = totBudget>0?totMissions/totBudget*100:0;
+  document.getElementById('ratio-tf').innerHTML =
+    '<tr><td style="padding:4px 8px;font-weight:700">TOTAL</td>'
+    +'<td style="text-align:right;padding:4px 8px;font-weight:700">'+fmt(totMissions)+' €</td>'
+    +'<td style="text-align:right;padding:4px 8px">'+fmt(totBudget)+' €</td>'
+    +'<td style="text-align:right;padding:4px 8px;font-weight:700">'+totRatio.toFixed(1)+'%</td>'
+    +'<td></td></tr>';
+
+  // Évolution mensuelle
+  var mois = Object.keys(missionsByMois).sort();
+  if(_ratioChart){ _ratioChart.destroy(); _ratioChart=null; }
+  var cv = document.getElementById('chRatioEvol');
+  if(cv && mois.length){
+    _ratioChart = new Chart(cv.getContext('2d'),{
+      type:'bar',
+      data:{labels:mois,datasets:[{
+        label:'Missions (€)',
+        data:mois.map(function(m){return Math.round(missionsByMois[m]*100)/100;}),
+        backgroundColor:'#7c3aed',borderRadius:4
+      }]},
+      options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return fmt(c.raw)+' €';}}}},
+        scales:{y:{ticks:{callback:function(v){return fmt(v)+' €';}}}}}
+    });
+  } else if(cv){
+    var ctx=cv.getContext('2d');
+    ctx.clearRect(0,0,cv.width,cv.height);
+  }
+}
+window.renderRatioMission = renderRatioMission;
 
 </script>
 </body>
