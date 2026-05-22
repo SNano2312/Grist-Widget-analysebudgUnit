@@ -5370,6 +5370,16 @@ function renderRegularisation(){
 
   // Grouper les missions par refOM
   var byOM = {};
+  // Détecter les OM clôturés via paiements CP
+  var omPayes = new Set();
+  (window.CONSO_PMT||[]).filter(function(r){return r.m>0&&r.cmdRef;}).forEach(function(r){
+    omPayes.add(r.cmdRef.trim());
+  });
+  CONSO.filter(function(r){return r.saisiPar==='NOTILUSBUS'&&r.tv&&r.tv.includes('Paiement');}).forEach(function(r){
+    if(r.refOM) omPayes.add(r.refOM.trim());
+    if(r.cmdRef) omPayes.add(r.cmdRef.trim());
+  });
+
   CONSO.filter(function(r){
     if(r.saisiPar !== 'NOTILUSBUS') return false;
     if(ann && String(r.annee) !== ann) return false;
@@ -5379,9 +5389,10 @@ function renderRegularisation(){
     var key = r.refOM || r.cmdRef || 'OM-inconnu';
     if(!byOM[key]) byOM[key] = {
       refOM:key, prog:r.p, fonds:r.fo, four:r.f||'',
-      datesAll:[], montant:0, dernDt:null
+      datesAll:[], montant:0, dernDt:null, aDesLignesPmt:false
     };
-    byOM[key].montant += r.m;
+    byOM[key].montant += Math.abs(r.m);
+    if(r.refOM && omPayes.has(r.refOM.trim())) byOM[key].aDesLignesPmt=true;
     if(r.dt){
       byOM[key].datesAll.push(r.dt);
     }
@@ -5397,7 +5408,8 @@ function renderRegularisation(){
     var dernDate = dates.length ? dates[dates.length-1] : null;
     var joursSansMouvement = dernDate ? Math.round((today-dernDate)/864e5) : null;
     var joursDepuisDebut = premDate ? Math.round((today-premDate)/864e5) : null;
-    var estZombie = joursSansMouvement !== null && joursSansMouvement >= seuil;
+    var estCloture = om.aDesLignesPmt;
+    var estZombie = !estCloture && joursSansMouvement !== null && joursSansMouvement >= seuil;
     return Object.assign({}, om, {
       premDate:premDate, dernDate:dernDate,
       joursSansMouvement:joursSansMouvement,
@@ -5433,9 +5445,7 @@ function renderRegularisation(){
 
   document.getElementById('regul-tb').innerHTML = omList.map(function(om){
     var cl = om.estZombie ? 'background:#fef2f2' : '';
-    var statut = om.joursSansMouvement === null ? '—' :
-      om.estZombie ? '<span style="color:#dc2626;font-weight:700">⚠️ À régulariser</span>' :
-      '<span style="color:#16a34a">✓ Actif</span>';
+    var statut = om.estCloture ? '<span style="color:#16a34a;font-weight:600">Cloture</span>' : om.joursSansMouvement===null ? '—' : om.estZombie ? '<span style="color:#dc2626;font-weight:700">A regulariser</span>' : '<span style="color:#2563eb">Actif</span>';
     var notilus = om.refOM && om.refOM !== 'OM-inconnu' ?
       '<a href="https://esr-inrae.notilus-pio.cegid.cloud/#/OD/'+encodeURIComponent(om.refOM)+'" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">'+esc(om.refOM)+'</a>' :
       esc(om.refOM||'—');
@@ -5468,9 +5478,9 @@ function renderRatioMission(){
     return true;
   }).forEach(function(r){
     var p = r.p||'NA';
-    missionsByProg[p] = (missionsByProg[p]||0) + r.m;
+    missionsByProg[p] = (missionsByProg[p]||0) + Math.abs(r.m);
     if(r.dtMois){
-      missionsByMois[r.dtMois] = (missionsByMois[r.dtMois]||0) + r.m;
+      missionsByMois[r.dtMois] = (missionsByMois[r.dtMois]||0) + Math.abs(r.m);
     }
   });
 
