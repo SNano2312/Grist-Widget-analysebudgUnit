@@ -5410,6 +5410,7 @@ function renderRegularisation(){
     return (b.joursSansMouvement||0)-(a.joursSansMouvement||0);
   });
 
+  var nbCloture = omList.filter(function(o){return o.estCloture;}).length;
   var nbZombie = omList.filter(function(o){return o.estZombie;}).length;
   var nbTotal = omList.length;
   var totMt = omList.reduce(function(s,o){return s+o.montant;},0);
@@ -5418,7 +5419,8 @@ function renderRegularisation(){
 
   document.getElementById('regul-kpis').innerHTML =
     '<div class="kpi"><div class="kl">Ordres de mission</div><div class="kv">'+nbTotal+'</div></div>'+
-    '<div class="kpi"><div class="kl">Sans mouvement &gt;'+seuil+'j</div><div class="kv c-er">'+nbZombie+'</div></div>'+
+    '<div class="kpi"><div class="kl">Clotures/Pays</div><div class="kv c-ok">'+nbCloture+'</div></div>'+
+    '<div class="kpi"><div class="kl">A regulariser &gt;'+seuil+'j</div><div class="kv c-er">'+nbZombie+'</div></div>'+
     (nbZombie?'<div class="kpi"><div class="kl">Montant bloqué</div><div class="kv c-wn">'+fmt(totZombie)+' €</div></div>':'')+''+
     '<div class="kpi"><div class="kl">Retard moyen</div><div class="kv '+(moyJours>60?'c-er':moyJours>30?'c-wn':'')+'">'+moyJours+' j</div></div>'+
     '<div class="kpi"><div class="kl">Montant total</div><div class="kv">'+fmt(totMt)+' €</div></div>';
