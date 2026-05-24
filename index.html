@@ -82,7 +82,23 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
 .alert-box{background:#fff7ed;border:1px solid #fed7aa;border-radius:var(--r);padding:12px 16px;margin-bottom:16px}
 .alert-box h3{font-size:.83rem;font-weight:700;color:var(--wn);margin-bottom:6px}
 .alert-item{font-size:.8rem;padding:3px 0;border-bottom:1px solid #fde8c8;display:flex;justify-content:space-between;gap:8px}
-</style>
+
+    .idx-btn {
+      font-size:.78rem;padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;
+      background:#fff;color:#374151;cursor:pointer;transition:all .15s;white-space:nowrap;
+      font-family:inherit;
+    }
+    .idx-btn:hover { background:#f0f7ff;border-color:#93c5fd;color:#1d4ed8; }
+    .idx-purple { border-color:#ddd6fe; }
+    .idx-purple:hover { background:#f5f3ff;border-color:#c4b5fd;color:#7c3aed; }
+    .idx-orange { border-color:#fed7aa; }
+    .idx-orange:hover { background:#fffbeb;border-color:#fbbf24;color:#d97706; }
+    .idx-green { border-color:#bbf7d0; }
+    .idx-green:hover { background:#f0fdf4;border-color:#6ee7b7;color:#16a34a; }
+    .idx-blue { border-color:#a5f3fc; }
+    .idx-blue:hover { background:#f0f9ff;border-color:#67e8f9;color:#0891b2; }
+
+  </style>
 </head>
 <body>
 
@@ -549,6 +565,76 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
   <!-- DOCUMENTATION -->
   <div id="vw-doc" style="display:none">
     <div style="max-width:960px;margin:0 auto">
+
+      <!-- INDEX DES INDICATEURS -->
+      <div class="pnl" style="margin-bottom:20px;background:linear-gradient(135deg,#f0f7ff 0%,#fafafa 100%);border:1px solid #bfdbfe">
+        <div class="pnl-t" style="color:#1d4ed8;font-size:.95rem">🗂️ Index des indicateurs</div>
+        <p style="font-size:.78rem;color:var(--mu);margin-bottom:14px">Cliquez sur un indicateur pour y accéder directement.</p>
+
+        <!-- Ligne 1 : Budget -->
+        <div style="margin-bottom:14px">
+          <div style="font-size:.72rem;font-weight:800;color:#1d4ed8;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #bfdbfe;padding-bottom:4px;margin-bottom:8px">📊 Budget & Synthèse</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <button class="idx-btn" onclick="switchTab('db')">🏠 Tableau de bord</button>
+            <button class="idx-btn" onclick="switchTab('s')">📊 Synthèse par programme</button>
+            <button class="idx-btn" onclick="switchTab('h')">📊 Histogramme</button>
+            <button class="idx-btn" onclick="switchTab('e')">📈 Évolution mensuelle</button>
+            <button class="idx-btn" onclick="switchTab('x')">🔀 Tableau croisé</button>
+            <button class="idx-btn" onclick="switchTab('tl')">📅 Échéances programmes</button>
+          </div>
+        </div>
+
+        <!-- Ligne 2 : Indicateurs décisionnels -->
+        <div style="margin-bottom:14px">
+          <div style="font-size:.72rem;font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #ede9fe;padding-bottom:4px;margin-bottom:8px">🔮 Indicateurs prédictifs & risques <span style="font-size:.68rem;font-weight:400;color:var(--mu)">(Tableau de bord + Synthèse)</span></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <button class="idx-btn idx-purple" onclick="switchTab('db')">📈 Projection fin d'année</button>
+            <button class="idx-btn idx-purple" onclick="switchTab('db')">⏱ Délai 1ère commande</button>
+            <button class="idx-btn idx-purple" onclick="switchTab('db')">🚀 Vélocité d'engagement</button>
+            <button class="idx-btn idx-purple" onclick="switchTab('db')">🎯 Score de risque programme</button>
+            <button class="idx-btn idx-purple" onclick="switchTab('db')">🏭 Concentration fournisseur</button>
+            <button class="idx-btn idx-purple" onclick="switchTab('db')">📦 Engagements sans livraison</button>
+            <button class="idx-btn idx-purple" onclick="switchTab('db')">⏰ Budget restant avant échéance</button>
+            <button class="idx-btn idx-purple" onclick="switchTab('db')">🔀 Co-financement</button>
+          </div>
+        </div>
+
+        <!-- Ligne 3 : Achats -->
+        <div style="margin-bottom:14px">
+          <div style="font-size:.72rem;font-weight:800;color:#d97706;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #fde68a;padding-bottom:4px;margin-bottom:8px">🛒 Achats & Commandes</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <button class="idx-btn idx-orange" onclick="switchTab('nacres')">🧪 NACRES</button>
+            <button class="idx-btn idx-orange" onclick="switchTab('open')">🔴 Commandes non soldées</button>
+            <button class="idx-btn idx-orange" onclick="switchTab('open');setTimeout(function(){switchOpenTab&&switchOpenTab('livr');},200)">📦 Délais de livraison</button>
+            <button class="idx-btn idx-orange" onclick="switchTab('pluri')">📋 Engagements pluriannuels</button>
+            <button class="idx-btn idx-orange" onclick="switchTab('liq')">⚡ Liquidation AE→CP</button>
+          </div>
+        </div>
+
+        <!-- Ligne 4 : Paiements -->
+        <div style="margin-bottom:14px">
+          <div style="font-size:.72rem;font-weight:800;color:#16a34a;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #bbf7d0;padding-bottom:4px;margin-bottom:8px">💰 Paiements & Missions</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <button class="idx-btn idx-green" onclick="switchTab('f')">🏭 Top fournisseurs</button>
+            <button class="idx-btn idx-green" onclick="switchTab('d')">⏱ Délais paiement</button>
+            <button class="idx-btn idx-green" onclick="switchTab('r')">🍩 Répartition par type</button>
+            <button class="idx-btn idx-green" onclick="switchTab('om')">✈️ Missions</button>
+            <button class="idx-btn idx-green" onclick="switchTab('om');setTimeout(function(){switchOMTab&&switchOMTab('regul');},200)">🗓️ Régularisation OM</button>
+            <button class="idx-btn idx-green" onclick="switchTab('om');setTimeout(function(){switchOMTab&&switchOMTab('ratio');},200)">💶 Ratio Mission/Budget</button>
+          </div>
+        </div>
+
+        <!-- Ligne 5 : Centres de coûts -->
+        <div>
+          <div style="font-size:.72rem;font-weight:800;color:#0891b2;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #a5f3fc;padding-bottom:4px;margin-bottom:8px">🏦 Centres de coûts</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <button class="idx-btn idx-blue" onclick="switchTab('cc')">🏦 Synthèse CC</button>
+            <button class="idx-btn idx-blue" onclick="switchTab('cc');setTimeout(function(){switchCCTab&&switchCCTab('evol');},200)">📈 Évolution par CC</button>
+            <button class="idx-btn idx-blue" onclick="switchTab('cc');setTimeout(function(){switchCCTab&&switchCCTab('comp');},200)">🔀 Comparaison CC</button>
+            <button class="idx-btn idx-blue" onclick="switchTab('cc');setTimeout(function(){switchCCTab&&switchCCTab('nacres');},200)">🧪 NACRES par CC</button>
+          </div>
+        </div>
+      </div>
 
       <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">📂 Sources de données</div>
