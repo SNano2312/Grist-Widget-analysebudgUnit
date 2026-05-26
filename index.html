@@ -619,8 +619,8 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
             <button class="idx-btn idx-green" onclick="switchTab('d')">⏱ Délais paiement</button>
             <button class="idx-btn idx-green" onclick="switchTab('r')">🍩 Répartition par type</button>
             <button class="idx-btn idx-green" onclick="switchTab('om')">✈️ Missions</button>
-            <button class="idx-btn idx-green" onclick="switchTab('om');setTimeout(function(){switchOMTab&&switchOMTab('regul');},200)">🗓️ Régularisation OM</button>
-            <button class="idx-btn idx-green" onclick="switchTab('om');setTimeout(function(){switchOMTab&&switchOMTab('ratio');},200)">💶 Ratio Mission/Budget</button>
+            <button class="idx-btn idx-green" onclick="switchTab('om');setTimeout(function(){switchOMTab&&switchOMTab('regul');},200)" title="Détecter les OM non régularisés">🗓️ Régularisation OM</button>
+            <button class="idx-btn idx-green" onclick="switchTab('om');setTimeout(function(){switchOMTab&&switchOMTab('ratio');},200)" title="Part du budget consommée en missions">💶 Ratio Mission/Budget</button>
           </div>
         </div>
 
@@ -784,7 +784,64 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
           <strong>Top fournisseurs</strong> : classement par montant payé CP, comparaison 2025/2026.<br>
           <strong>Délais paiement</strong> : délai facture → paiement. Rouge &gt;60j, orange &gt;30j.<br>
           <strong>Répartition</strong> : donut par type de valeur + tableau par programme.<br>
-          <strong>Missions</strong> : via <code>Saisi par = NOTILUSBUS</code>. Lien Notilus <code>/#/OD/</code> ou <code>/#/OMP/</code>. Vues : programme, OM, évolution mensuelle.
+          <strong>✈️ Missions</strong> : détection via <code>Saisi par = NOTILUSBUS</code>. Vues : par programme, par ordre de mission, évolution mensuelle.
+          Lien Notilus <code>/#/OD/</code> (OM) ou <code>/#/OMP/</code> (ordre permanent via compte FG).
+        </p>
+      </div>
+
+      <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">🗓️ Régularisation des ordres de mission — Indicateur décisionnel</div>
+        <p style="font-size:.82rem;line-height:1.8">
+          <strong>Sous-onglet de ✈️ Missions.</strong><br><br>
+
+          <strong>Pourquoi c'est un indicateur décisionnel</strong><br>
+          Une mission engagée dans SAP (dépense NOTILUSBUS) reste ouverte jusqu'à ce que l'agent rende son compte rendu et que le solde soit versé ou récupéré. Un ordre de mission non régularisé dans les délais :<br>
+          &bull; immobilise du budget AE engagé qui ne peut pas être réalloué<br>
+          &bull; génère un RAR artificiel qui fausse le taux de consommation réel<br>
+          &bull; expose l'unité à un risque de contrôle comptable (clôture d'exercice)<br>
+          &bull; peut indiquer une avance à l'agent non remboursée<br><br>
+
+          <strong>Comment ça fonctionne</strong><br>
+          Le widget regroupe les dépenses NOTILUSBUS par <strong>bénéficiaire</strong> (nom de la personne, car le N° d'OM Notilus n'est pas exporté dans SAP). Un bénéficiaire est considéré <strong>clôturé</strong> s'il apparaît dans les paiements CP (CONSO_PMT) — c'est-à-dire si un paiement de solde a été effectué.<br><br>
+
+          <strong>Filtres</strong> : Année, Programme, Seuil de retard paramétrable (défaut 30j)<br><br>
+
+          <strong>KPIs</strong> : Bénéficiaires, Clôturés/Payés, À régulariser &gt;X jours, Montant bloqué, Retard moyen<br><br>
+
+          <strong>Tableau</strong> : par bénéficiaire — montant engagé, date 1ère dépense, date dernière dépense, jours sans mouvement, statut :<br>
+          &bull; <span style="color:#16a34a;font-weight:600">✓ Clôturé / Payé</span> — paiement CP trouvé pour ce bénéficiaire<br>
+          &bull; <span style="color:#dc2626;font-weight:600">⚠️ À régulariser</span> — inactif depuis &gt; seuil jours sans paiement<br>
+          &bull; <span style="color:#2563eb">↻ Actif</span> — dépenses récentes, pas encore en retard<br><br>
+
+          <strong>⚠️ Limite technique</strong> : la colonne <code>Référence</code> (N° OM Notilus) est vide dans les exports SAP — la liaison se fait par nom de bénéficiaire. Les N° de commandes SAP associés sont affichés comme référence alternative.
+        </p>
+      </div>
+
+      <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">💶 Ratio Mission / Budget — Indicateur décisionnel</div>
+        <p style="font-size:.82rem;line-height:1.8">
+          <strong>Sous-onglet de ✈️ Missions.</strong><br><br>
+
+          <strong>Pourquoi c'est un indicateur décisionnel</strong><br>
+          Le budget d'une unité INRAE est destiné principalement aux achats de biens et services liés à la recherche. Les missions (déplacements) sont un poste nécessaire mais qui ne doit pas prendre une part disproportionnée. Un ratio élevé signale :<br>
+          &bull; un programme très mobile dont le budget sera consommé en déplacements avant la fin de l'exercice, laissant peu de marge pour les achats<br>
+          &bull; un déséquilibre à anticiper lors de la prochaine campagne budgétaire<br>
+          &bull; un signal pour le responsable : faut-il arbitrer entre missions et achats ?<br><br>
+
+          <strong>Comment ça fonctionne</strong><br>
+          Rapport entre le montant total des dépenses NOTILUSBUS et le budget AE du programme :<br>
+          <code>Ratio = Σ Missions / Budget AE × 100</code><br>
+          Les montants missions utilisent <code>Math.abs()</code> pour neutraliser les corrections négatives SAP.<br><br>
+
+          <strong>Niveaux d'intensité</strong> :<br>
+          &bull; 🔴 &gt;15% — intensité élevée, vigilance requise<br>
+          &bull; 🟠 &gt;8% — intensité modérée<br>
+          &bull; 🟢 ≤8% — intensité faible<br><br>
+
+          <strong>Vues disponibles</strong> :<br>
+          &bull; <strong>KPIs globaux</strong> : total missions €, ratio global %, budget total<br>
+          &bull; <strong>Tableau par programme</strong> : montant missions, budget, ratio %, intensité<br>
+          &bull; <strong>Évolution mensuelle</strong> : graphique barres (violet = NOTILUSBUS) — permet de détecter les pics saisonniers (colloques, congrès) et d'anticiper les fins d'exercice
         </p>
       </div>
 
