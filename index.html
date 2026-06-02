@@ -2691,6 +2691,11 @@ function fillNacresFilters(){
 // ════════════════════════
 var _chNacres=null;
 function renderNacres(){
+  console.log('[NACRES] CDA_CC='+((window.CDA_CC||[]).length)+' NACRES_DATA='+((window.NACRES_DATA||[]).length));
+  if((window.CDA_CC||[]).length>0){
+    var ex=window.CDA_CC[0];
+    console.log('[NACRES] Ex CDA_CC[0]:', JSON.stringify({nacreCode:ex.nacreCode,nacreDesc:ex.nacreDesc,cmd:ex.cmd,prog:ex.prog,fonds:ex.fonds,four:ex.four,val:ex.val,cc:ex.cc,annee:ex.annee}));
+  }
   // Fermer le drill-down si ouvert
   var drv=document.getElementById('nacres-drv');if(drv) drv.style.display='none';
   var prg=document.getElementById('n-prg').value,fnd=document.getElementById('n-fnd').value;
@@ -3201,6 +3206,9 @@ function sortOMDrill(col){
 // Consolidation Budget (CDa + RAR) + NACRES (non soldées)
 // ════════════════════════════════════════════════════════
 function renderPluri(){
+  console.log('[PLURI] BUDGET='+BUDGET.length+' CDA_CC='+((window.CDA_CC||[]).length));
+  var ex=BUDGET[0];
+  if(ex) console.log('[PLURI] Ex BUDGET[0]:', JSON.stringify({prog:ex.prog,fonds:ex.fonds,annee:ex.annee,rar:ex.rar,cda:ex.cda}));
   var prg=document.getElementById('pl-prg').value;
   var fnd=document.getElementById('pl-fnd').value;
   var pi=window._PROG_INFO||{};
