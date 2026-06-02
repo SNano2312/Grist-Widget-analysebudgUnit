@@ -2696,6 +2696,20 @@ function renderNacres(){
     var ex=window.CDA_CC[0];
     console.log('[NACRES] Ex CDA_CC[0]:', JSON.stringify({nacreCode:ex.nacreCode,nacreDesc:ex.nacreDesc,cmd:ex.cmd,prog:ex.prog,fonds:ex.fonds,four:ex.four,val:ex.val,cc:ex.cc,annee:ex.annee}));
   }
+  // Vérifier les filtres actifs
+  var ann=document.getElementById('n-ann')?document.getElementById('n-ann').value:'';
+  var prg=document.getElementById('n-prg')?document.getElementById('n-prg').value:'';
+  var fnd=document.getElementById('n-fnd')?document.getElementById('n-fnd').value:'';
+  var typeF=document.getElementById('n-type')?document.getElementById('n-type').value:'';
+  var vue=document.getElementById('n-vue')?document.getElementById('n-vue').value:'';
+  console.log('[NACRES] Filtres: ann='+ann+' prg='+prg+' fnd='+fnd+' type='+typeF+' vue='+vue);
+  // Tester le filtre sur NACRES_DATA
+  var testData=(window.NACRES_DATA||[]).filter(function(r){
+    if(ann&&r.annee&&r.annee!==ann) return false;
+    return true;
+  });
+  console.log('[NACRES] Apres filtre ann:', testData.length);
+  if(testData.length>0) console.log('[NACRES] Ex NACRES_DATA[0]:', JSON.stringify({nacreCode:testData[0].nacreCode,prog:testData[0].prog,fond:testData[0].fond,val:testData[0].val,annee:testData[0].annee}));
   // Fermer le drill-down si ouvert
   var drv=document.getElementById('nacres-drv');if(drv) drv.style.display='none';
   var prg=document.getElementById('n-prg').value,fnd=document.getElementById('n-fnd').value;
@@ -3206,9 +3220,13 @@ function sortOMDrill(col){
 // Consolidation Budget (CDa + RAR) + NACRES (non soldées)
 // ════════════════════════════════════════════════════════
 function renderPluri(){
+  // Log étendu
+  var exB=BUDGET.slice(0,2);
   console.log('[PLURI] BUDGET='+BUDGET.length+' CDA_CC='+((window.CDA_CC||[]).length));
-  var ex=BUDGET[0];
-  if(ex) console.log('[PLURI] Ex BUDGET[0]:', JSON.stringify({prog:ex.prog,fonds:ex.fonds,annee:ex.annee,rar:ex.rar,cda:ex.cda}));
+  console.log('[PLURI] Exemples BUDGET:', JSON.stringify(exB.map(function(b){return {prog:b.prog,fonds:b.fonds,annee:b.annee,rar:b.rar,cda:b.cda,bud:b.bud,conso:b.conso};})));
+  var nbAvecRar=BUDGET.filter(function(b){return b.rar>0;}).length;
+  var nbAvecCda=BUDGET.filter(function(b){return b.cda>0;}).length;
+  console.log('[PLURI] Lignes avec RAR>0:', nbAvecRar, '| avec CDa>0:', nbAvecCda);
   var prg=document.getElementById('pl-prg').value;
   var fnd=document.getElementById('pl-fnd').value;
   var pi=window._PROG_INFO||{};
