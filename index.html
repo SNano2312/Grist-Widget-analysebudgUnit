@@ -10,7 +10,7 @@
 <style>
 :root{--bg:#f0f2f7;--s:#fff;--bd:#dde2ec;--tx:#1b1f2e;--mu:#6b7280;--pr:#2563eb;--pl:#eff6ff;--ok:#16a34a;--wn:#d97706;--er:#dc2626;--r:8px}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:14px}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:14px;width:100%;box-sizing:border-box}
 
 /* ── CONFIG ── */
 #cfg-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;background:linear-gradient(135deg,#e8eeff,#f0f2f7)}
@@ -27,7 +27,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 #btn-analyse:disabled{opacity:.4;cursor:not-allowed}
 
 /* ── DASHBOARD ── */
-#dash{display:none;padding:20px 24px;max-width:1260px;margin:0 auto}
+#dash{display:none;padding:20px 24px;max-width:1260px;margin:0 auto;width:100%;box-sizing:border-box}
 .dh{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
 .dh h1{font-size:1.15rem;font-weight:700}
 .btn{padding:6px 13px;background:var(--s);border:1px solid var(--bd);border-radius:6px;cursor:pointer;font-size:.8rem;color:var(--mu)}
@@ -1496,9 +1496,9 @@ function switchTab(t){
   if(t==='d') renderDelais();
   if(t==='r') renderRepartition();
   if(t==='om') renderOM();
-  if(t==='nacres') requestAnimationFrame(function(){ requestAnimationFrame(renderNacres); });
+  if(t==='nacres') setTimeout(renderNacres, 150);
   if(t==='cc') renderCC();
-  if(t==='pluri') requestAnimationFrame(function(){ requestAnimationFrame(renderPluri); });
+  if(t==='pluri') setTimeout(renderPluri, 150);
   if(t==='open') renderOpenOrders();
   if(t==='tl') renderTimeline();
   if(t==='liq') renderLiquidationTab();
