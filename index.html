@@ -1497,22 +1497,9 @@ function switchTab(t){
   if(t==='d') renderDelais();
   if(t==='r') renderRepartition();
   if(t==='om') renderOM();
-  if(t==='nacres'){
-    // Forcer reflow après display:block
-    void document.getElementById('vw-nacres').offsetHeight;
-    setTimeout(function(){
-      void document.getElementById('vw-nacres').offsetWidth;
-      renderNacres();
-    }, 300);
-  }
+  if(t==='nacres') renderNacres();
   if(t==='cc') renderCC();
-  if(t==='pluri'){
-    void document.getElementById('vw-pluri').offsetHeight;
-    setTimeout(function(){
-      void document.getElementById('vw-pluri').offsetWidth;
-      renderPluri();
-    }, 300);
-  }
+  if(t==='pluri') renderPluri();
   if(t==='open') renderOpenOrders();
   if(t==='tl') renderTimeline();
   if(t==='liq') renderLiquidationTab();
@@ -2793,28 +2780,18 @@ function renderNacres(){
     if(r.surMarche) gMar[k]=(gMar[k]||0)+r.val; else gHors[k]=(gHors[k]||0)+r.val;
   });
   var keys=Object.keys(grouped).sort(function(a,b){return grouped[b]-grouped[a];}).slice(0,20);
-  // Barres HTML pures — indépendant des dimensions du conteneur
-  var maxVal=keys.reduce(function(m,k){return Math.max(m,grouped[k]);},0)||1;
-  var barsHtml='<div style="font-size:.72rem;color:var(--mu);margin-bottom:8px">'
-    +'<span style="display:inline-block;width:12px;height:10px;background:#16a34a;margin-right:4px"></span>Sur marché '
-    +'<span style="display:inline-block;width:12px;height:10px;background:#7c3aed;margin:0 4px 0 12px"></span>Agence DC.01 '
-    +'<span style="display:inline-block;width:12px;height:10px;background:#d97706;margin:0 4px 0 12px"></span>Hors marché'
-    +'</div>';
-  keys.forEach(function(k){
-    var mar=Math.max(0,(gMar[k]||0)-(gAv[k]||0));
-    var av=gAv[k]||0; var hor=gHors[k]||0; var tot=grouped[k]||1;
-    var pMar=mar/tot*100; var pAv=av/tot*100; var pH=hor/tot*100;
-    barsHtml+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">'
-      +'<div style="width:140px;font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0" title="'+esc(k)+'">'+esc(k)+'</div>'
-      +'<div style="flex:1;height:14px;display:flex;border-radius:3px;overflow:hidden;background:#f0f1f5">'
-      +(pMar>0?'<div style="width:'+pMar.toFixed(1)+'%;background:#16a34a" title="Sur marché: '+fmt(mar)+' €"></div>':'')
-      +(pAv>0?'<div style="width:'+pAv.toFixed(1)+'%;background:#7c3aed" title="Agence: '+fmt(av)+' €"></div>':'')
-      +(pH>0?'<div style="width:'+pH.toFixed(1)+'%;background:#d97706" title="Hors marché: '+fmt(hor)+' €"></div>':'')
-      +'</div>'
-      +'<div style="width:80px;font-size:.72rem;text-align:right;flex-shrink:0">'+fmt(grouped[k])+' €</div>'
-      +'</div>';
+  if(_chNacres) _chNacres.destroy();
+  _chNacres=new Chart(document.getElementById('chNacres').getContext('2d'),{type:'bar',
+    data:{labels:keys,datasets:[
+      {label:'Sur marché (hors DC.01)',data:keys.map(function(k){return Math.round(((gMar[k]||0)-(gAv[k]||0))*100)/100;}),backgroundColor:'#16a34a'},
+      {label:'Agence voyage (DC.01)',data:keys.map(function(k){return Math.round((gAv[k]||0)*100)/100;}),backgroundColor:'#7c3aed'},
+      {label:'Hors marché',data:keys.map(function(k){return Math.round((gHors[k]||0)*100)/100;}),backgroundColor:'#d97706'}
+    ]},
+    options:{responsive:true,indexAxis:'y',
+      plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.dataset.label+' : '+fmt(c.raw)+' \u20ac';}}}},
+      scales:{x:{stacked:true,ticks:{callback:function(v){return fmt(v)+' \u20ac';}}},y:{stacked:true,ticks:{font:{size:10}}}}
+    }
   });
-  document.getElementById('nacres-bars').innerHTML=barsHtml;
   console.log('[NACRES] Graphique créé, keys='+keys.length);
   // Log dimensions après rendu
   setTimeout(function(){
