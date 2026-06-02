@@ -2767,6 +2767,7 @@ function renderNacres(){
     document.getElementById('nacres-tf').innerHTML='<tr><td colspan="7">TOTAL</td><td style="text-align:right">'+fmt(totVal)+' \u20ac</td><td style="text-align:right">'+fmt(totRest)+' \u20ac</td><td></td></tr>';
     return;
   }
+  console.log('[NACRES] Rendu vue='+vue+' data='+data.length);
   document.getElementById('nacres-chart-wrap').style.display='';
   var grouped={},gMar={},gHors={},gRest={},gAv={};
   data.forEach(function(r){
@@ -2776,8 +2777,11 @@ function renderNacres(){
     if(r.surMarche) gMar[k]=(gMar[k]||0)+r.val; else gHors[k]=(gHors[k]||0)+r.val;
   });
   var keys=Object.keys(grouped).sort(function(a,b){return grouped[b]-grouped[a];}).slice(0,20);
+  try {
   if(_chNacres) _chNacres.destroy();
-  _chNacres=new Chart(document.getElementById('chNacres').getContext('2d'),{type:'bar',data:{labels:keys,datasets:[{label:'Sur march\u00e9 (hors DC.01)',data:keys.map(function(k){return Math.round(((gMar[k]||0)-(gAv[k]||0))*100)/100;}),backgroundColor:'#16a34a'},{label:'Agence voyage (DC.01)',data:keys.map(function(k){return Math.round((gAv[k]||0)*100)/100;}),backgroundColor:'#7c3aed'},{label:'Hors march\u00e9',data:keys.map(function(k){return Math.round((gHors[k]||0)*100)/100;}),backgroundColor:'#d97706'}]},options:{responsive:true,indexAxis:'y',plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.dataset.label+' : '+fmt(c.raw)+' \u20ac';}}}},scales:{x:{stacked:true,ticks:{callback:function(v){return fmt(v)+' \u20ac';}}},y:{stacked:true,ticks:{font:{size:10}}}}}});
+  _chNacres=new Chart(document.getElementById('chNacres').getContext('2d'),{type:'bar',data:{labels:keys,datasets:[{label:'Sur march\u00e9 (hors DC.01)',data:keys.map(function(k){return Math.round(((gMar[k]||0)-(gAv[k]||0))*100)/100;}),backgroundColor:'#16a34a'},{label:'Agence voyage (DC.01)',data:keys.map(function(k){return Math.round((gAv[k]||0)*100)/100;}),backgroundColor:'#7c3aed'},{label:'Hors march\u00e9',data:keys.map(function(k){return Math.round((gHors[k]||0)*100)/100;}),backgroundColor:'#d97706'}]},options:{responsive:true,indexAxis:'y',plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.dataset.label+' : '+fmt(c.raw)+' \u20ac';}}}},scales:{x:{stacked:true,ticks:{callback:function(v){return fmt(v)+' \u20ac';}}},y:{stacked:true,ticks:{font:{size:10}}}}}})
+  } catch(e) { console.error('[NACRES] Erreur Chart:', e.message); };
+  console.log('[NACRES] Graphique créé, keys='+keys.length);
   document.getElementById('nacres-th').innerHTML='<tr><th>'+(vue==='four'?'Fournisseur':'Code NACRES')+'</th><th style="text-align:right">Total engag\u00e9</th><th style="text-align:right">Sur march\u00e9</th><th style="text-align:right">% march\u00e9</th><th style="text-align:right">Hors march\u00e9</th><th style="text-align:right">Reste \u00e0 facturer</th></tr>';
   document.getElementById('nacres-tb').innerHTML=keys.map(function(k){
     var tot=grouped[k]||0,mar=gMar[k]||0,hors=gHors[k]||0,rest=gRest[k]||0,av=gAv[k]||0;
@@ -3318,6 +3322,8 @@ function renderPluri(){
     '<th style="text-align:right">Nb cdes NACRES</th>'+
     '</tr>';
 
+  console.log('[PLURI] rows='+rows.length+' rendu tableau');
+  try {
   document.getElementById('pluri-tb').innerHTML=rows.map(function(r){
     var clRar=r.rar_total>10000?'c-er':r.rar_total>5000?'c-wn':'';
     return'<tr>'+
@@ -3336,6 +3342,7 @@ function renderPluri(){
       '<td style="text-align:right">'+r.nac_nb+'</td>'+
     '</tr>';
   }).join('');
+  } catch(e) { console.error('[PLURI] Erreur rendu:', e.message, e.stack); }
 
   document.getElementById('pluri-tf').innerHTML=
     '<tr>'+
