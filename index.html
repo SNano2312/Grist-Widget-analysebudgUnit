@@ -98,7 +98,19 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     .idx-blue { border-color:#a5f3fc; }
     .idx-blue:hover { background:#f0f9ff;border-color:#67e8f9;color:#0891b2; }
 
-  </style>
+  
+    /* Fix visibilité onglets NACRES et PLURI */
+    #vw-nacres, #vw-pluri {
+      overflow: visible !important;
+      min-height: 200px;
+    }
+    #nacres-chart-wrap, #nacres-tb, #nacres-kpis,
+    #pluri-kpis, #pluri-tb {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+</style>
 </head>
 <body>
 
@@ -2782,6 +2794,14 @@ function renderNacres(){
   _chNacres=new Chart(document.getElementById('chNacres').getContext('2d'),{type:'bar',data:{labels:keys,datasets:[{label:'Sur march\u00e9 (hors DC.01)',data:keys.map(function(k){return Math.round(((gMar[k]||0)-(gAv[k]||0))*100)/100;}),backgroundColor:'#16a34a'},{label:'Agence voyage (DC.01)',data:keys.map(function(k){return Math.round((gAv[k]||0)*100)/100;}),backgroundColor:'#7c3aed'},{label:'Hors march\u00e9',data:keys.map(function(k){return Math.round((gHors[k]||0)*100)/100;}),backgroundColor:'#d97706'}]},options:{responsive:true,indexAxis:'y',plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.dataset.label+' : '+fmt(c.raw)+' \u20ac';}}}},scales:{x:{stacked:true,ticks:{callback:function(v){return fmt(v)+' \u20ac';}}},y:{stacked:true,ticks:{font:{size:10}}}}}})
   } catch(e) { console.error('[NACRES] Erreur Chart:', e.message); };
   console.log('[NACRES] Graphique créé, keys='+keys.length);
+  // Log dimensions après rendu
+  setTimeout(function(){
+    var vw=document.getElementById('vw-nacres');
+    var tb=document.getElementById('nacres-tb');
+    console.log('[NACRES] Dimensions: vw-nacres H='+vw.offsetHeight+' W='+vw.offsetWidth+' display='+vw.style.display+' overflow='+getComputedStyle(vw).overflow);
+    console.log('[NACRES] nacres-tb rows='+tb.rows.length+' H='+tb.offsetHeight);
+    console.log('[NACRES] parent H='+vw.parentElement.offsetHeight+' overflow='+getComputedStyle(vw.parentElement).overflow);
+  }, 500);
   document.getElementById('nacres-th').innerHTML='<tr><th>'+(vue==='four'?'Fournisseur':'Code NACRES')+'</th><th style="text-align:right">Total engag\u00e9</th><th style="text-align:right">Sur march\u00e9</th><th style="text-align:right">% march\u00e9</th><th style="text-align:right">Hors march\u00e9</th><th style="text-align:right">Reste \u00e0 facturer</th></tr>';
   document.getElementById('nacres-tb').innerHTML=keys.map(function(k){
     var tot=grouped[k]||0,mar=gMar[k]||0,hors=gHors[k]||0,rest=gRest[k]||0,av=gAv[k]||0;
