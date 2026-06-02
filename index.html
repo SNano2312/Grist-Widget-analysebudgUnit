@@ -3220,9 +3220,10 @@ function sortOMDrill(col){
 // Consolidation Budget (CDa + RAR) + NACRES (non soldées)
 // ════════════════════════════════════════════════════════
 function renderPluri(){
+  try{
   // Log étendu
   var exB=BUDGET.slice(0,2);
-  console.log('[PLURI] BUDGET='+BUDGET.length+' CDA_CC='+((window.CDA_CC||[]).length));
+  console.log('[PLURI] DEBUT BUDGET='+BUDGET.length+' CDA_CC='+((window.CDA_CC||[]).length));
   console.log('[PLURI] Exemples BUDGET:', JSON.stringify(exB.map(function(b){return {prog:b.prog,fonds:b.fonds,annee:b.annee,rar:b.rar,cda:b.cda,bud:b.bud,conso:b.conso};})));
   var nbAvecRar=BUDGET.filter(function(b){return b.rar>0;}).length;
   var nbAvecCda=BUDGET.filter(function(b){return b.cda>0;}).length;
@@ -3349,6 +3350,7 @@ function renderPluri(){
     '<td style="text-align:right;color:var(--er);font-weight:700">'+fmt(totNacReste)+' \u20ac</td>'+
     '<td style="text-align:right">'+rows.reduce(function(s,r){return s+r.nac_nb;},0)+'</td>'+
     '</tr>';
+  }catch(e){ console.error('[PLURI] ERREUR:', e.message, e.stack); }
 }
 
 
