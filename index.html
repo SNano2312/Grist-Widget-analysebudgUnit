@@ -10,8 +10,7 @@
 <style>
 :root{--bg:#f0f2f7;--s:#fff;--bd:#dde2ec;--tx:#1b1f2e;--mu:#6b7280;--pr:#2563eb;--pl:#eff6ff;--ok:#16a34a;--wn:#d97706;--er:#dc2626;--r:8px}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:14px;min-height:100vh;overflow-y:auto}
-html{height:100%}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:14px}
 
 /* ── CONFIG ── */
 #cfg-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;background:linear-gradient(135deg,#e8eeff,#f0f2f7)}
@@ -100,9 +99,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     .idx-blue:hover { background:#f0f9ff;border-color:#67e8f9;color:#0891b2; }
 
   
-    /* Fix visibilité onglets */
-    #dash { min-height: 100vh; overflow: visible; }
-    [id^="vw-"] { overflow: visible; min-height: 0; }
+
 </style>
 </head>
 <body>
@@ -1499,9 +1496,9 @@ function switchTab(t){
   if(t==='d') renderDelais();
   if(t==='r') renderRepartition();
   if(t==='om') renderOM();
-  if(t==='nacres') renderNacres();
+  if(t==='nacres') setTimeout(renderNacres, 10);
   if(t==='cc') renderCC();
-  if(t==='pluri') renderPluri();
+  if(t==='pluri') setTimeout(renderPluri, 10);
   if(t==='open') renderOpenOrders();
   if(t==='tl') renderTimeline();
   if(t==='liq') renderLiquidationTab();
