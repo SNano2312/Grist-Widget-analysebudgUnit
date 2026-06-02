@@ -1496,9 +1496,9 @@ function switchTab(t){
   if(t==='d') renderDelais();
   if(t==='r') renderRepartition();
   if(t==='om') renderOM();
-  if(t==='nacres') setTimeout(renderNacres, 10);
+  if(t==='nacres') requestAnimationFrame(function(){ requestAnimationFrame(renderNacres); });
   if(t==='cc') renderCC();
-  if(t==='pluri') setTimeout(renderPluri, 10);
+  if(t==='pluri') requestAnimationFrame(function(){ requestAnimationFrame(renderPluri); });
   if(t==='open') renderOpenOrders();
   if(t==='tl') renderTimeline();
   if(t==='liq') renderLiquidationTab();
