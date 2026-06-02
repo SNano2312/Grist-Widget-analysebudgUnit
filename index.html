@@ -2729,6 +2729,7 @@ function renderNacres(){
     if(typeF==='hors'&&r.surMarche) return false;
     return true;
   });
+  console.log('[NACRES] data.length apres filtre complet='+data.length+' cf='+cf+' hasCdaCC='+hasCdaCC+' progsCC_n='+(progsCC_n?'SET('+progsCC_n.size+')':'null'));
   if(!data.length){
     document.getElementById('nacres-kpis').innerHTML='';
     document.getElementById('nacres-chart-wrap').style.display='none';
