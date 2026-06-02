@@ -10,7 +10,8 @@
 <style>
 :root{--bg:#f0f2f7;--s:#fff;--bd:#dde2ec;--tx:#1b1f2e;--mu:#6b7280;--pr:#2563eb;--pl:#eff6ff;--ok:#16a34a;--wn:#d97706;--er:#dc2626;--r:8px}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:14px}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:14px;min-height:100vh;overflow-y:auto}
+html{height:100%}
 
 /* ── CONFIG ── */
 #cfg-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;background:linear-gradient(135deg,#e8eeff,#f0f2f7)}
@@ -99,17 +100,9 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     .idx-blue:hover { background:#f0f9ff;border-color:#67e8f9;color:#0891b2; }
 
   
-    /* Fix visibilité onglets NACRES et PLURI */
-    #vw-nacres, #vw-pluri {
-      overflow: visible !important;
-      min-height: 200px;
-    }
-    #nacres-chart-wrap, #nacres-tb, #nacres-kpis,
-    #pluri-kpis, #pluri-tb {
-      display: block !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-    }
+    /* Fix visibilité onglets */
+    #dash { min-height: 100vh; overflow: visible; }
+    [id^="vw-"] { overflow: visible; min-height: 0; }
 </style>
 </head>
 <body>
