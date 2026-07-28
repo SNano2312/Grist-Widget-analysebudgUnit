@@ -1,7 +1,6 @@
 <!
 <html lang="fr">
 <head>
-<meta name="google-site-verification" content="GJUrEg9TaIPodhdEsWJiU1exNevgnfHqycWlb5-IFbQ" />
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Analyse budgétaire</title>
@@ -220,6 +219,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     </div>
     <!-- Onglets autonomes -->
     <div class="tab" id="tab-cc" onclick="switchTab('cc')">🏦 Centres de coûts</div>
+        <div class="tab" id="tab-ia" onclick="switchTab('ia')">🤖 Analyse IA</div>
     <div class="tab" id="tab-doc" onclick="switchTab('doc')">📖 Documentation</div>
   </div></div>
 
@@ -564,6 +564,42 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       <div class="fg"><label>Fonds</label><select id="liq-fnd"><option value="">Tous</option></select></div>
     </div>
     <div id="liq-content" style="margin-top:8px"></div>
+  </div>
+
+  <!-- ANALYSE IA -->
+  <div id="vw-ia" style="display:none">
+    <div class="flt" style="margin-bottom:14px">
+      <div class="fg"><label>Année</label>
+        <select id="ia-ann"><option value="2025">2025</option><option value="2026">2026</option></select>
+      </div>
+      <div class="fg"><label>Programme</label>
+        <select id="ia-prg"><option value="">-- Tous programmes --</option></select>
+      </div>
+      <div class="fg"><label>Format</label>
+        <select id="ia-fmt">
+          <option value="court">Synthèse courte (½ page)</option>
+          <option value="detail">Note détaillée (1 page)</option>
+          <option value="both" selected>Les deux</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn" id="ia-btn" onclick="genererAnalyse()" style="background:var(--pr);color:#fff;border-color:var(--pr);padding:8px 20px;font-size:.9rem">✨ Générer l'analyse</button>
+      <button class="btn" id="ia-copy-btn" onclick="copierAnalyse()" style="display:none">📋 Copier</button>
+      <button class="btn" id="ia-dl-btn" onclick="telechargerAnalyse()" style="display:none">⬇️ Télécharger .txt</button>
+      <span id="ia-status" style="font-size:.82rem;color:var(--mu);font-style:italic"></span>
+    </div>
+    <div id="ia-error" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:12px;font-size:.82rem;color:#dc2626;margin-bottom:12px"></div>
+    <div id="ia-result" style="display:none">
+      <div id="ia-court-wrap" class="pnl" style="margin-bottom:14px;display:none">
+        <div class="pnl-t">⚡ Synthèse courte</div>
+        <div id="ia-court" style="font-size:.85rem;line-height:1.9;white-space:pre-wrap;margin-top:8px"></div>
+      </div>
+      <div id="ia-detail-wrap" class="pnl" style="display:none">
+        <div class="pnl-t">📄 Note de gestion détaillée</div>
+        <div id="ia-detail" style="font-size:.85rem;line-height:1.9;white-space:pre-wrap;margin-top:8px"></div>
+      </div>
+    </div>
   </div>
 
   <!-- DOCUMENTATION -->
@@ -1482,7 +1518,7 @@ function fillFilters(){
 
 function switchTab(t){
   _currentTab=t;
-  ['db','s','h','e','x','f','d','r','om','nacres','pluri','open','cc','tl','liq','doc'].forEach(function(k){
+  ['db','s','h','e','x','f','d','r','om','nacres','pluri','open','cc','tl','liq','ia','doc'].forEach(function(k){
     var tab=document.getElementById('tab-'+k);
     var vw=document.getElementById('vw-'+k);
     if(tab) tab.classList.toggle('on',k===t);
@@ -1504,6 +1540,7 @@ function switchTab(t){
   if(t==='open') renderOpenOrders();
   if(t==='tl') renderTimeline();
   if(t==='liq') renderLiquidationTab();
+  if(t==='ia') initAnalyseIA();
 }
 // ════════════════════════════════════════
 // HISTOGRAMME
@@ -5754,6 +5791,236 @@ function renderRatioMission(){
   }
 }
 window.renderRatioMission = renderRatioMission;
+
+
+// ════════════════════════════════════════════════════════
+// ANALYSE IA — Génération via API Anthropic
+// ════════════════════════════════════════════════════════
+var _iaTexte = { court: '', detail: '' };
+
+function initAnalyseIA(){
+  // Peupler le filtre programme
+  var ann = document.getElementById('ia-ann').value;
+  var allPrg = [...new Set(BUDGET.filter(function(b){
+    return String(b.annee)===ann;
+  }).map(function(b){return b.prog;}))].sort();
+  var prgEl = document.getElementById('ia-prg');
+  var cur = prgEl.value;
+  prgEl.innerHTML = '<option value="">-- Tous programmes --</option>';
+  allPrg.forEach(function(p){
+    prgEl.innerHTML += '<option value="'+esc(p)+'">'+esc(p)+'</option>';
+  });
+  if(cur) prgEl.value = cur;
+}
+window.initAnalyseIA = initAnalyseIA;
+
+// Listeners
+document.addEventListener('DOMContentLoaded', function(){
+  var iaAnn = document.getElementById('ia-ann');
+  if(iaAnn) iaAnn.addEventListener('change', initAnalyseIA);
+});
+
+function _buildContexte(ann, prog){
+  var yearInt = parseInt(ann);
+  var budRows = BUDGET.filter(function(b){
+    return String(b.annee)===ann && (!prog || b.prog===prog);
+  });
+  if(!budRows.length) return null;
+
+  var bud   = budRows.reduce(function(s,b){return s+b.bud;},0);
+  var cda   = budRows.reduce(function(s,b){return s+b.cda;},0);
+  var rar   = budRows.reduce(function(s,b){return s+b.rar;},0);
+  var conso = budRows.reduce(function(s,b){return s+b.conso;},0);
+  var paye  = budRows.reduce(function(s,b){return s+b.paye;},0);
+  var taux  = bud>0 ? (conso/bud*100).toFixed(1) : '0';
+  var nonEng= Math.max(0, bud-cda-rar);
+
+  // Indicateurs prédictifs
+  var proj  = calcProjection(prog||null, ann);
+  var vel   = calcVelocite(prog||null, ann);
+  var del   = calcDelaiEngagement(prog||null, ann);
+
+  // Score de risque
+  var riskRows = prog ? [{prog:prog, score:calcRiskScore(prog, ann)}] :
+    [...new Set(budRows.map(function(b){return b.prog;}))].map(function(p){
+      return {prog:p, score:calcRiskScore(p, ann)};
+    }).filter(function(x){return x.score;}).sort(function(a,b){return b.score.score-a.score.score;});
+
+  // Missions
+  var missions = CONSO.filter(function(r){
+    return r.saisiPar==='NOTILUSBUS' && String(r.annee)===ann && (!prog||r.p===prog);
+  });
+  var totMissions = missions.reduce(function(s,r){return s+Math.abs(r.m);},0);
+  var ratioMissions = bud>0 ? (totMissions/bud*100).toFixed(1) : '0';
+
+  // Commandes non soldées
+  var cdaRows = (window.CDA_CC||[]).filter(function(r){
+    return r.annee===ann && (!prog||r.prog===prog) && r.resteFact>0;
+  });
+  var totNonSolde = cdaRows.reduce(function(s,r){return s+r.resteFact;},0);
+
+  // Fonds
+  var fondsData = {};
+  budRows.forEach(function(b){
+    if(!fondsData[b.fonds]) fondsData[b.fonds]={bud:0,cda:0,conso:0};
+    fondsData[b.fonds].bud+=b.bud; fondsData[b.fonds].cda+=b.cda; fondsData[b.fonds].conso+=b.conso;
+  });
+  var fondsList = Object.keys(fondsData).map(function(f){
+    var fd=fondsData[f];
+    return f+': budget '+fmt(fd.bud)+' € / taux '+( fd.bud>0?(fd.conso/fd.bud*100).toFixed(0):0)+'%';
+  }).join(' | ');
+
+  // Urgence budget avant échéance
+  var urgence = calcBudgetUrgence(ann).filter(function(u){
+    return !prog || u.prog===prog;
+  }).slice(0,3);
+
+  var ctx = [
+    '=== DONNÉES BUDGÉTAIRES ===',
+    'Centre financier : '+CF_LABEL,
+    'Année : '+ann,
+    prog ? 'Programme analysé : '+prog : 'Périmètre : tous programmes',
+    '',
+    '--- AGRÉGATS PRINCIPAUX ---',
+    'Budget AE : '+fmt(bud)+' €',
+    'Consommation AE : '+fmt(conso)+' € ('+taux+'%)',
+    'CDa engagées : '+fmt(cda)+' €',
+    'RAR (Reste à réaliser) : '+fmt(rar)+' €',
+    'Non engagé : '+fmt(nonEng)+' €',
+    'Payé CP : '+fmt(paye)+' €',
+    '',
+    '--- RÉPARTITION PAR FONDS ---',
+    fondsList,
+    '',
+    '--- INDICATEURS PRÉDICTIFS ---',
+    proj ? 'Projection fin '+ann+' : '+proj.projTaux.toFixed(1)+'% (rythme '+fmt(proj.rythme)+' €/mois, '+proj.jRestants+' j restants)' : 'Projection : données insuffisantes',
+    proj && proj.alerte ? '⚠️ ALERTE : risque sous-consommation (projection < 80%)' : '',
+    del ? 'Délai 1ère commande : '+del.delai+' jours depuis le 01/01/'+ann : '',
+    vel ? 'Vélocité : '+vel.tendance+' ('+( vel.delta>=0?'+':'')+vel.delta.toFixed(0)+'% vs trimestre précédent)' : '',
+    '',
+    '--- INDICATEURS DE RISQUE ---',
+    riskRows.slice(0,5).map(function(x){
+      return x.prog+' : score '+x.score.score+'/10 ('+x.score.details.map(function(d){return d.label;}).join(', ')+')';
+    }).join('\n'),
+    '',
+    '--- MISSIONS ---',
+    'Total missions (NOTILUSBUS) : '+fmt(totMissions)+' € ('+ratioMissions+'% du budget)',
+    '',
+    '--- COMMANDES NON SOLDÉES ---',
+    cdaRows.length+' lignes — RAR facturation : '+fmt(totNonSolde)+' €',
+    '',
+    urgence.length ? '--- URGENCE ENGAGEMENT ---\n'+urgence.map(function(u){
+      return u.prog+' : '+fmt(u.nonEngage)+' € non engagés — '+fmt(Math.round(u.urgence||0))+' €/mois nécessaires (J-'+u.echeance+')';
+    }).join('\n') : '',
+  ].filter(Boolean).join('\n');
+
+  return {ctx:ctx, bud:bud, taux:taux, prog:prog||'Tous', ann:ann};
+}
+
+async function genererAnalyse(){
+  var ann  = document.getElementById('ia-ann').value;
+  var prog = document.getElementById('ia-prg').value;
+  var fmt_mode = document.getElementById('ia-fmt').value;
+
+  var btn    = document.getElementById('ia-btn');
+  var status = document.getElementById('ia-status');
+  var errEl  = document.getElementById('ia-error');
+  var resEl  = document.getElementById('ia-result');
+
+  errEl.style.display = 'none';
+  resEl.style.display = 'none';
+  btn.disabled = true;
+  status.textContent = '⏳ Génération en cours…';
+
+  var data = _buildContexte(ann, prog||null);
+  if(!data){ errEl.textContent='Aucune donnée budgétaire trouvée pour ces filtres.'; errEl.style.display=''; btn.disabled=false; status.textContent=''; return; }
+
+  var prompts = [];
+  if(fmt_mode==='court'||fmt_mode==='both') prompts.push({
+    type:'court',
+    msg:'Tu es un contrôleur de gestion expert en budget de recherche publique française (INRAE). Rédige une SYNTHÈSE COURTE (maximum 15 lignes, style note de gestion concise) du budget ci-dessous. Structure : 1) Situation globale en 2-3 phrases 2) Points de vigilance (max 3) 3) Actions recommandées (max 2). Sois factuel, précis, sans jargon inutile. Utilise les chiffres fournis.\n\n'+data.ctx
+  });
+  if(fmt_mode==='detail'||fmt_mode==='both') prompts.push({
+    type:'detail',
+    msg:'Tu es un contrôleur de gestion expert en budget de recherche publique française (INRAE). Rédige une NOTE DE GESTION DÉTAILLÉE (maximum 1 page A4 soit ~500 mots) du budget ci-dessous. Structure obligatoire :\n1. SITUATION BUDGÉTAIRE (état d\'avancement global)\n2. ANALYSE PAR FONDS (consommation par source de financement)\n3. POINTS DE VIGILANCE (risques identifiés, classés par priorité)\n4. INDICATEURS PRÉDICTIFS (projection fin d\'année, vélocité)\n5. RECOMMANDATIONS OPÉRATIONNELLES (actions concrètes à mener)\nSois factuel, précis, professionnel. Cite les chiffres clés. Date de l\'analyse : '+new Date().toLocaleDateString('fr-FR')+'.\n\n'+data.ctx
+  });
+
+  _iaTexte = {court:'', detail:''};
+  var errors = [];
+
+  for(var i=0; i<prompts.length; i++){
+    var p = prompts[i];
+    status.textContent = '⏳ Génération '+(p.type==='court'?'synthèse courte':'note détaillée')+'…';
+    try {
+      var resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model:'claude-sonnet-4-6',
+          max_tokens:1000,
+          messages:[{role:'user', content:p.msg}]
+        })
+      });
+      if(!resp.ok){
+        var err = await resp.json();
+        errors.push(p.type+' : '+(err.error&&err.error.message||resp.status));
+        continue;
+      }
+      var result = await resp.json();
+      var texte = result.content.filter(function(c){return c.type==='text';}).map(function(c){return c.text;}).join('');
+      _iaTexte[p.type] = texte;
+
+      // Afficher
+      var wrap = document.getElementById('ia-'+p.type+'-wrap');
+      var el   = document.getElementById('ia-'+p.type);
+      if(wrap && el){ wrap.style.display=''; el.textContent=texte; }
+    } catch(e){
+      errors.push(p.type+' : '+e.message);
+    }
+  }
+
+  btn.disabled = false;
+  resEl.style.display = '';
+
+  if(errors.length){
+    errEl.textContent = '⚠️ Erreur(s) : '+errors.join(' | ');
+    errEl.style.display = '';
+    status.textContent = 'Terminé avec erreurs';
+  } else {
+    status.textContent = '✅ Analyse générée — '+new Date().toLocaleTimeString('fr-FR');
+    document.getElementById('ia-copy-btn').style.display = '';
+    document.getElementById('ia-dl-btn').style.display = '';
+  }
+}
+window.genererAnalyse = genererAnalyse;
+
+function copierAnalyse(){
+  var txt = '';
+  if(_iaTexte.court) txt += '=== SYNTHÈSE COURTE ===\n\n'+_iaTexte.court+'\n\n';
+  if(_iaTexte.detail) txt += '=== NOTE DÉTAILLÉE ===\n\n'+_iaTexte.detail;
+  navigator.clipboard.writeText(txt.trim()).then(function(){
+    document.getElementById('ia-status').textContent = '✅ Copié dans le presse-papiers';
+  }).catch(function(){ alert('Erreur copie — sélectionnez le texte manuellement'); });
+}
+window.copierAnalyse = copierAnalyse;
+
+function telechargerAnalyse(){
+  var ann  = document.getElementById('ia-ann').value;
+  var prog = document.getElementById('ia-prg').value||'tous';
+  var date = new Date().toISOString().slice(0,10);
+  var txt = 'ANALYSE BUDGÉTAIRE — '+CF_LABEL+'\n';
+  txt += 'Programme : '+prog+' | Année : '+ann+' | Date : '+date+'\n';
+  txt += '='.repeat(60)+'\n\n';
+  if(_iaTexte.court) txt += 'SYNTHÈSE COURTE\n'+'-'.repeat(40)+'\n'+_iaTexte.court+'\n\n';
+  if(_iaTexte.detail) txt += 'NOTE DÉTAILLÉE\n'+'-'.repeat(40)+'\n'+_iaTexte.detail+'\n';
+  var blob = new Blob([txt], {type:'text/plain;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'analyse_budget_'+prog+'_'+ann+'_'+date+'.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+window.telechargerAnalyse = telechargerAnalyse;
 
 </script>
 </body>
