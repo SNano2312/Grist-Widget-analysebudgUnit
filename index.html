@@ -2099,13 +2099,17 @@ function renderSynthese(){
   Object.keys(byProg).sort().forEach(function(prog){
     var g=byProg[prog];
     var info=pi[prog]||{nom:'',dateFin:null};
-    var taux=g.bud>0?g.paye/g.bud*100:0;
+    var tauxConso=g.bud>0?g.conso/g.bud*100:0;
+    var tauxPaye=g.bud>0?g.paye/g.bud*100:0;
+    var taux=tauxConso; // utilisé pour prévision et alertes
     var engage=g.cda+g.rar+g.om+g.nf;
     var tauxEng=g.bud>0?Math.min(engage/g.bud*100,100):0;
     var rae=Math.max(0,g.bud-engage);
-    var prev=taux>=95?g.bud:Math.min(g.conso+g.cda+g.rar,g.bud);
-    var cl=taux>=90?'badge-ok':taux>=50?'badge-wn':'badge-er';
-    var bc=taux>=90?'#16a34a':taux>=50?'#d97706':'#dc2626';
+    var prev=tauxConso>=95?g.bud:Math.min(g.conso+g.cda+g.rar,g.bud);
+    var clConso=tauxConso>=90?'badge-ok':tauxConso>=50?'badge-wn':'badge-er';
+    var clPaye=tauxPaye>100?'badge-er':tauxPaye>=90?'badge-ok':tauxPaye>=50?'badge-wn':'badge-er';
+    var cl=clConso;
+    var bc=tauxConso>=90?'#16a34a':tauxConso>=50?'#d97706':'#dc2626';
     var clE=tauxEng>=90?'c-ok':tauxEng>=50?'c-wn':'c-er';
 
     // Date de fin + jours restants
@@ -2194,7 +2198,8 @@ function renderSynthese(){
 
     cards+='<div class="synth-card" style="cursor:pointer;position:relative'+cardBorder+'" data-prog="'+esc(prog)+'">'+
       alertBadge+
-      '<span class="synth-badge '+cl+'" style="top:'+(alertList.length?'8px':'')+';right:8px">'+pct(taux)+'</span>'+
+      '<span class="synth-badge '+clConso+'" style="top:'+(alertList.length?'8px':'')+';right:8px;font-size:.72rem">AE '+pct(tauxConso)+'</span>'+
+      '<span class="synth-badge '+clPaye+'" style="top:'+(alertList.length?'26px':'22px')+';right:8px;font-size:.72rem">CP '+pct(tauxPaye)+'</span>'+
       '<div class="prog-nom" style="margin-top:'+(alertList.length?'22px':'4px')+'">'+esc(info.nom||prog)+'</div>'+
       '<div class="prog-num">'+esc(prog)+'</div>'+
       '<div class="prog-fin '+finCl+'">'+finTxt+(jRestants!==null&&jRestants>=0?' — J-'+jRestants:'')+'</div>'+
