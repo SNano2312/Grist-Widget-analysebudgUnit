@@ -2198,12 +2198,14 @@ function renderSynthese(){
 
     cards+='<div class="synth-card" style="cursor:pointer;position:relative'+cardBorder+'" data-prog="'+esc(prog)+'">'+
       alertBadge+
-      '<span class="synth-badge '+clConso+'" style="top:'+(alertList.length?'8px':'')+';right:8px;font-size:.72rem">AE '+pct(tauxConso)+'</span>'+
-      '<span class="synth-badge '+clPaye+'" style="top:'+(alertList.length?'26px':'22px')+';right:8px;font-size:.72rem">CP '+pct(tauxPaye)+'</span>'+
-      '<div class="prog-nom" style="margin-top:'+(alertList.length?'22px':'4px')+'">'+esc(info.nom||prog)+'</div>'+
+      '<div style="position:absolute;top:8px;right:8px;display:flex;flex-direction:column;gap:2px;align-items:flex-end">'+
+        '<span class="synth-badge '+clConso+'" style="font-size:.7rem;padding:1px 6px">AE '+pct(tauxConso)+'</span>'+
+        '<span class="synth-badge '+clPaye+'" style="font-size:.7rem;padding:1px 6px">CP '+pct(tauxPaye)+'</span>'+
+      '</div>'+
+      '<div class="prog-nom" style="margin-top:'+(alertList.length?'42px':'40px')+'">'+esc(info.nom||prog)+'</div>'+
       '<div class="prog-num">'+esc(prog)+'</div>'+
       '<div class="prog-fin '+finCl+'">'+finTxt+(jRestants!==null&&jRestants>=0?' — J-'+jRestants:'')+'</div>'+
-      '<div class="synth-bar-wrap"><div class="synth-bar" style="width:'+Math.min(taux,100).toFixed(1)+'%;background:'+bc+'"></div></div>'+
+      '<div class="synth-bar-wrap"><div class="synth-bar" style="width:'+Math.min(tauxConso,100).toFixed(1)+'%;background:'+bc+';"></div></div>'+
       '<div class="synth-metrics"><span>Budget <strong>'+fmt(g.bud)+' €</strong></span><span>Payé <strong>'+fmt(g.conso)+' €</strong></span><span>Prévision <strong>'+fmt(prev)+' €</strong></span></div>'+
       '<div class="synth-metrics"><span>Engagé <strong class="'+clE+'">'+pct(tauxEng)+'</strong></span><span>Reste à engager <strong>'+fmt(rae)+' €</strong></span></div>'+
       '<div class="synth-metrics"><span>Payé <strong>'+fmt(g.paye)+' €</strong></span><span>Reste à payer <strong>'+fmt(g.rap)+' €</strong></span></div>'+
