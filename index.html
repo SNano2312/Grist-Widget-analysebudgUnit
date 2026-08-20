@@ -1351,6 +1351,9 @@ async function lanceAnalyse(){
           // Date de livraison prévue (timestamp Grist → Date)
           const dlvTs=raw['Date_de_livraison_suivante']?raw['Date_de_livraison_suivante'][ii]:null;
           let dateLivr=null;
+          // Lire la colonne 'élément d'OTP' dans CDA_par_CC
+          const eotpRawCda=(G('élément_d_OTP')||G('Elément_d_OTP')||G('l_ment_d_OTP')||G('élement_d_OTP')||'').toString().trim();
+          const eotp_cda=eotpRawCda.replace(/\s*\([^)]*\)\s*$/, '').trim();
           if(dlvTs&&typeof dlvTs==='number'&&dlvTs>0){
             const _d=new Date(dlvTs*1000);
             dateLivr=_d.getFullYear()+'-'+String(_d.getMonth()+1).padStart(2,'0')+'-'+String(_d.getDate()).padStart(2,'0');
@@ -1359,7 +1362,7 @@ async function lanceAnalyse(){
           }
           if(cc) window.CDA_CC.push({annee:yr,cc,nacreCode,nacreDesc,cmd,typeDoc,
             four,desig:G('Designation'),val,resteLivr,resteFact,
-            prog,fonds,surMarche,agenceVoyage,dateLivr});
+            prog,fonds,surMarche,agenceVoyage,dateLivr,eotp:eotp_cda});
         }
       }catch(e){console.warn('[CDA'+yr+']',e.message);}
     }
@@ -1536,6 +1539,9 @@ function procConso(raw, annee){
     const cptBud=(col('Compte_budgetaire','Compte_budg_taire','Compte budg\u00e9taire')[i]||'').toString().trim();
     const pmtNum=(function(){var v=col('N_piece_de_paiement','Nº_pièce_de_paiement','No_piece_de_paiement')[i];if(!v&&v!==0)return'';var n=parseFloat(v);return isNaN(n)?String(v).trim():String(Math.round(n));})();
     const cmdRef=(function(){var v=col('Numero_de_piece_de_la_piece_de_reference')[i];if(!v&&v!==0)return'';var n=parseFloat(v);return isNaN(n)?String(v).trim():String(Math.round(n));})();
+    // Lire la colonne 'Elément d'OTP' dans Conso
+    const eotpRawCons=(col('Elément_d_OTP','El_ment_d_OTP','Elément_d_OTP','Elément d\'OTP')[i]||'').toString().trim();
+    const eotp_conso=eotpRawCons.replace(/\s*\([^)]*\)\s*$/, '').trim();
     CONSO.push({
       annee, tv,
       cf: CF_LABEL,
@@ -1547,7 +1553,7 @@ function procConso(raw, annee){
       d:(desigs[i]||'').toString().trim(),
       dt, dtMois,
       m:N(monts[i]),
-      p:prog, fo:fond,
+      p:prog, fo:fond, eotp:eotp_conso,
       tm:(tms[i]||'').toString().trim(),
     });
   }
