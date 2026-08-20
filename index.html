@@ -1352,7 +1352,7 @@ async function lanceAnalyse(){
           const dlvTs=raw['Date_de_livraison_suivante']?raw['Date_de_livraison_suivante'][ii]:null;
           let dateLivr=null;
           // Lire la colonne 'élément d'OTP' dans CDA_par_CC
-          const eotpRawCda=(G('élément_d_OTP')||G('Elément_d_OTP')||G('l_ment_d_OTP')||G('élement_d_OTP')||'').toString().trim();
+          const eotpRawCda=(G('Element_d_OTP')||'').toString().trim();
           const eotp_cda=eotpRawCda.replace(/\s*\([^)]*\)\s*$/, '').trim();
           if(dlvTs&&typeof dlvTs==='number'&&dlvTs>0){
             const _d=new Date(dlvTs*1000);
@@ -1540,7 +1540,7 @@ function procConso(raw, annee){
     const pmtNum=(function(){var v=col('N_piece_de_paiement','Nº_pièce_de_paiement','No_piece_de_paiement')[i];if(!v&&v!==0)return'';var n=parseFloat(v);return isNaN(n)?String(v).trim():String(Math.round(n));})();
     const cmdRef=(function(){var v=col('Numero_de_piece_de_la_piece_de_reference')[i];if(!v&&v!==0)return'';var n=parseFloat(v);return isNaN(n)?String(v).trim():String(Math.round(n));})();
     // Lire la colonne 'Elément d'OTP' dans Conso
-    const eotpRawCons=(col('Elément_d_OTP','El_ment_d_OTP','Elément_d_OTP','Elément d\'OTP')[i]||'').toString().trim();
+    const eotpRawCons=(col('Element_d_OTP')[i]||'').toString().trim();
     const eotp_conso=eotpRawCons.replace(/\s*\([^)]*\)\s*$/, '').trim();
     CONSO.push({
       annee, tv,
