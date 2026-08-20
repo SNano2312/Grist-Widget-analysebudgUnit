@@ -614,6 +614,22 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
         <tfoot id="eotp-tf"></tfoot>
       </table>
     </div>
+    <!-- Drill-down -->
+    <div id="eotp-drv" style="display:none;margin-top:16px">
+      <div class="pnl">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div class="pnl-t" style="margin-bottom:0" id="eotp-dr-title">Détail</div>
+          <button class="btn" onclick="document.getElementById('eotp-drv').style.display='none'" style="padding:2px 8px;font-size:.78rem">✕ Fermer</button>
+        </div>
+        <div id="eotp-dr-kpis" class="dk" style="margin-bottom:10px"></div>
+        <div class="tw">
+          <table>
+            <thead id="eotp-dr-th"></thead>
+            <tbody id="eotp-dr-tb"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ANALYSE -->
@@ -1353,7 +1369,10 @@ async function lanceAnalyse(){
           let dateLivr=null;
           // Lire la colonne 'élément d'OTP' dans CDA_par_CC
           const eotpRawCda=(G('Element_d_OTP')||'').toString().trim();
-          const eotp_cda=eotpRawCda.replace(/\s*\([^)]*\)\s*$/, '').trim();
+          // Nettoyer parenthèses puis extraire le code court après "-" si présent
+          const _eotpClean=eotpRawCda.replace(/\s*\([^)]*\)\s*$/, '').trim();
+          const _eotpSplit=_eotpClean.match(/^[A-Z0-9_]+-([A-Z0-9]+)$/i);
+          const eotp_cda=_eotpSplit?_eotpSplit[1]:_eotpClean;
           if(dlvTs&&typeof dlvTs==='number'&&dlvTs>0){
             const _d=new Date(dlvTs*1000);
             dateLivr=_d.getFullYear()+'-'+String(_d.getMonth()+1).padStart(2,'0')+'-'+String(_d.getDate()).padStart(2,'0');
@@ -1541,7 +1560,10 @@ function procConso(raw, annee){
     const cmdRef=(function(){var v=col('Numero_de_piece_de_la_piece_de_reference')[i];if(!v&&v!==0)return'';var n=parseFloat(v);return isNaN(n)?String(v).trim():String(Math.round(n));})();
     // Lire la colonne 'Elément d'OTP' dans Conso
     const eotpRawCons=(col('Element_d_OTP')[i]||'').toString().trim();
-    const eotp_conso=eotpRawCons.replace(/\s*\([^)]*\)\s*$/, '').trim();
+    // Extraire code court : "R1322_07319J-C13W37319 (LABEL)" → "C13W37319"
+    const _eotpConsClean=eotpRawCons.replace(/\s*\([^)]*\)\s*$/, '').trim();
+    const _eotpConsSplit=_eotpConsClean.match(/^[A-Z0-9_]+-([A-Z0-9]+)$/i);
+    const eotp_conso=_eotpConsSplit?_eotpConsSplit[1]:_eotpConsClean;
     CONSO.push({
       annee, tv,
       cf: CF_LABEL,
@@ -6161,15 +6183,18 @@ function _buildEotpRows(){
   var map = {};
 
   // CONSO → Conso AE par éOTP
+  // TV_CATS contient les types de valeur AE (Commandes d'achat, Réservation, Blocage)
+  var TV_AE = ["Commandes d'achat", "R\u00e9servation de fonds", "Blocage de fonds"];
   CONSO.forEach(function(r){
     if(ann && String(r.annee) !== ann) return;
     if(prg && r.p !== prg) return;
     if(code && r.eotp !== code) return;
     if(fnd && r.fo !== fnd) return;
-    // Ne garder que les mouvements AE (pas les paiements CP)
-    if(r.saisiPar === 'NOTILUSBUS') return; // missions = CP
-    var key = (r.p||'')+'|'+(r.eotp||'(sans éOTP)')+'|'+(r.fo||'');
-    if(!map[key]) map[key] = {prog:r.p, eotp:r.eotp||'(sans éOTP)', fonds:r.fo, conso:0, cda:0, rar:0, nb:0};
+    // Filtrer uniquement les mouvements AE (pas Factures ni Pièces préenregistrées)
+    if(TV_AE.indexOf(r.tv) < 0) return;
+    if(!r.eotp) return; // ignorer les lignes sans éOTP
+    var key = (r.p||'')+'|'+(r.eotp||'')+'|'+(r.fo||'');
+    if(!map[key]) map[key] = {prog:r.p, eotp:r.eotp, fonds:r.fo, conso:0, cda:0, rar:0, nb:0};
     map[key].conso += Math.abs(r.m);
     map[key].nb++;
   });
@@ -6276,8 +6301,10 @@ function renderEotp(){
   document.getElementById('eotp-tb').innerHTML = items.map(function(r){
     var tx   = r.bud>0 ? r.cda/r.bud*100 : (r.conso>0?100:0);
     var cl   = tx>=90?'c-ok':tx>=50?'c-wn':'c-er';
+    var _dp=r.prog||'', _de=r.eotp||'', _df=r.fonds||'';
+    var onclick = ' style="cursor:pointer" onclick="drillEotp(this)" data-prog="'+esc(_dp)+'" data-eotp="'+esc(_de)+'" data-fonds="'+esc(_df)+'" title="Cliquer pour le détail"';
     if(vue==='detail'){
-      return '<tr>'+
+      return '<tr'+onclick+'>'+
         '<td>'+esc(r.prog)+'</td>'+
         '<td style="font-weight:600">'+esc(r.eotp)+'</td>'+
         '<td><span class="rb">'+esc(r.fonds)+'</span></td>'+
@@ -6287,7 +6314,7 @@ function renderEotp(){
         '<td style="text-align:right"><span class="rb '+cl+'">'+pct(tx)+'</span></td>'+
         '</tr>';
     } else if(vue==='eotp'){
-      return '<tr>'+
+      return '<tr'+onclick+'>'+
         '<td style="font-weight:600">'+esc(r.eotp)+'</td>'+
         '<td style="color:var(--mu);font-size:.82rem">'+esc(r.prog)+'</td>'+
         '<td style="text-align:right">'+fmt(r.conso)+' €</td>'+
@@ -6296,7 +6323,7 @@ function renderEotp(){
         '<td style="text-align:right"><span class="rb '+cl+'">'+pct(tx)+'</span></td>'+
         '</tr>';
     } else {
-      return '<tr>'+
+      return '<tr'+onclick+'>'+
         '<td style="font-weight:600">'+esc(r.prog)+'</td>'+
         '<td style="text-align:right">'+fmt(r.bud)+' €</td>'+
         '<td style="text-align:right">'+fmt(r.conso)+' €</td>'+
@@ -6322,6 +6349,91 @@ function renderEotp(){
 }
 window.renderEotp = renderEotp;
 
+
+// ── Drill-down éOTP ──────────────────────────────────────────────────────────
+function drillEotp(params){
+  var p;
+  if(params && params.tagName) {
+    // Appelé depuis onclick(this) → lire les data-attributes du TR
+    var tr = params.closest ? params.closest('tr') : params.parentElement;
+    p = { prog: tr.dataset.prog||'', eotp: tr.dataset.eotp||'', fonds: tr.dataset.fonds||'' };
+  } else {
+    p = typeof params === 'string' ? JSON.parse(params) : params;
+  }
+  var ann  = document.getElementById('eotp-ann').value;
+  var TV_AE = ["Commandes d'achat", "Réservation de fonds", "Blocage de fonds"];
+
+  // Filtrer CONSO
+  var consoLines = CONSO.filter(function(r){
+    if(ann && String(r.annee) !== ann) return false;
+    if(p.prog && p.prog !== '(tous)' && r.p !== p.prog) return false;
+    if(p.eotp && r.eotp !== p.eotp) return false;
+    if(p.fonds && p.fonds !== '(tous)' && r.fo !== p.fonds) return false;
+    return TV_AE.indexOf(r.tv) >= 0;
+  });
+
+  // Filtrer CDA
+  var cdaLines = (window.CDA_CC||[]).filter(function(r){
+    if(ann && r.annee !== ann) return false;
+    if(p.prog && p.prog !== '(tous)' && r.prog !== p.prog) return false;
+    if(p.eotp && r.eotp !== p.eotp) return false;
+    if(p.fonds && p.fonds !== '(tous)' && r.fonds !== p.fonds) return false;
+    return true;
+  });
+
+  // Titre
+  var titre = p.eotp ? 'Détail éOTP : '+p.eotp : 'Détail : '+p.prog;
+  if(p.fonds) titre += ' / '+p.fonds;
+  document.getElementById('eotp-dr-title').textContent = titre;
+
+  // KPIs
+  var totConso = consoLines.reduce(function(s,r){return s+Math.abs(r.m);},0);
+  var totCda   = cdaLines.reduce(function(s,r){return s+r.val;},0);
+  var totRar   = cdaLines.reduce(function(s,r){return s+r.resteFact;},0);
+  document.getElementById('eotp-dr-kpis').innerHTML =
+    '<div class="kpi"><div class="kl">Lignes Conso</div><div class="kv">'+consoLines.length+'</div></div>'+
+    '<div class="kpi"><div class="kl">Conso AE</div><div class="kv">'+fmt(totConso)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">Lignes CDA</div><div class="kv">'+cdaLines.length+'</div></div>'+
+    '<div class="kpi"><div class="kl">CDa engagées</div><div class="kv">'+fmt(totCda)+' €</div></div>'+
+    '<div class="kpi"><div class="kl">RAR</div><div class="kv" style="color:'+(totRar>0?'#d97706':'inherit')+'">'+fmt(totRar)+' €</div></div>';
+
+  // Tableau combiné : CDA d'abord, puis CONSO
+  document.getElementById('eotp-dr-th').innerHTML =
+    '<tr><th>Source</th><th>Type</th><th>N° Commande</th><th>Fournisseur</th><th>Désignation</th>'+
+    '<th style="text-align:right">Montant</th><th style="text-align:right">RAR Fact.</th></tr>';
+
+  var rows = '';
+  // Lignes CDA
+  cdaLines.sort(function(a,b){return b.val-a.val;}).forEach(function(r){
+    rows += '<tr style="background:#eff6ff">'+
+      '<td><span class="rb" style="background:#dbeafe;color:#1d4ed8">CDA</span></td>'+
+      '<td style="font-size:.8rem">'+esc(r.typeDoc||'')+'</td>'+
+      '<td><a href="#" onclick="return false" style="color:#1d4ed8;font-family:monospace;font-size:.82rem">'+esc(r.cmd)+'</a></td>'+
+      '<td style="font-size:.82rem">'+esc(r.four||'')+'</td>'+
+      '<td style="font-size:.82rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(r.desig||'')+'">'+esc(r.desig||'')+'</td>'+
+      '<td style="text-align:right;font-weight:600">'+fmt(r.val)+' €</td>'+
+      '<td style="text-align:right;color:'+(r.resteFact>0?'#d97706':'inherit')+'">'+fmt(r.resteFact)+' €</td>'+
+      '</tr>';
+  });
+  // Lignes CONSO
+  consoLines.sort(function(a,b){return Math.abs(b.m)-Math.abs(a.m);}).forEach(function(r){
+    rows += '<tr>'+
+      '<td><span class="rb" style="background:#dcfce7;color:#16a34a">CONSO</span></td>'+
+      '<td style="font-size:.8rem">'+esc(r.tv||'')+'</td>'+
+      '<td style="font-family:monospace;font-size:.82rem">'+esc(r.cmd||'')+'</td>'+
+      '<td style="font-size:.82rem">'+esc(r.f||'')+'</td>'+
+      '<td style="font-size:.82rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(r.d||'')+'">'+esc(r.d||'')+'</td>'+
+      '<td style="text-align:right;font-weight:600">'+fmt(Math.abs(r.m))+' €</td>'+
+      '<td style="text-align:right;color:var(--mu)">—</td>'+
+      '</tr>';
+  });
+
+  if(!rows) rows = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--mu)">Aucune ligne trouvée</td></tr>';
+  document.getElementById('eotp-dr-tb').innerHTML = rows;
+  document.getElementById('eotp-drv').style.display = '';
+  document.getElementById('eotp-drv').scrollIntoView({behavior:'smooth', block:'start'});
+}
+window.drillEotp = drillEotp;
 </script>
 </body>
 </html>
