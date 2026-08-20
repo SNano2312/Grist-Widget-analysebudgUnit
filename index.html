@@ -6185,15 +6185,16 @@ function _buildEotpRows(){
 
   // CONSO → Conso AE par éOTP
   // TV_CATS contient les types de valeur AE (Commandes d'achat, Réservation, Blocage)
-  var TV_AE = ["Commandes d'achat", "R\u00e9servation de fonds", "Blocage de fonds"];
+  // Types de valeur AE — comparaison normalisée pour éviter les problèmes d'encodage
+  var TV_AE_NORM = ["commandesdachat","reservationdefonds","blocagedefonds"];
+  function isTV_AE(tv){ return TV_AE_NORM.indexOf((tv||'').toLowerCase().replace(/[^a-z]/g,'')) >= 0; }
   CONSO.forEach(function(r){
-    if(ann && String(r.annee) !== ann) return;
+    if(ann && String(r.annee) !== String(ann)) return;
     if(prg && r.p !== prg) return;
     if(code && r.eotp !== code) return;
     if(fnd && r.fo !== fnd) return;
-    // Filtrer uniquement les mouvements AE (pas Factures ni Pièces préenregistrées)
-    if(TV_AE.indexOf(r.tv) < 0) return;
-    if(!r.eotp) return; // ignorer les lignes sans éOTP
+    if(!isTV_AE(r.tv)) return;
+    if(!r.eotp) return;
     var key = (r.p||'')+'|'+(r.eotp||'')+'|'+(r.fo||'');
     if(!map[key]) map[key] = {prog:r.p, eotp:r.eotp, fonds:r.fo, conso:0, cda:0, rar:0, nb:0};
     map[key].conso += Math.abs(r.m);
@@ -6362,7 +6363,8 @@ function drillEotp(params){
     p = typeof params === 'string' ? JSON.parse(params) : params;
   }
   var ann  = document.getElementById('eotp-ann').value;
-  var TV_AE = ["Commandes d'achat", "Réservation de fonds", "Blocage de fonds"];
+  var TV_AE_NORM2 = ["commandesdachat","reservationdefonds","blocagedefonds"];
+  function isTV_AE2(tv){ return TV_AE_NORM2.indexOf((tv||'').toLowerCase().replace(/[^a-z]/g,'')) >= 0; }
 
   // Filtrer CONSO
   var consoLines = CONSO.filter(function(r){
@@ -6370,7 +6372,7 @@ function drillEotp(params){
     if(p.prog && p.prog !== '(tous)' && r.p !== p.prog) return false;
     if(p.eotp && r.eotp !== p.eotp) return false;
     if(p.fonds && p.fonds !== '(tous)' && r.fo !== p.fonds) return false;
-    return TV_AE.indexOf(r.tv) >= 0;
+    return isTV_AE2(r.tv);
   });
 
   // Filtrer CDA
