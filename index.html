@@ -1483,9 +1483,9 @@ function procConso(raw, annee){
   // Recherche flexible : nom exact Grist OU fallback insensible
   const col = (...names) => {
     for(const name of names){
-      if(raw[name]) return raw[name];
+      if(raw[name] !== undefined) return raw[name];
       const k = Object.keys(raw).find(k =>
-        k.toLowerCase() === name.toLowerCase()
+        k.toLowerCase().replace(/[^a-z0-9]/g,'') === name.toLowerCase().replace(/[^a-z0-9]/g,'')
       );
       if(k) return raw[k];
     }
@@ -1559,11 +1559,12 @@ function procConso(raw, annee){
     const pmtNum=(function(){var v=col('N_piece_de_paiement','Nº_pièce_de_paiement','No_piece_de_paiement')[i];if(!v&&v!==0)return'';var n=parseFloat(v);return isNaN(n)?String(v).trim():String(Math.round(n));})();
     const cmdRef=(function(){var v=col('Numero_de_piece_de_la_piece_de_reference')[i];if(!v&&v!==0)return'';var n=parseFloat(v);return isNaN(n)?String(v).trim():String(Math.round(n));})();
     // Lire la colonne 'Elément d'OTP' dans Conso
-    const eotpRawCons=(col('Element_d_OTP')[i]||'').toString().trim();
+    const eotpRawCons=(col('Element_d_OTP','El_ment_d_OTP','Elément_d_OTP')[i]||'').toString().trim();
     // Extraire code court : "R1322_07319J-C13W37319 (LABEL)" → "C13W37319"
     const _eotpConsClean=eotpRawCons.replace(/\s*\([^)]*\)\s*$/, '').trim();
     const _eotpConsSplit=_eotpConsClean.match(/^[A-Z0-9_]+-([A-Z0-9]+)$/i);
     const eotp_conso=_eotpConsSplit?_eotpConsSplit[1]:_eotpConsClean;
+    const eotpDesignCons=(col('Design_EOTP','Design_EOTP_2')[i]||'').toString().trim();
     CONSO.push({
       annee, tv,
       cf: CF_LABEL,
@@ -1575,7 +1576,7 @@ function procConso(raw, annee){
       d:(desigs[i]||'').toString().trim(),
       dt, dtMois,
       m:N(monts[i]),
-      p:prog, fo:fond, eotp:eotp_conso,
+      p:prog, fo:fond, eotp:eotp_conso, eotpDesign:eotpDesignCons,
       tm:(tms[i]||'').toString().trim(),
     });
   }
