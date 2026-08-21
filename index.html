@@ -1314,13 +1314,19 @@ async function lanceAnalyse(){
         const vccKeys=Object.keys(vccRaw);
         const vccN=(vccRaw[vccKeys[0]]||[]).length;
         for(let ii=0;ii<vccN;ii++){
-          const row={prog:'',fonds:'',budget:0,annee:vccAnn,cc:{}};
+          const row={prog:'',fonds:'',budget:0,annee:vccAnn,cc:{},eotp:''};
           vccKeys.forEach(k=>{
             const v=vccRaw[k][ii];
             const kl=k.toLowerCase().replace(/[_\s]/g,'');
             if(kl.includes('programme')) row.prog=String(v||'').trim();
             else if(kl==='fonds') row.fonds=String(v||'').trim();
             else if(kl.includes('budget')) row.budget=parseFloat(v)||0;
+            else if(kl.includes('elementdotp')||kl.includes('elementotp')||kl==='eotp'){
+              // Nettoyer parenthèses et extraire code court
+              const _eotpV=String(v||'').trim().replace(/\s*\([^)]*\)\s*$/, '').trim();
+              const _eotpS=_eotpV.match(/^[A-Z0-9_]+-([A-Z0-9]+)$/i);
+              row.eotp=_eotpS?_eotpS[1]:_eotpV;
+            }
             else if(k!=='id'&&k!=='manualSort'){
               const ccKey=(k.length>1&&k[0]==='c'&&k[1]>='0'&&k[1]<='9')?k.slice(1):k;
               row.cc[ccKey]=parseFloat(v)||0;
@@ -6213,13 +6219,28 @@ function _buildEotpRows(){
     map[key].rar   += r.resteFact;
   });
 
-  // Récupérer le budget depuis BUDGET
+  // Budget depuis VENTILATION_CC (ventilé par éOTP si disponible)
+  // Sinon fallback sur BUDGET global
   Object.values(map).forEach(function(row){
-    var budRow = BUDGET.filter(function(b){
-      return String(b.annee)===(ann||String(b.annee)) &&
-             b.prog===row.prog && b.fonds===row.fonds;
+    // Chercher dans VENTILATION_CC les lignes avec cet éOTP
+    var vccRows = (window.VENTILATION_CC||[]).filter(function(v){
+      return (!ann||String(v.annee)===String(ann)) &&
+             v.prog===row.prog && v.fonds===row.fonds &&
+             v.eotp === row.eotp;
     });
-    row.bud = budRow.reduce(function(s,b){return s+b.bud;},0);
+    if(vccRows.length > 0){
+      // Budget ventilé par éOTP disponible : somme des budgets CC pour cet éOTP
+      row.bud = vccRows.reduce(function(s,v){return s+v.budget;},0);
+      row.hasVccEotp = true;
+    } else {
+      // Fallback : budget global du programme/fonds (non ventilé par éOTP)
+      var budRows = BUDGET.filter(function(b){
+        return String(b.annee)===(ann||String(b.annee)) &&
+               b.prog===row.prog && b.fonds===row.fonds;
+      });
+      row.bud = budRows.reduce(function(s,b){return s+b.bud;},0);
+      row.hasVccEotp = false;
+    }
   });
 
   return Object.values(map);
@@ -6250,7 +6271,7 @@ function renderEotp(){
   var cl   = taux>=90?'c-ok':taux>=50?'c-wn':'c-er';
   document.getElementById('eotp-kpis').innerHTML =
     '<div class="kpi"><div class="kl">éOTPs distincts</div><div class="kv">'+nbEotp+'</div></div>'+
-    (totBud>0?'<div class="kpi"><div class="kl">Budget AE</div><div class="kv">'+fmt(totBud)+' €</div></div>':'')+
+    (totBud>0?'<div class="kpi"><div class="kl">Budget AE'+(Object.values(agg).some(function(r){return r.hasVccEotp;})?'<span style="font-size:.68rem;color:#16a34a;margin-left:4px">★ ventilé</span>':'')+'</div><div class="kv">'+fmt(totBud)+' €</div></div>':'')+
     '<div class="kpi"><div class="kl">Conso AE</div><div class="kv '+cl+'">'+fmt(totConso)+' €</div>'+
     (totBud>0?'<div class="ks">'+pct(taux)+'</div>':'')+
     '</div>'+
