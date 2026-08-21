@@ -6291,7 +6291,8 @@ function initEotp(reset){
   var fndEl = document.getElementById('eotp-fnd');
   fndEl.innerHTML = '<option value="">Tous</option>';
   fnds.forEach(function(f){ fndEl.innerHTML += '<option value="'+esc(f)+'">'+esc(f)+'</option>'; });
-  var fndToSet = curFnd || codeFnd;
+  var _codeFndInit = curCode ? (curCode.split('|')[1]||'') : '';
+  var fndToSet = curFnd || _codeFndInit;
   if(fndToSet) fndEl.value = fndToSet;
 
   // Listeners : année recharge les programmes, autres filtres rerendent directement
@@ -6361,24 +6362,6 @@ function _buildEotpRows(){
     map[key].nb++;
   });
 
-  // CONSO → 2ème passage : Factures pour les éOTPs sans conso AE (ex: masse salariale RPC_141)
-  var TV_FACT_NORM = ['factures','piecespreenvregistrees','piecespreenenregistrees'];
-  CONSO.forEach(function(r){
-    if(ann && String(r.annee) !== String(ann)) return;
-    if(prg && r.p !== prg) return;
-    if(code && r.eotp !== code) return;
-    if(fnd && r.fo !== fnd) return;
-    if(!r.eotp) return;
-    var tvNorm = (r.tv||'').toLowerCase().replace(/[^a-z]/g,'');
-    if(TV_FACT_NORM.indexOf(tvNorm) < 0) return; // seulement Factures
-    var key = (r.p||'')+'|'+(r.eotp||'')+'|'+(r.fo||'');
-    // N'ajouter que si la clé n'a pas encore de conso AE
-    if(map[key] && map[key].conso > 0) return;
-    if(!map[key]) map[key] = {prog:r.p, eotp:r.eotp, fonds:r.fo, conso:0, cdaFact:0, cda:0, rar:0, nb:0, factOnly:true};
-    map[key].cdaFact = (map[key].cdaFact||0) + Math.abs(r.m);
-    map[key].factOnly = true;
-  });
-
   // CDA_CC → CDa engagée + RAR par éOTP
   (window.CDA_CC||[]).forEach(function(r){
     if(ann && String(r.annee) !== String(ann)) return;
@@ -6390,18 +6373,6 @@ function _buildEotpRows(){
     if(!map[key]) map[key] = {prog:r.prog, eotp:r.eotp, fonds:r.fonds, conso:0, cda:0, rar:0, nb:0};
     map[key].cda += r.val;
     map[key].rar += r.resteFact;
-  });
-
-  // Ajouter dans la map les éOTPs de Ventilation_CC sans CONSO/CDA (ex: masse salariale)
-  (window.VENTILATION_CC||[]).forEach(function(v){
-    if(ann && String(v.annee) !== String(ann)) return;
-    if(prg && v.prog !== prg) return;
-    if(code && (v.eotp !== code)) return;
-    if(!v.eotp) return;
-    var vFonds = v.fonds||'';
-    if(fnd && vFonds !== fnd) return;
-    var key = (v.prog||'')+'|'+v.eotp+'|'+vFonds;
-    if(!map[key]) map[key] = {prog:v.prog, eotp:v.eotp, fonds:vFonds, conso:0, cdaFact:0, cda:0, rar:0, nb:0, vccOnly:true};
   });
 
   // Budget depuis VENTILATION_CC (ventilé par éOTP si disponible)
@@ -6428,9 +6399,7 @@ function _buildEotpRows(){
     }
   });
 
-  var _r=Object.values(map);
-  console.log('[eOTP] rows='+_r.length+' VCC='+(window.VENTILATION_CC||[]).length+' CONSO_eotp='+CONSO.filter(function(r){return r.eotp;}).length);
-  return _r;
+  return Object.values(map);
 }
 
 function renderEotp(){
@@ -6451,7 +6420,7 @@ function renderEotp(){
 
   // KPIs globaux
   var totBud   = rows.reduce(function(s,r){return s+r.bud;},0);
-  var totConso = rows.reduce(function(s,r){return s+(r.factOnly?(r.cdaFact||0):r.conso);},0);
+  var totConso = rows.reduce(function(s,r){return s+r.conso;},0);
   var totCda   = rows.reduce(function(s,r){return s+r.cda;},0);
   var totRar   = rows.reduce(function(s,r){return s+r.rar;},0);
   var nbEotp   = new Set(rows.filter(function(r){return r.eotp!=='(sans éOTP)';}).map(function(r){return r.eotp;})).size;
@@ -6483,7 +6452,6 @@ function renderEotp(){
 
   // Graphique barres horizontales
   var top15 = items.slice(0,15);
-  try {
   document.getElementById('eotp-chart-wrap').style.display = '';
   // Barres HTML pures — sans Chart.js
   document.getElementById('eotp-chart-wrap').style.display = '';
@@ -6518,7 +6486,6 @@ function renderEotp(){
     '<tr><th>Programme</th><th style="text-align:right">Budget AE</th><th style="text-align:right">Conso AE</th><th style="text-align:right">CDa</th><th style="text-align:right">RAR</th><th style="text-align:right">Taux Conso</th></tr>';
   document.getElementById('eotp-th').innerHTML = colsHeader;
 
-  } catch(eRender){ console.error('[éOTP render erreur graphique]', eRender); }
   document.getElementById('eotp-tb').innerHTML = items.map(function(r){
     var tx   = r.bud>0 ? r.cda/r.bud*100 : (r.conso>0?100:0);
     var cl   = tx>=90?'c-ok':tx>=50?'c-wn':'c-er';
@@ -6535,21 +6502,15 @@ function renderEotp(){
         '<td style="text-align:right"><span class="rb '+cl+'">'+pct(tx)+'</span></td>'+
         '</tr>';
     } else if(vue==='eotp'){
-      var consoVal = r.factOnly ? (r.cdaFact||0) : r.conso;
-      var consoLabel = r.factOnly
-        ? '<span title="Consommation via Factures (masse salariale)">'+fmt(consoVal)+' € <span style="font-size:.68rem;color:#7c3aed">(fact.)</span></span>'
-        : fmt(consoVal)+' €';
-      var txEotp = r.bud>0 ? consoVal/r.bud*100 : (consoVal>0?100:0);
-      var clEotp = txEotp>=90?'c-ok':txEotp>=50?'c-wn':'c-er';
       return '<tr'+onclick+'>'+
         '<td style="font-weight:600">'+esc(r.eotp)+'</td>'+
         '<td><span class="rb">'+esc(r.fonds)+'</span></td>'+
         '<td style="color:var(--mu);font-size:.82rem">'+esc(r.prog)+'</td>'+
         '<td style="text-align:right">'+( r.bud>0?fmt(r.bud)+' €':'<span style="color:var(--mu)">—</span>')+' </td>'+
-        '<td style="text-align:right">'+consoLabel+'</td>'+
+        '<td style="text-align:right">'+fmt(r.conso)+' €</td>'+
         '<td style="text-align:right;font-weight:600">'+fmt(r.cda)+' €</td>'+
         '<td style="text-align:right;color:'+(r.rar>0?'#d97706':'inherit')+'">'+fmt(r.rar)+' €</td>'+
-        '<td style="text-align:right"><span class="rb '+clEotp+'">'+pct(txEotp)+'</span></td>'+
+        '<td style="text-align:right"><span class="rb '+cl+'">'+pct(tx)+'</span></td>'+
         '</tr>';
     } else {
       return '<tr'+onclick+'>'+
