@@ -6362,6 +6362,14 @@ function _buildEotpRows(){
     if(fnd && r.fo !== fnd) return;
     if(!isTV_AE(r.tv)) return;
     var eotpVal = r.eotp || '(sans éOTP)';
+    // Si éOTP sélectionné : inclure aussi les lignes sans éOTP du même fonds
+    if(code) {
+      if(eotpVal !== code) {
+        if(eotpVal === '(sans éOTP)' && codeFnd && r.fo === codeFnd) {
+          eotpVal = code; // rattacher la masse salariale à l'éOTP du filtre
+        } else { return; }
+      }
+    }
     var key = (r.p||'')+'|'+eotpVal+'|'+(r.fo||'');
     if(!map[key]) map[key] = {prog:r.p, eotp:eotpVal, fonds:r.fo, conso:0, cda:0, rar:0, nb:0};
     map[key].conso += Math.abs(r.m);
@@ -6375,6 +6383,13 @@ function _buildEotpRows(){
     if(code && r.eotp !== code) return;
     if(fnd && r.fonds !== fnd) return;
     var eotpCda = r.eotp || '(sans éOTP)';
+    if(code) {
+      if(eotpCda !== code) {
+        if(eotpCda === '(sans éOTP)' && codeFnd && r.fonds === codeFnd) {
+          eotpCda = code;
+        } else { return; }
+      }
+    }
     var key = (r.prog||'')+'|'+eotpCda+'|'+(r.fonds||'');
     if(!map[key]) map[key] = {prog:r.prog, eotp:eotpCda, fonds:r.fonds, conso:0, cda:0, rar:0, nb:0};
     map[key].cda += r.val;
