@@ -991,6 +991,24 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
       </div>
 
       <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">🔬 Onglet éOTP</div>
+        <p style="font-size:.82rem;line-height:1.8">
+          <strong>Objectif</strong> : analyser le budget, la consommation AE et les engagements (CDA) par élément d’OTP (éOTP), dimension analytique des programmes de financement INRAE.<br><br>
+          <strong>Sources de données</strong><br>
+          &bull; <em>Conso_2025/2026</em> : colonne <code>Element_d_OTP</code> — le widget extrait le code court après le tiret (ex. : R1322_07319J-C13W37319 → C13W37319).<br>
+          &bull; <em>CDA_par_CC_2025/2026</em> : colonne <code>Element_d_OTP</code> — même format, parenthèses supprimées automatiquement.<br>
+          &bull; <em>Ventilation_CC_2025/2026</em> : colonne optionnelle <code>Element_d_OTP</code> — budget ventilé par éOTP (code court, ex. : C13W37319). Sans cette colonne, budget global du programme/fonds affiché.<br><br>
+          <strong>Filtres</strong> : Année · Programme (depuis la table Budget) · éOTP (cascade selon programme) · Fonds · Vue<br><br>
+          <strong>Vues disponibles</strong><br>
+          &bull; <em>Par éOTP</em> : agrégation éOTP × Fonds — Budget AE, Conso AE, CDa, RAR, Taux CDa/Budget<br>
+          &bull; <em>Par Programme</em> : agrégation par programme<br>
+          &bull; <em>Détail lignes</em> : vue Programme × éOTP × Fonds<br><br>
+          <strong>Drill-down</strong> : cliquez sur une ligne pour voir le détail CDA et CONSO, avec N° de commande cliquables vers SIFAC+.<br><br>
+          <strong>Budget ★ ventilé</strong> : affiché dans les KPIs lorsque Ventilation CC contient des lignes avec <code>Element_d_OTP</code> pour les éOTPs filtrés.<br><br>
+          <strong>Limites</strong> : seuls les types de valeur AE (Commandes d’achat, Réservation de fonds, Blocage de fonds) sont comptabilisés dans la Conso AE. Factures et Pièces préenregistrées exclues (CP).
+        </p>
+      </div>
+      <div class="pnl" style="margin-bottom:16px">
         <div class="pnl-t">🔗 Hyperliens</div>
         <p style="font-size:.82rem;line-height:1.8">
           <strong>SIFAC+</strong> :<br>
@@ -1633,7 +1651,7 @@ function fillFilters(){
 
 function switchTab(t){
   _currentTab=t;
-  ['db','s','h','e','x','f','d','r','om','nacres','pluri','open','cc','tl','liq','analyse','doc'].forEach(function(k){
+  ['db','s','h','e','x','f','d','r','om','nacres','pluri','open','cc','tl','liq','eotp','analyse','doc'].forEach(function(k){
     var tab=document.getElementById('tab-'+k);
     var vw=document.getElementById('vw-'+k);
     if(tab) tab.classList.toggle('on',k===t);
@@ -1656,13 +1674,10 @@ function switchTab(t){
   if(t==='tl') renderTimeline();
   if(t==='liq') renderLiquidationTab();
   if(t==='eotp'){
-    // Gérer tab + vw manuellement (retiré du forEach pour éviter display:none)
-    var _tabEotp = document.getElementById('tab-eotp');
-    var _vwEotp  = document.getElementById('vw-eotp');
-    if(_tabEotp) _tabEotp.classList.add('on');
-    if(_vwEotp)  _vwEotp.style.display = 'block';
+    // Le forEach gère déjà display:block et tab actif
+    // On lance juste l'initialisation avec un léger délai
     setTimeout(function(){
-      initEotp(true);  // reset=true : remettre filtres à Tous
+      initEotp(true);
     }, 30);
   }
   if(t==='analyse') initAnalyse();
@@ -6289,9 +6304,7 @@ function _buildEotpRows(){
 function renderEotp(){
   var vue = document.getElementById('eotp-vue').value;
   var rows = _buildEotpRows();
-  // S'assurer que le conteneur est visible
-  var _vw = document.getElementById('vw-eotp');
-  if(_vw && _vw.style.display !== 'block') _vw.style.display = 'block';
+  // display géré par switchTab forEach
 
   if(!rows.length){
     document.getElementById('eotp-kpis').innerHTML = '';
