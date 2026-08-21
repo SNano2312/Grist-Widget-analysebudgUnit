@@ -6483,6 +6483,7 @@ function renderEotp(){
 
   // Graphique barres horizontales
   var top15 = items.slice(0,15);
+  try {
   document.getElementById('eotp-chart-wrap').style.display = '';
   // Barres HTML pures — sans Chart.js
   document.getElementById('eotp-chart-wrap').style.display = '';
@@ -6517,6 +6518,7 @@ function renderEotp(){
     '<tr><th>Programme</th><th style="text-align:right">Budget AE</th><th style="text-align:right">Conso AE</th><th style="text-align:right">CDa</th><th style="text-align:right">RAR</th><th style="text-align:right">Taux Conso</th></tr>';
   document.getElementById('eotp-th').innerHTML = colsHeader;
 
+  } catch(eRender){ console.error('[éOTP render erreur graphique]', eRender); }
   document.getElementById('eotp-tb').innerHTML = items.map(function(r){
     var tx   = r.bud>0 ? r.cda/r.bud*100 : (r.conso>0?100:0);
     var cl   = tx>=90?'c-ok':tx>=50?'c-wn':'c-er';
