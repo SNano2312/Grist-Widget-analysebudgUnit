@@ -4421,7 +4421,7 @@ function renderLivraison(){
   var rows = (window.CDA_CC||[]).filter(function(r){
     if(!r.dateLivr) return false;
     if(r.resteLivr <= 0 && r.resteFact <= 0) return false;
-    if(ann && r.annee !== ann) return false;
+    if(ann && String(r.annee) !== String(ann)) return false;
     if(prg && r.prog !== prg) return false;
     if(cf  && r.cc   !== cf)  return false;
     return true;
@@ -6209,14 +6209,15 @@ function _buildEotpRows(){
 
   // CDA_CC → CDa engagée + RAR par éOTP
   (window.CDA_CC||[]).forEach(function(r){
-    if(ann && r.annee !== ann) return;
+    if(ann && String(r.annee) !== String(ann)) return;
     if(prg && r.prog !== prg) return;
     if(code && r.eotp !== code) return;
     if(fnd && r.fonds !== fnd) return;
-    var key = (r.prog||'')+'|'+(r.eotp||'(sans éOTP)')+'|'+(r.fonds||'');
-    if(!map[key]) map[key] = {prog:r.prog, eotp:r.eotp||'(sans éOTP)', fonds:r.fonds, conso:0, cda:0, rar:0, nb:0};
-    map[key].cda   += r.val;
-    map[key].rar   += r.resteFact;
+    if(!r.eotp) return; // ignorer lignes sans éOTP comme dans CONSO
+    var key = (r.prog||'')+'|'+(r.eotp||'')+'|'+(r.fonds||'');
+    if(!map[key]) map[key] = {prog:r.prog, eotp:r.eotp, fonds:r.fonds, conso:0, cda:0, rar:0, nb:0};
+    map[key].cda += r.val;
+    map[key].rar += r.resteFact;
   });
 
   // Budget depuis VENTILATION_CC (ventilé par éOTP si disponible)
@@ -6398,7 +6399,7 @@ function drillEotp(params){
 
   // Filtrer CDA
   var cdaLines = (window.CDA_CC||[]).filter(function(r){
-    if(ann && r.annee !== ann) return false;
+    if(ann && String(r.annee) !== String(ann)) return false;
     if(p.prog && p.prog !== '(tous)' && r.prog !== p.prog) return false;
     if(p.eotp && r.eotp !== p.eotp) return false;
     if(p.fonds && p.fonds !== '(tous)' && r.fonds !== p.fonds) return false;
