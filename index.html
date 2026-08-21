@@ -603,9 +603,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <!-- KPIs -->
     <div id="eotp-kpis" class="dk" style="margin-bottom:14px"></div>
     <!-- Graphique -->
-    <div id="eotp-chart-wrap" class="pnl" style="margin-bottom:14px;display:none">
-      <canvas id="chEotp" style="max-height:320px"></canvas>
-    </div>
+    <div id="eotp-chart-wrap" class="pnl" style="margin-bottom:14px;display:none"></div>
     <!-- Tableau -->
     <div class="tw">
       <table>
@@ -6300,23 +6298,30 @@ function renderEotp(){
   // Graphique barres horizontales
   var top15 = items.slice(0,15);
   document.getElementById('eotp-chart-wrap').style.display = '';
-  if(_chEotp){_chEotp.destroy();_chEotp=null;}
-  try { _chEotp = new Chart(document.getElementById('chEotp').getContext('2d'),{
-    type:'bar',
-    data:{
-      labels: top15.map(function(r){return r.key.split('|')[0];}),
-      datasets:[
-        {label:'CDa engagée (€)', data:top15.map(function(r){return Math.round(r.cda*100)/100;}), backgroundColor:'#3b82f6'},
-        {label:'Conso AE (€)',    data:top15.map(function(r){return Math.round(r.conso*100)/100;}), backgroundColor:'#16a34a'},
-        {label:'RAR (€)',         data:top15.map(function(r){return Math.round(r.rar*100)/100;}),  backgroundColor:'#d97706'},
-      ]
-    },
-    options:{responsive:true, indexAxis:'y',
-      plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.dataset.label+' : '+fmt(c.raw)+' €';}}}},
-      scales:{x:{stacked:false,ticks:{callback:function(v){return fmt(v)+' €';}}},y:{ticks:{font:{size:10}}}}
-    }
-  })
-  } catch(e) { document.getElementById('eotp-chart-wrap').style.display='none'; };
+  // Barres HTML pures — sans Chart.js
+  document.getElementById('eotp-chart-wrap').style.display = '';
+  var maxVal = top15.reduce(function(m,r){ return Math.max(m, r.cda, r.conso); }, 1);
+  var barsHtml = '<div style="font-size:.72rem;color:var(--mu);margin-bottom:8px">'
+    + '<span style="display:inline-block;width:12px;height:10px;background:#3b82f6;margin-right:4px"></span>CDa '
+    + '<span style="display:inline-block;width:12px;height:10px;background:#16a34a;margin:0 4px 0 12px"></span>Conso AE '
+    + '<span style="display:inline-block;width:12px;height:10px;background:#d97706;margin:0 4px 0 12px"></span>RAR'
+    + '</div>';
+  top15.forEach(function(r){
+    var pCda   = r.cda/maxVal*100;
+    var pConso = r.conso/maxVal*100;
+    var pRar   = r.rar/maxVal*100;
+    var lbl    = r.key.split('|')[0];
+    barsHtml += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
+      + '<div style="width:130px;font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0" title="'+esc(lbl)+'">'+esc(lbl)+'</div>'
+      + '<div style="flex:1;display:flex;flex-direction:column;gap:2px">'
+      + (pCda>0   ? '<div style="height:8px;width:'+pCda.toFixed(1)+'%;background:#3b82f6;border-radius:3px" title="CDa: '+fmt(r.cda)+' €"></div>' : '')
+      + (pConso>0 ? '<div style="height:8px;width:'+pConso.toFixed(1)+'%;background:#16a34a;border-radius:3px" title="Conso: '+fmt(r.conso)+' €"></div>' : '')
+      + (pRar>0   ? '<div style="height:8px;width:'+pRar.toFixed(1)+'%;background:#d97706;border-radius:3px" title="RAR: '+fmt(r.rar)+' €"></div>' : '')
+      + '</div>'
+      + '<div style="width:90px;font-size:.72rem;text-align:right;flex-shrink:0">'+fmt(r.cda)+' €</div>'
+      + '</div>';
+  });
+  document.getElementById('eotp-chart-wrap').innerHTML = '<div style="padding:8px">'+barsHtml+'</div>';;
 
   // Tableau
   var colsHeader = vue==='detail' ?
