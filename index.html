@@ -6135,9 +6135,11 @@ window.copierPromptAnalyse = function(){ copierRapport(); };
 
 function initEotp(){
   var ann  = document.getElementById('eotp-ann').value;
-  var curPrg  = document.getElementById('eotp-prg').value;
-  var curCode = document.getElementById('eotp-code').value;
-  var curFnd  = document.getElementById('eotp-fnd').value;
+  // Ne conserver les filtres que s'ils ont été explicitement choisis par l'utilisateur
+  // Au premier appel (onglet vierge), remettre à "Tous"
+  var curPrg  = '';
+  var curCode = '';
+  var curFnd  = '';
 
   // Collecter tous les éOTPs disponibles depuis CONSO + CDA_CC
   var rows = _buildEotpRows();
@@ -6250,6 +6252,7 @@ function _buildEotpRows(){
 function renderEotp(){
   var vue = document.getElementById('eotp-vue').value;
   var rows = _buildEotpRows();
+  console.log('[éOTP] renderEotp rows='+rows.length+' ann='+document.getElementById('eotp-ann').value+' code='+document.getElementById('eotp-code').value);
 
   if(!rows.length){
     document.getElementById('eotp-kpis').innerHTML = '';
