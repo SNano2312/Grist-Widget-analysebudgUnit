@@ -1653,7 +1653,7 @@ function switchTab(t){
   if(t==='open') renderOpenOrders();
   if(t==='tl') renderTimeline();
   if(t==='liq') renderLiquidationTab();
-  if(t==='eotp') initEotp();
+  if(t==='eotp') setTimeout(initEotp, 50);
   if(t==='analyse') initAnalyse();
 }
 // ════════════════════════════════════════
@@ -6301,7 +6301,7 @@ function renderEotp(){
   var top15 = items.slice(0,15);
   document.getElementById('eotp-chart-wrap').style.display = '';
   if(_chEotp){_chEotp.destroy();_chEotp=null;}
-  _chEotp = new Chart(document.getElementById('chEotp').getContext('2d'),{
+  try { _chEotp = new Chart(document.getElementById('chEotp').getContext('2d'),{
     type:'bar',
     data:{
       labels: top15.map(function(r){return r.key.split('|')[0];}),
@@ -6315,7 +6315,8 @@ function renderEotp(){
       plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.dataset.label+' : '+fmt(c.raw)+' €';}}}},
       scales:{x:{stacked:false,ticks:{callback:function(v){return fmt(v)+' €';}}},y:{ticks:{font:{size:10}}}}
     }
-  });
+  })
+  } catch(e) { document.getElementById('eotp-chart-wrap').style.display='none'; };
 
   // Tableau
   var colsHeader = vue==='detail' ?
