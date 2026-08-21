@@ -6287,7 +6287,13 @@ function initEotp(reset){
   if(curCode) codeEl.value = curCode;
 
   // Peupler sélecteur Fonds — si éOTP sélectionné avec fonds, pré-sélectionner ce fonds
-  var fnds = [...new Set(rows.map(function(r){return r.fonds;}))].filter(Boolean).sort();
+  // Peupler depuis rows + Ventilation_CC
+  var _fndSet = new Set(rows.map(function(r){return r.fonds;}).filter(Boolean));
+  var _annFnd = document.getElementById('eotp-ann').value;
+  (window.VENTILATION_CC||[]).filter(function(v){
+    return v.fonds && v.eotp && (!_annFnd||String(v.annee)===String(_annFnd)) && (!filtPrg||v.prog===filtPrg);
+  }).forEach(function(v){ _fndSet.add(v.fonds); });
+  var fnds = [..._fndSet].sort();
   var fndEl = document.getElementById('eotp-fnd');
   fndEl.innerHTML = '<option value="">Tous</option>';
   fnds.forEach(function(f){ fndEl.innerHTML += '<option value="'+esc(f)+'">'+esc(f)+'</option>'; });
