@@ -6149,15 +6149,18 @@ function initEotp(){
   var curCode = '';
   var curFnd  = '';
 
-  // Collecter tous les éOTPs disponibles depuis CONSO + CDA_CC
-  var rows = _buildEotpRows();
-
-  // Peupler sélecteur Programme
-  var prgs = [...new Set(rows.map(function(r){return r.prog;}))].filter(Boolean).sort();
+  // Peupler sélecteur Programme depuis BUDGET (tous programmes de l'année)
+  var ann = document.getElementById('eotp-ann').value;
+  var allPrgs = [...new Set(BUDGET.filter(function(b){
+    return !ann || String(b.annee) === String(ann);
+  }).map(function(b){return b.prog;}))].filter(Boolean).sort();
   var prgEl = document.getElementById('eotp-prg');
   prgEl.innerHTML = '<option value="">Tous</option>';
-  prgs.forEach(function(p){ prgEl.innerHTML += '<option value="'+esc(p)+'">'+esc(p)+'</option>'; });
+  allPrgs.forEach(function(p){ prgEl.innerHTML += '<option value="'+esc(p)+'">'+esc(p)+'</option>'; });
   if(curPrg) prgEl.value = curPrg;
+
+  // Collecter les éOTPs disponibles selon le programme sélectionné
+  var rows = _buildEotpRows();
 
   // Peupler sélecteur éOTP (filtré par prog si sélectionné)
   var filtPrg = prgEl.value;
@@ -6295,9 +6298,9 @@ function renderEotp(){
   // Agréger selon la vue
   var agg = {};
   rows.forEach(function(r){
-    var k = vue==='eotp' ? (r.eotp||'(sans éOTP)') :
+    var k = vue==='eotp' ? ((r.eotp||'')+'|'+(r.fonds||'')) :
             vue==='prog' ? r.prog :
-            r.prog+'|'+(r.eotp||'(sans éOTP)')+'|'+r.fonds;
+            r.prog+'|'+(r.eotp||'')+'|'+r.fonds;
     if(!agg[k]) agg[k] = {key:k, prog:r.prog, eotp:r.eotp, fonds:r.fonds, bud:0, conso:0, cda:0, rar:0, nb:0};
     agg[k].bud   += r.bud;
     agg[k].conso += r.conso;
@@ -6322,7 +6325,7 @@ function renderEotp(){
     var pCda   = r.cda/maxVal*100;
     var pConso = r.conso/maxVal*100;
     var pRar   = r.rar/maxVal*100;
-    var lbl    = r.key.split('|')[0];
+    var lbl    = vue==='eotp' ? (r.eotp+(r.fonds?' / '+r.fonds:'')) : r.key.split('|')[0];
     barsHtml += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
       + '<div style="width:130px;font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0" title="'+esc(lbl)+'">'+esc(lbl)+'</div>'
       + '<div style="flex:1;display:flex;flex-direction:column;gap:2px">'
@@ -6339,7 +6342,7 @@ function renderEotp(){
   var colsHeader = vue==='detail' ?
     '<tr><th>Programme</th><th>éOTP</th><th>Fonds</th><th style="text-align:right">Conso AE</th><th style="text-align:right">CDa</th><th style="text-align:right">RAR</th><th style="text-align:right">Taux</th></tr>' :
     vue==='eotp' ?
-    '<tr><th>éOTP</th><th>Programme(s)</th><th style="text-align:right">Conso AE</th><th style="text-align:right">CDa</th><th style="text-align:right">RAR</th><th style="text-align:right">Taux CDa/Budget</th></tr>' :
+    '<tr><th>éOTP</th><th>Fonds</th><th>Programme(s)</th><th style="text-align:right">Budget AE</th><th style="text-align:right">Conso AE</th><th style="text-align:right">CDa</th><th style="text-align:right">RAR</th><th style="text-align:right">Taux CDa/Budget</th></tr>' :
     '<tr><th>Programme</th><th style="text-align:right">Budget AE</th><th style="text-align:right">Conso AE</th><th style="text-align:right">CDa</th><th style="text-align:right">RAR</th><th style="text-align:right">Taux Conso</th></tr>';
   document.getElementById('eotp-th').innerHTML = colsHeader;
 
@@ -6361,7 +6364,9 @@ function renderEotp(){
     } else if(vue==='eotp'){
       return '<tr'+onclick+'>'+
         '<td style="font-weight:600">'+esc(r.eotp)+'</td>'+
+        '<td><span class="rb">'+esc(r.fonds)+'</span></td>'+
         '<td style="color:var(--mu);font-size:.82rem">'+esc(r.prog)+'</td>'+
+        '<td style="text-align:right">'+( r.bud>0?fmt(r.bud)+' €':'<span style="color:var(--mu)">—</span>')+' </td>'+
         '<td style="text-align:right">'+fmt(r.conso)+' €</td>'+
         '<td style="text-align:right;font-weight:600">'+fmt(r.cda)+' €</td>'+
         '<td style="text-align:right;color:'+(r.rar>0?'#d97706':'inherit')+'">'+fmt(r.rar)+' €</td>'+
@@ -6382,10 +6387,12 @@ function renderEotp(){
   // Totaux
   var totTx = totBud>0 ? totCda/totBud*100 : 0;
   var totCl = totTx>=90?'c-ok':totTx>=50?'c-wn':'c-er';
+  var colSpan = vue==='detail'?2 : vue==='eotp'?3 : 1;
   document.getElementById('eotp-tf').innerHTML =
     '<tr style="font-weight:700;background:var(--bg)">'+
-    '<td colspan="'+(vue==='detail'?2:1)+'">TOTAL ('+items.length+' lignes)</td>'+
-    (vue==='prog'?'<td style="text-align:right">'+fmt(totBud)+' €</td>':'')+
+    '<td colspan="'+colSpan+'">TOTAL ('+items.length+' lignes)</td>'+
+    ((vue==='prog'||vue==='eotp')&&totBud>0?'<td style="text-align:right">'+fmt(totBud)+' €</td>':
+     (vue==='eotp'?'<td>—</td>':''))+
     '<td style="text-align:right">'+fmt(totConso)+' €</td>'+
     '<td style="text-align:right">'+fmt(totCda)+' €</td>'+
     '<td style="text-align:right;color:#d97706">'+fmt(totRar)+' €</td>'+
