@@ -571,24 +571,24 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
   <div id="vw-eotp" style="display:none">
     <div class="flt" style="margin-bottom:14px">
       <div class="fg"><label>Année</label>
-        <select id="eotp-ann" onchange="renderEotp()">
+        <select id="eotp-ann">
           <option value="">Toutes</option>
           <option value="2025">2025</option>
           <option value="2026">2026</option>
         </select>
       </div>
       <div class="fg"><label>Programme</label>
-        <select id="eotp-prg" onchange="renderEotp()">
+        <select id="eotp-prg">
           <option value="">Tous</option>
         </select>
       </div>
       <div class="fg"><label>éOTP</label>
-        <select id="eotp-code" onchange="renderEotp()">
+        <select id="eotp-code">
           <option value="">Tous</option>
         </select>
       </div>
       <div class="fg"><label>Fonds</label>
-        <select id="eotp-fnd" onchange="renderEotp()">
+        <select id="eotp-fnd">
           <option value="">Tous</option>
         </select>
       </div>
@@ -1658,8 +1658,7 @@ function switchTab(t){
     if(_tabEotp) _tabEotp.classList.add('on');
     if(_vwEotp)  _vwEotp.style.display = 'block';
     setTimeout(function(){
-      initEotp();
-      setTimeout(renderEotp, 80);
+      initEotp(true);  // reset=true : remettre filtres à Tous
     }, 30);
   }
   if(t==='analyse') initAnalyse();
@@ -6141,13 +6140,13 @@ window.copierPromptAnalyse = function(){ copierRapport(); };
 // ONGLET éOTP — Analyse Budget AE + Conso AE par éOTP
 // ════════════════════════════════════════════════════════
 
-function initEotp(){
+function initEotp(reset){
+  // reset=true : appelé depuis switchTab → remettre filtres à Tous
+  // reset=false/undefined : appelé depuis onChange → conserver les filtres
   var ann  = document.getElementById('eotp-ann').value;
-  // Ne conserver les filtres que s'ils ont été explicitement choisis par l'utilisateur
-  // Au premier appel (onglet vierge), remettre à "Tous"
-  var curPrg  = '';
-  var curCode = '';
-  var curFnd  = '';
+  var curPrg  = reset ? '' : document.getElementById('eotp-prg').value;
+  var curCode = reset ? '' : document.getElementById('eotp-code').value;
+  var curFnd  = reset ? '' : document.getElementById('eotp-fnd').value;
 
   // Peupler sélecteur Programme depuis BUDGET (tous programmes de l'année)
   var ann = document.getElementById('eotp-ann').value;
@@ -6179,15 +6178,32 @@ function initEotp(){
   fnds.forEach(function(f){ fndEl.innerHTML += '<option value="'+esc(f)+'">'+esc(f)+'</option>'; });
   if(curFnd) fndEl.value = curFnd;
 
-  // Listener cascade prog → éOTP
+  // Listeners : année recharge les programmes, autres filtres rerendent directement
+  document.getElementById('eotp-ann').onchange = function(){ initEotp(false); renderEotp(); };
   document.getElementById('eotp-prg').onchange = function(){
-    initEotp();
+    // Recharger les éOTPs disponibles pour ce programme
+    var filtPrg = document.getElementById('eotp-prg').value;
+    var allRows = _buildEotpRows();
+    var eotps = [...new Set(allRows.filter(function(r){
+      return (!filtPrg||r.prog===filtPrg) && r.eotp;
+    }).map(function(r){return r.eotp+'|'+r.fonds;}))].sort();
+    var codeEl = document.getElementById('eotp-code');
+    var curCode = codeEl.value;
+    codeEl.innerHTML = '<option value="">Tous</option>';
+    eotps.forEach(function(e){
+      var parts = e.split('|');
+      codeEl.innerHTML += '<option value="'+esc(parts[0])+'">'+esc(parts[0])+' / '+esc(parts[1]||'')+'</option>';
+    });
+    codeEl.value = curCode;
     renderEotp();
   };
+  document.getElementById('eotp-fnd').onchange = renderEotp;
+  document.getElementById('eotp-vue').onchange = renderEotp;
 
   renderEotp();
 }
 window.initEotp = initEotp;
+window.renderEotp = renderEotp;
 
 // Construire les lignes agrégées éOTP depuis CONSO + CDA_CC
 function _buildEotpRows(){
