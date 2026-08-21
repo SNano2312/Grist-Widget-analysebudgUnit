@@ -6419,6 +6419,12 @@ window.renderEotp = renderEotp;
 
 
 // ── Drill-down éOTP ──────────────────────────────────────────────────────────
+
+function lienSifacEotp(cmd){
+  if(!cmd) return '<td style="color:var(--mu)">—</td>';
+  var url='https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&/C_PurchaseOrderTP(PurchaseOrder=\''+encodeURIComponent(cmd)+'\''+',DraftUUID=guid\'00000000-0000-0000-0000-000000000000\',IsActiveEntity=true)';
+  return '<td><a href="'+url+'" target="_blank" style="color:#1d4ed8;font-family:monospace;font-size:.82rem" title="Ouvrir dans SIFAC+">'+esc(cmd)+'</a></td>';
+}
 function drillEotp(params){
   var p;
   if(params && params.tagName) {
@@ -6477,7 +6483,7 @@ function drillEotp(params){
     rows += '<tr style="background:#eff6ff">'+
       '<td><span class="rb" style="background:#dbeafe;color:#1d4ed8">CDA</span></td>'+
       '<td style="font-size:.8rem">'+esc(r.typeDoc||'')+'</td>'+
-      '<td><a href="#" onclick="return false" style="color:#1d4ed8;font-family:monospace;font-size:.82rem">'+esc(r.cmd)+'</a></td>'+
+      lienSifacEotp(r.cmd)+'
       '<td style="font-size:.82rem">'+esc(r.four||'')+'</td>'+
       '<td style="font-size:.82rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(r.desig||'')+'">'+esc(r.desig||'')+'</td>'+
       '<td style="text-align:right;font-weight:600">'+fmt(r.val)+' €</td>'+
@@ -6489,7 +6495,7 @@ function drillEotp(params){
     rows += '<tr>'+
       '<td><span class="rb" style="background:#dcfce7;color:#16a34a">CONSO</span></td>'+
       '<td style="font-size:.8rem">'+esc(r.tv||'')+'</td>'+
-      '<td style="font-family:monospace;font-size:.82rem">'+esc(r.cmd||'')+'</td>'+
+      lienSifacEotp(r.cmd)+'
       '<td style="font-size:.82rem">'+esc(r.f||'')+'</td>'+
       '<td style="font-size:.82rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(r.d||'')+'">'+esc(r.d||'')+'</td>'+
       '<td style="text-align:right;font-weight:600">'+fmt(Math.abs(r.m))+' €</td>'+
