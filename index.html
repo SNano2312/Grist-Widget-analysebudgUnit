@@ -6,7 +6,7 @@
 <title>Analyse budgétaire</title>
 <!-- SDK Grist : gère l'auth et l'accès aux tables automatiquement -->
 <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
 :root{--bg:#f0f2f7;--s:#fff;--bd:#dde2ec;--tx:#1b1f2e;--mu:#6b7280;--pr:#2563eb;--pl:#eff6ff;--ok:#16a34a;--wn:#d97706;--er:#dc2626;--r:8px}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1012,6 +1012,10 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     </div>
   </div>
 <script>
+// Vérification Chart.js au démarrage
+if(typeof Chart === 'undefined'){
+  console.warn('[Widget] Chart.js non chargé (bloqué par tracking prevention) — graphiques désactivés');
+}
 window.onerror=function(msg,src,line){
   var d=document.getElementById('cfg-err')||document.body;
   var e=document.createElement('div');
@@ -2858,6 +2862,12 @@ function fillNacresFilters(){
 // ════════════════════════
 // NACRES — Rendu
 // ════════════════════════
+
+// Fallback si Chart.js est bloqué
+if(typeof Chart === 'undefined'){
+  window.Chart = function(){ return {destroy:function(){}, update:function(){}}; };
+  Chart.prototype = {};
+}
 var _chNacres=null;
 var _chEotp=null;
 function renderNacres(){
@@ -6483,8 +6493,7 @@ function drillEotp(params){
     rows += '<tr style="background:#eff6ff">'+
       '<td><span class="rb" style="background:#dbeafe;color:#1d4ed8">CDA</span></td>'+
       '<td style="font-size:.8rem">'+esc(r.typeDoc||'')+'</td>'+
-      lienSifacEotp(r.cmd)+'
-      '<td style="font-size:.82rem">'+esc(r.four||'')+'</td>'+
+      lienSifacEotp(r.cmd)+'<td style="font-size:.82rem">'+esc(r.four||'')+'</td>'+
       '<td style="font-size:.82rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(r.desig||'')+'">'+esc(r.desig||'')+'</td>'+
       '<td style="text-align:right;font-weight:600">'+fmt(r.val)+' €</td>'+
       '<td style="text-align:right;color:'+(r.resteFact>0?'#d97706':'inherit')+'">'+fmt(r.resteFact)+' €</td>'+
@@ -6495,8 +6504,7 @@ function drillEotp(params){
     rows += '<tr>'+
       '<td><span class="rb" style="background:#dcfce7;color:#16a34a">CONSO</span></td>'+
       '<td style="font-size:.8rem">'+esc(r.tv||'')+'</td>'+
-      lienSifacEotp(r.cmd)+'
-      '<td style="font-size:.82rem">'+esc(r.f||'')+'</td>'+
+      lienSifacEotp(r.cmd)+'<td style="font-size:.82rem">'+esc(r.f||'')+'</td>'+
       '<td style="font-size:.82rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(r.d||'')+'">'+esc(r.d||'')+'</td>'+
       '<td style="text-align:right;font-weight:600">'+fmt(Math.abs(r.m))+' €</td>'+
       '<td style="text-align:right;color:var(--mu)">—</td>'+
