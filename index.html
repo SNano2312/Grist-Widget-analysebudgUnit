@@ -1682,11 +1682,11 @@ function switchTab(t){
   if(t==='tl') renderTimeline();
   if(t==='liq') renderLiquidationTab();
   if(t==='eotp'){
-    // Le forEach gère déjà display:block et tab actif
-    // On lance juste l'initialisation avec un léger délai
+    // Double rendu : initEotp au premier tick, renderEotp au second
     setTimeout(function(){
       initEotp(true);
-    }, 30);
+      setTimeout(renderEotp, 80);
+    }, 20);
   }
   if(t==='analyse') initAnalyse();
 }
@@ -6428,7 +6428,9 @@ function _buildEotpRows(){
     }
   });
 
-  return Object.values(map);
+  var _r=Object.values(map);
+  console.log('[eOTP] rows='+_r.length+' VCC='+(window.VENTILATION_CC||[]).length+' CONSO_eotp='+CONSO.filter(function(r){return r.eotp;}).length);
+  return _r;
 }
 
 function renderEotp(){
