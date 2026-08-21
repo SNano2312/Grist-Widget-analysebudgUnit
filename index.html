@@ -1651,7 +1651,16 @@ function switchTab(t){
   if(t==='open') renderOpenOrders();
   if(t==='tl') renderTimeline();
   if(t==='liq') renderLiquidationTab();
-  if(t==='eotp') setTimeout(initEotp, 50);
+  if(t==='eotp'){
+    // Forcer l'affichage de vw-eotp avant le rendu
+    var _vwEotp = document.getElementById('vw-eotp');
+    if(_vwEotp) _vwEotp.style.display = 'block';
+    setTimeout(function(){
+      initEotp();
+      // Double rendu pour s'assurer que le DOM est stable
+      setTimeout(renderEotp, 100);
+    }, 50);
+  }
   if(t==='analyse') initAnalyse();
 }
 // ════════════════════════════════════════
@@ -6250,7 +6259,9 @@ function _buildEotpRows(){
 function renderEotp(){
   var vue = document.getElementById('eotp-vue').value;
   var rows = _buildEotpRows();
-  console.log('[éOTP] renderEotp rows='+rows.length+' ann='+document.getElementById('eotp-ann').value+' code='+document.getElementById('eotp-code').value);
+  // S'assurer que le conteneur est visible
+  var _vw = document.getElementById('vw-eotp');
+  if(_vw && _vw.style.display !== 'block') _vw.style.display = 'block';
 
   if(!rows.length){
     document.getElementById('eotp-kpis').innerHTML = '';
