@@ -6701,30 +6701,26 @@ function renderAid(){
   var ann = document.getElementById('aid-ann').value;
   var prg = document.getElementById('aid-prg').value;
 
-  // Peupler sélecteur Programme
-  var prgs = [...new Set(BUDGET.filter(function(b){
-    return !ann || String(b.annee)===String(ann);
-  }).map(function(b){return b.prog;}))].filter(Boolean).sort();
-  var prgEl = document.getElementById('aid-prg');
-  var curPrg = prgEl.value;
-  prgEl.innerHTML = '<option value="">Tous</option>';
-  prgs.forEach(function(p){ prgEl.innerHTML += '<option value="'+esc(p)+'">'+esc(p)+'</option>'; });
-  if(curPrg) prgEl.value = curPrg;
+  // Peupler Programme
+  var prgs=[...new Set(BUDGET.filter(function(b){return !ann||String(b.annee)===String(ann);}).map(function(b){return b.prog;}))].filter(Boolean).sort();
+  var prgEl=document.getElementById('aid-prg');
+  var curPrg=prgEl.value;
+  prgEl.innerHTML='<option value="">Tous</option>';
+  prgs.forEach(function(p){prgEl.innerHTML+='<option value="'+esc(p)+'">'+esc(p)+'</option>';});
+  if(curPrg) prgEl.value=curPrg;
 
-  // Agréger par programme depuis BUDGET
-  var budRows = BUDGET.filter(function(b){
-    return (!ann||String(b.annee)===String(ann)) && (!prg||b.prog===prg);
-  });
-  var byProg = {};
+  // Agréger par programme
+  var budRows=BUDGET.filter(function(b){return(!ann||String(b.annee)===String(ann))&&(!prg||b.prog===prg);});
+  var byProg={};
   budRows.forEach(function(b){
-    var k = b.prog;
+    var k=b.prog;
     if(!byProg[k]) byProg[k]={prog:k,bud:0,conso:0,nconso:0,cda:0,rar:0,paye:0,fonds:[]};
     byProg[k].bud+=b.bud; byProg[k].conso+=b.conso; byProg[k].nconso+=b.nconso;
     byProg[k].cda+=b.cda; byProg[k].rar+=b.rar; byProg[k].paye+=b.paye;
     if(b.fonds&&byProg[k].fonds.indexOf(b.fonds)<0) byProg[k].fonds.push(b.fonds);
   });
 
-  var rows = Object.values(byProg).sort(function(a,b){return b.bud-a.bud;});
+  var rows=Object.values(byProg).sort(function(a,b){return b.bud-a.bud;});
   if(!rows.length){
     document.getElementById('aid-th').innerHTML='';
     document.getElementById('aid-tb').innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--mu)">Aucune donnée</td></tr>';
@@ -6732,55 +6728,33 @@ function renderAid(){
     return;
   }
 
-  // Calculer indicateurs décisionnels pour chaque programme
+  // Calculer indicateurs
   rows.forEach(function(r){
-    // Score de risque — retourne {score, niveau, ...}
-    try{
-      var _rs = calcRiskScore(r.prog, ann);
-      r.score = (_rs && _rs.score !== undefined) ? _rs.score : null;
-    } catch(e){ r.score=null; }
-    // Projection fin d'année — retourne {projTaux, ...}
-    try{
-      var _pj = calcProjection(r.prog, ann);
-      r.proj = (_pj && _pj.projTaux !== undefined) ? _pj.projTaux*100 : null;
-    } catch(e){ r.proj=null; }
-    // Co-financement : nombre de fonds distincts
-    r.coFin = r.fonds.length > 1;
-    // éOTP : vérifier si des données éOTP existent pour ce programme
-    r.hasEotp = CONSO.some(function(c){
-      return c.eotp && c.p===r.prog && (!ann||String(c.annee)===String(ann));
-    });
+    try{ var rs=calcRiskScore(r.prog,ann); r.score=(rs&&rs.score!==undefined)?rs.score:null; }catch(e){ r.score=null; }
+    try{ var pj=calcProjection(r.prog,ann); r.proj=(pj&&pj.projTaux!==undefined)?pj.projTaux*100:null; }catch(e){ r.proj=null; }
+    r.coFin=r.fonds.length>1;
+    r.hasEotp=CONSO.some(function(c){return c.eotp&&c.p===r.prog&&(!ann||String(c.annee)===String(ann));});
   });
 
   // Trier par score décroissant
-  rows.sort(function(a,b){
-    var sa = a.score!==null?a.score:-1;
-    var sb = b.score!==null?b.score:-1;
-    return sb-sa;
-  });
+  rows.sort(function(a,b){return (b.score||0)-(a.score||0);});
+
+  // En-tête
+  document.getElementById('aid-th').innerHTML=
+    '<tr><th>Programme</th><th style="text-align:right">Budget AE</th><th style="text-align:right">Conso AE</th>'+
+    '<th style="text-align:right">Taux AE</th><th style="text-align:right">Non engagé</th>'+
+    '<th style="text-align:right">RAR</th><th style="text-align:right">Score risque</th>'+
+    '<th style="text-align:right">Projection</th><th style="text-align:center">Co-fin.</th>'+
+    '<th style="text-align:center">éOTP</th></tr>';
 
   // Tableau
-  document.getElementById('aid-th').innerHTML =
-    '<tr>'+
-    '<th>Programme</th>'+
-    '<th style="text-align:right">Budget AE</th>'+
-    '<th style="text-align:right">Conso AE</th>'+
-    '<th style="text-align:right">Taux AE</th>'+
-    '<th style="text-align:right">Non engagé</th>'+
-    '<th style="text-align:right">RAR</th>'+
-    '<th style="text-align:right">Score risque</th>'+
-    '<th style="text-align:right">Projection</th>'+
-    '<th style="text-align:center">Co-fin.</th>'+
-    '<th style="text-align:center">éOTP</th>'+
-    '</tr>';
-
-  document.getElementById('aid-tb').innerHTML = rows.map(function(r){
-    var txAE  = r.bud>0 ? r.conso/r.bud*100 : 0;
-    var txCl  = txAE>=80?'c-ok':txAE>=50?'c-wn':'c-er';
-    var scCl  = r.score===null?'':r.score>=7?'c-er':r.score>=4?'c-wn':'c-ok';
-    var prCl  = r.proj===null?'':r.proj>=80?'c-ok':r.proj>=60?'c-wn':'c-er';
-    var rarCl = r.rar>0?'color:#d97706':'';
-    return '<tr style="cursor:pointer" onclick="showAidDetail(\'' + esc(r.prog) + '\',\'' + esc(ann) + '\')" title="Cliquer pour voir la Synthèse">'+
+  document.getElementById('aid-tb').innerHTML=rows.map(function(r){
+    var txAE=r.bud>0?r.conso/r.bud*100:0;
+    var txCl=txAE>=80?'c-ok':txAE>=50?'c-wn':'c-er';
+    var scCl=r.score===null?'':r.score>=7?'c-er':r.score>=4?'c-wn':'c-ok';
+    var prCl=r.proj===null?'':r.proj>=80?'c-ok':r.proj>=60?'c-wn':'c-er';
+    var rarCl=r.rar>0?'color:#d97706':'';
+    return '<tr style="cursor:pointer" onclick="showAidDetail(\''+esc(r.prog)+'\',\''+ann+'\')">'+
       '<td style="font-weight:600">'+esc(r.prog)+'</td>'+
       '<td style="text-align:right">'+fmt(r.bud)+' €</td>'+
       '<td style="text-align:right">'+fmt(r.conso)+' €</td>'+
@@ -6789,17 +6763,15 @@ function renderAid(){
       '<td style="text-align:right;'+rarCl+'">'+fmt(r.rar)+' €</td>'+
       '<td style="text-align:right">'+(r.score!==null?'<span class="rb '+scCl+'">'+r.score+'/10</span>':'—')+'</td>'+
       '<td style="text-align:right">'+(r.proj!==null?'<span class="rb '+prCl+'">'+pct(r.proj)+'</span>':'—')+'</td>'+
-      '<td style="text-align:center">'+(r.coFin?'<span class="rb c-wn" title="'+r.fonds.join(', ')+'">'+r.fonds.length+' fonds</span>':'—')+'</td>'+
+      '<td style="text-align:center">'+(r.coFin?'<span class="rb c-wn">'+r.fonds.length+' fonds</span>':'—')+'</td>'+
       '<td style="text-align:center">'+(r.hasEotp?'<span class="rb c-ok">✓</span>':'—')+'</td>'+
       '</tr>';
   }).join('');
 
-
-  // Fiches indicateurs
+  // Fiches
   _renderAidFiches();
-
 }
-window.renderAid = renderAid;
+window.renderAid=renderAid;
 
 function toggleFiche(id){
   var body = document.getElementById(id+'-body');
