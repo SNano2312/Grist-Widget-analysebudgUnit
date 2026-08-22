@@ -6138,38 +6138,16 @@ function genererRapport(){
   // ── SECTION 4 : Prompt complet ──
 
   // Bloc éOTP — indicateurs décisionnels par éOTP
+  // Correctif : on réutilise _buildEotpRows (même logique d'alias éOTP que l'onglet
+  // éOTP, cf. eotpAlias/normEotp) au lieu d'une agrégation locale qui ne résolvait pas
+  // les alias — ce qui faisait disparaître/mal budgétiser des lignes comme C13W37319/RPC_141
+  // dès que la donnée source utilisait encore l'ancien code éOTP (Alias_OTP).
   var sEotp = '';
   var ann_r = document.getElementById('an-ann').value;
   var prog_r = document.getElementById('an-prg').value || null;
-  // Collecter les données éOTP
-  var TV_AE_R = ['commandesdachat','reservationdefonds','blocagedefonds'];
-  var mapEotp = {};
-  CONSO.forEach(function(r){
-    if(ann_r && String(r.annee)!==String(ann_r)) return;
-    if(prog_r && r.p!==prog_r) return;
-    if(!r.eotp) return;
-    var tvN=(r.tv||'').toLowerCase().replace(/[^a-z]/g,'');
-    if(TV_AE_R.indexOf(tvN)<0) return;
-    var k=r.p+'|'+r.eotp+'|'+r.fo;
-    if(!mapEotp[k]) mapEotp[k]={prog:r.p,eotp:r.eotp,fonds:r.fo,conso:0,cda:0,bud:0};
-    mapEotp[k].conso+=Math.abs(r.m);
-  });
-  (window.CDA_CC||[]).forEach(function(r){
-    if(ann_r && String(r.annee)!==String(ann_r)) return;
-    if(prog_r && r.prog!==prog_r) return;
-    if(!r.eotp) return;
-    var k=r.prog+'|'+r.eotp+'|'+r.fonds;
-    if(!mapEotp[k]) mapEotp[k]={prog:r.prog,eotp:r.eotp,fonds:r.fonds,conso:0,cda:0,bud:0};
-    mapEotp[k].cda+=r.val;
-  });
-  // Budget depuis Ventilation CC avec éOTP
-  (window.VENTILATION_CC||[]).forEach(function(v){
-    if(ann_r && String(v.annee)!==String(ann_r)) return;
-    if(!v.eotp) return;
-    var k=(v.prog||'')+'|'+v.eotp+'|'+(v.fonds||'');
-    if(mapEotp[k]) mapEotp[k].bud+=v.budget;
-  });
-  var eotpRows = Object.values(mapEotp).sort(function(a,b){return b.cda-a.cda;});
+  var eotpRows = _buildEotpRows({ann:ann_r, prg:prog_r, code:'', codeFnd:'', fnd:''})
+    .filter(function(r){ return r.eotp && r.eotp!=='(sans éOTP)'; })
+    .sort(function(a,b){return b.cda-a.cda;});
   if(eotpRows.length>0){
     sEotp = "ANALYSE PAR ELEMENT D'OTP (eOTP)\n";
     sEotp += '--- Indicateur 1 : Taux avancement CDa/Budget par eOTP/Fonds ---\n';
