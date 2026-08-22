@@ -6734,12 +6734,15 @@ function renderAid(){
 
   // Calculer indicateurs décisionnels pour chaque programme
   rows.forEach(function(r){
-    // Score de risque
-    try{ r.score = calcRiskScore(r.prog, ann); } catch(e){ r.score=null; }
-    // Projection fin d'année
+    // Score de risque — retourne {score, niveau, ...}
     try{
-      var proj = calcProjection(r.prog, ann);
-      r.proj = proj && proj.taux !== undefined ? proj.taux*100 : null;
+      var _rs = calcRiskScore(r.prog, ann);
+      r.score = (_rs && _rs.score !== undefined) ? _rs.score : null;
+    } catch(e){ r.score=null; }
+    // Projection fin d'année — retourne {projTaux, ...}
+    try{
+      var _pj = calcProjection(r.prog, ann);
+      r.proj = (_pj && _pj.projTaux !== undefined) ? _pj.projTaux*100 : null;
     } catch(e){ r.proj=null; }
     // Co-financement : nombre de fonds distincts
     r.coFin = r.fonds.length > 1;
@@ -6791,8 +6794,10 @@ function renderAid(){
       '</tr>';
   }).join('');
 
-  // Fiches (inchangées)
+
+  // Fiches indicateurs
   _renderAidFiches();
+
 }
 window.renderAid = renderAid;
 
@@ -6808,9 +6813,12 @@ window.toggleFiche = toggleFiche;
 
 function showAidDetail(prog, ann){
   // Naviguer vers l'onglet Synthèse filtré sur ce programme
-  var sel = document.getElementById('s-prg');
-  if(sel){ sel.value = prog; }
+  var annSel = document.getElementById('s-ann');
+  var prgSel = document.getElementById('s-prg');
+  if(annSel && ann) annSel.value = ann;
+  if(prgSel) prgSel.value = prog;
   switchTab('s');
+  setTimeout(renderSynthese, 50);
 }
 window.showAidDetail = showAidDetail;
 
