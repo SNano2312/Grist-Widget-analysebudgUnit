@@ -6373,6 +6373,32 @@ function _buildEotpRows(params){
   var codeFnd = params.codeFnd;
   var fnd     = params.fnd || codeFnd;
 
+  // Table de correspondance éOTP : ancien code → nouveau code SIFAC
+  // Construite depuis Ventilation_CC : si un fonds a Element_d_OTP renseigné,
+  // tous les éOTPs CONSO/CDA de ce fonds sont mappés vers ce code
+  var eotpAlias = {}; // ex: {'13001654': 'C13W37319'}
+  (window.VENTILATION_CC||[]).forEach(function(v){
+    if(!v.eotp || !v.fonds) return;
+    if(ann && String(v.annee) !== String(ann)) return;
+    if(prg && v.prog !== prg) return;
+    // Pour ce fonds, l'éOTP VCC est le code "officiel SIFAC"
+    // Chercher les éOTPs CONSO qui correspondent à ce fonds mais ont un code différent
+    CONSO.filter(function(r){
+      return r.eotp && r.fo === v.fonds && (!ann||String(r.annee)===String(ann)) &&
+             (!prg||r.p===prg) && r.eotp !== v.eotp;
+    }).forEach(function(r){
+      if(!eotpAlias[r.eotp]) eotpAlias[r.eotp] = v.eotp;
+    });
+    (window.CDA_CC||[]).filter(function(r){
+      return r.eotp && r.fonds === v.fonds && (!ann||String(r.annee)===String(ann)) &&
+             (!prg||r.prog===prg) && r.eotp !== v.eotp;
+    }).forEach(function(r){
+      if(!eotpAlias[r.eotp]) eotpAlias[r.eotp] = v.eotp;
+    });
+  });
+  // Fonction de normalisation
+  function normEotp(eotp){ return eotp && eotpAlias[eotp] ? eotpAlias[eotp] : eotp; }
+
   var map = {};
   var TV_AE = ['commandesdachat','reservationdefonds','blocagedefonds'];
   var TV_FA = ['factures','piecespreenregistrees','piecespreenvregistrees'];
@@ -6397,7 +6423,7 @@ function _buildEotpRows(params){
     if(prg && r.p !== prg) return;
     if(fnd && r.fo !== fnd) return;
     if(TV_AE.indexOf(tvNorm(r.tv)) < 0) return;
-    var eotp = r.eotp || '(sans éOTP)';
+    var eotp = normEotp(r.eotp) || '(sans éOTP)';
     if(code){
       if(eotp !== code){
         if(eotp === '(sans éOTP)' && codeFnd && r.fo === codeFnd) eotp = code;
@@ -6412,7 +6438,7 @@ function _buildEotpRows(params){
     if(ann && String(r.annee) !== String(ann)) return;
     if(prg && r.prog !== prg) return;
     if(fnd && r.fonds !== fnd) return;
-    var eotp = r.eotp || '(sans éOTP)';
+    var eotp = normEotp(r.eotp) || '(sans éOTP)';
     if(code){
       if(eotp !== code){
         if(eotp === '(sans éOTP)' && codeFnd && r.fonds === codeFnd) eotp = code;
@@ -6428,7 +6454,7 @@ function _buildEotpRows(params){
     if(prg && r.p !== prg) return;
     if(fnd && r.fo !== fnd) return;
     if(TV_FA.indexOf(tvNorm(r.tv)) < 0) return;
-    var eotp = r.eotp || code || '(sans éOTP)';
+    var eotp = normEotp(r.eotp) || code || '(sans éOTP)';
     if(code && eotp !== code) return;
     addToMap(r.p, eotp, r.fo, Math.abs(r.m), 0, 0, true);
   });
