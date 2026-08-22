@@ -6400,6 +6400,7 @@ function _buildEotpRows(){
   // et que ce fonds n'a aucune Conso AE (ex: RPC_141 masse salariale)
   if(fnd){
     var _hasFndAE = Object.values(map).some(function(r){ return r.fonds===fnd && r.conso>0; });
+    console.log('[Factures] fnd='+fnd+' hasFndAE='+_hasFndAE+' mapSize='+Object.keys(map).length);
     if(!_hasFndAE){
       var TV_FACT = ['factures','piecespreenregistrees','piecespreenvregistrees'];
       CONSO.forEach(function(r){
