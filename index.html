@@ -6835,17 +6835,21 @@ function _renderAidFiches(){
      action:'Spécifique aux programmes ANR, européens et co-financés. Visible dans l'onglet éOTP.'},
   ];
   document.getElementById('aid-fiches').innerHTML=fiches.map(function(f){
-    return '<div class="pnl" id="'+f.id+'" style="border-left:4px solid '+f.couleur+';cursor:pointer" onclick="toggleFiche(''+f.id+'')" title="Cliquer pour développer">'+
+    var seuils_html=f.seuils.map(function(sl){
+      return '<tr><td style="padding:3px 8px;width:120px"><span class="rb '+sl.cl+'">'+sl.lbl+'</span></td>'+
+             '<td style="padding:3px 6px;color:var(--t)">'+sl.txt+'</td></tr>';
+    }).join('');
+    return '<div class="pnl" style="border-left:4px solid '+f.couleur+';cursor:pointer;margin-bottom:8px" onclick="toggleFiche(''+f.id+'')" title="Cliquer pour développer">'+
       '<div style="display:flex;justify-content:space-between;align-items:center">'+
         '<div style="font-weight:700;font-size:.95rem;color:'+f.couleur+'">'+f.icon+' '+f.titre+'</div>'+
         '<span id="'+f.id+'-arr" style="color:var(--mu);font-size:.8rem">▼</span>'+
       '</div>'+
       '<div id="'+f.id+'-body" style="display:none;margin-top:10px">'+
-        '<div style="font-size:.78rem;color:var(--mu);margin-bottom:8px"><strong>Formule :</strong> '+esc(f.formule)+'</div>'+
-        '<table style="width:100%;border-collapse:collapse;font-size:.78rem;margin-bottom:8px">'+
-          f.seuils.map(function(sl){return '<tr><td style="padding:3px 8px;width:120px"><span class="rb '+sl.cl+'">'+esc(sl.lbl)+'</span></td><td style="padding:3px 6px;color:var(--t)">'+esc(sl.txt)+'</td></tr>';}).join('')+
-        '</table>'+
-        '<div style="font-size:.78rem;background:'+f.fond+';border-radius:6px;padding:7px 10px;color:'+f.couleur+'">💡 '+esc(f.action)+'</div>'+
+        '<div style="font-size:.78rem;color:var(--mu);margin-bottom:8px"><strong>Formule :</strong> '+f.formule+'</div>'+
+        '<table style="width:100%;border-collapse:collapse;font-size:.78rem;margin-bottom:8px">'+seuils_html+'</table>'+
+        '<div style="font-size:.78rem;background:'+f.fond+';border-radius:6px;padding:7px 10px;color:'+f.couleur+'">'+
+          '&#128161; '+f.action+
+        '</div>'+
       '</div>'+
     '</div>';
   }).join('');
