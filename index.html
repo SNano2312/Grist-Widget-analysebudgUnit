@@ -6409,8 +6409,8 @@ function _buildEotpRows(){
     var eotpF = r.eotp || (code && codeFnd && r.fo === codeFnd ? code : '(sans éOTP)');
     if(code && eotpF !== code) return; // filtre éOTP actif
     var key = (r.p||'')+'|'+eotpF+'|'+(r.fo||'');
-    // N'ajouter que si pas encore de conso AE pour cette clé
-    if(map[key] && map[key].conso > 0) return;
+    // N'ajouter que si pas de conso AE (isFact autorisé à s'accumuler)
+    if(map[key] && !map[key].isFact && map[key].conso > 0) return;
     if(!map[key]) map[key] = {prog:r.p, eotp:eotpF, fonds:r.fo, conso:0, cda:0, rar:0, nb:0, isFact:true};
     map[key].conso += Math.abs(r.m);
     map[key].isFact = true;
