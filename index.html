@@ -1714,7 +1714,7 @@ function renderHisto(){
   document.getElementById('kpi-strip').innerHTML=`
     <div class="kpi"><div class="kl">Budget total AE</div><div class="kv">${fmt(tB)} €</div></div>
     <div class="kpi"><div class="kl">Conso AE totale</div><div class="kv ${cl}">${fmt(tC)} €</div></div>
-    <div class="kpi"><div class="kl">Non engagémmé</div><div class="kv c-wn">${fmt(tN)} €</div></div>
+    <div class="kpi"><div class="kl">Non engagé</div><div class="kv c-wn">${fmt(tN)} €</div></div>
     <div class="kpi"><div class="kl">Payé (CP)</div><div class="kv">${fmt(tP)} €</div></div>
     <div class="kpi"><div class="kl">Taux de conso</div><div class="kv ${cl}">${pct(p)}</div></div>`;
   _grpd={};
@@ -2162,8 +2162,15 @@ function applyVCC(b, cf, ann){
     return b; // pas de VCC → Budget global
   }
   const cda=getCdaCC(b.prog,b.fonds,cf,ann);
-  // Conso CC = CDa depuis CDA_CC (engagement réel)
-  const consoCC=cda?cda.cda:0;
+  // Conso CC = CDa si disponible, sinon Conso depuis table CONSO
+  const consoFromCda=cda?cda.cda:0;
+  // Si pas de CDA (ex: masse salariale), utiliser la conso réelle depuis CONSO
+  const consoFromConso = consoFromCda===0
+    ? CONSO.filter(function(r){
+        return String(r.annee)===String(ann) && r.p===b.prog && r.fo===b.fonds && r.cc===cf;
+      }).reduce(function(s,r){return s+Math.abs(r.m);},0)
+    : 0;
+  const consoCC = consoFromCda || consoFromConso;
   return Object.assign({},b,{
     bud:bv,
     conso:consoCC,
