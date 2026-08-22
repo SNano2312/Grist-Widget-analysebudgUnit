@@ -6351,9 +6351,22 @@ function initEotp(reset){
     codeEl.innerHTML = '<option value="">Tous</option>';
     eotps.forEach(function(e){
       var parts = e.split('|');
-      codeEl.innerHTML += '<option value="'+esc(parts[0])+'">'+esc(parts[0])+' / '+esc(parts[1]||'')+'</option>';
+      codeEl.innerHTML += '<option value="'+esc(e)+'">'+esc(parts[0])+' / '+esc(parts[1]||'')+'</option>';
     });
     codeEl.value = curCode;
+    renderEotp();
+  };
+  // Correctif : le filtre éOTP ne déclenchait aucun recalcul (onchange manquant).
+  // On recalcule ET on resynchronise le menu Fonds sur le fonds associé à l'éOTP choisi.
+  document.getElementById('eotp-code').onchange = function(){
+    var codeEl = document.getElementById('eotp-code');
+    var raw = codeEl.value; // format attendu : "EOTP|FONDS" (ou "" pour Tous)
+    var codeFnd = raw && raw.indexOf('|') > -1 ? raw.split('|')[1] : '';
+    if(codeFnd){
+      var fndEl = document.getElementById('eotp-fnd');
+      var hasOpt = Array.prototype.some.call(fndEl.options, function(o){ return o.value === codeFnd; });
+      if(hasOpt) fndEl.value = codeFnd;
+    }
     renderEotp();
   };
   document.getElementById('eotp-fnd').onchange = renderEotp;
