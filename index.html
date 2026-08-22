@@ -6732,8 +6732,15 @@ function renderAid(){
   rows.forEach(function(r){
     try{ var rs=calcRiskScore(r.prog,ann); r.score=(rs&&rs.score!==undefined)?rs.score:null; }catch(e){ r.score=null; }
     try{ var pj=calcProjection(r.prog,ann); r.proj=(pj&&pj.projTaux!==undefined)?pj.projTaux:null; }catch(e){ r.proj=null; }
+    try{ var vl=calcVelocite(r.prog,ann); r.velo=(vl&&vl.delta!=null)?vl.delta:null; r.veloCl=vl?vl.tendance:null; }catch(e){ r.velo=null; r.veloCl=null; }
+    try{ var dl=calcDelaiEngagement(r.prog,ann); r.delai=(dl&&dl.delai!=null)?dl.delai:null; }catch(e){ r.delai=null; }
     r.coFin=r.fonds.length>1;
-    r.hasEotp=CONSO.some(function(c){return c.eotp&&c.p===r.prog&&(!ann||String(c.annee)===String(ann));});
+    var _ec=(window.CDA_CC||[]).filter(function(c){return c.eotp&&c.prog===r.prog&&(!ann||String(c.annee)===String(ann));});
+    var _eb=(window.VENTILATION_CC||[]).filter(function(v){return v.eotp&&v.prog===r.prog&&(!ann||String(v.annee)===String(ann));});
+    r.hasEotp=_ec.length>0;
+    var _ecdaSum=_ec.reduce(function(s,c){return s+c.val;},0);
+    var _ebudSum=_eb.reduce(function(s,v){return s+v.budget;},0);
+    r.eotpTaux=(_ebudSum>0&&_ecdaSum>0)?_ecdaSum/_ebudSum*100:null;
   });
 
   // Trier par score décroissant
