@@ -6462,6 +6462,12 @@ function _buildEotpRows(){
 
 function renderEotp(){
   var vue = document.getElementById('eotp-vue').value;
+  // Synchroniser fnd depuis le code éOTP si nécessaire
+  var _codeRaw = document.getElementById('eotp-code').value;
+  var _codeParts = _codeRaw ? _codeRaw.split('|') : [];
+  var _codeFnd = _codeParts[1] || '';
+  var _fndEl = document.getElementById('eotp-fnd');
+  if(_codeFnd && !_fndEl.value) _fndEl.value = _codeFnd;
   var rows = _buildEotpRows();
   // display géré par switchTab forEach
 
