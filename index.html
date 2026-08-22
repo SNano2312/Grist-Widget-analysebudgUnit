@@ -6425,21 +6425,16 @@ function _buildEotpRows(){
     addToMap(r.prog, eotp, r.fonds, 0, r.val, r.resteFact, false);
   });
 
-  // ── Passage 3 : Factures (fonds sans Conso AE, ex: masse salariale) ─────
-  // S'active uniquement si un fonds précis est ciblé ET sans Conso AE
-  if(fnd){
-    var hasFndAE = Object.values(map).some(function(r){ return r.fonds===fnd && r.conso>0 && !r.isFact; });
-    if(!hasFndAE){
-      CONSO.forEach(function(r){
-        if(!matchAnn(r) || !matchPrg(r.p)) return;
-        if(r.fo !== fnd) return;
-        if(TV_FA.indexOf(tvNorm(r.tv)) < 0) return;
-        var eotp = r.eotp || code || '(sans éOTP)';
-        if(code && eotp !== code) return;
-        addToMap(r.p, eotp, r.fo, Math.abs(r.m), 0, 0, true);
-      });
-    }
-  }
+  // ── Passage 3 : Factures ─────────────────────────────────────────────────
+  // Toujours actif — addToMap ignore les Factures si une Conso AE existe déjà
+  CONSO.forEach(function(r){
+    if(!matchAnn(r) || !matchPrg(r.p) || !matchFnd(r.fo)) return;
+    if(TV_FA.indexOf(tvNorm(r.tv)) < 0) return;
+    // Déterminer l'éOTP : utiliser celui de la ligne, ou celui du filtre si le fonds correspond
+    var eotp = r.eotp || (code && (!r.fo || r.fo === (fnd||codeFnd)) ? code : '(sans éOTP)');
+    if(code && eotp !== code) return;
+    addToMap(r.p, eotp, r.fo, Math.abs(r.m), 0, 0, true);
+  });
 
   // ── Budget depuis VCC ou BUDGET global ───────────────────────────────────
   Object.values(map).forEach(function(row){
