@@ -221,6 +221,7 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
     <div class="tab" id="tab-cc" onclick="switchTab('cc')">🏦 Centres de coûts</div>
         <div class="tab" id="tab-eotp" onclick="switchTab('eotp')">🔬 éOTP</div>
         <div class="tab" id="tab-analyse" onclick="switchTab('analyse')">📝 Analyse</div>
+    <div class="tab" id="tab-aid" onclick="switchTab('aid')">🎯 Décisionnel</div>
     <div class="tab" id="tab-doc" onclick="switchTab('doc')">📖 Documentation</div>
   </div></div>
 
@@ -701,6 +702,26 @@ tfoot td{padding:7px 10px;font-weight:700;background:#f7f8fb;border-top:2px soli
 
     </div>
   </div>
+  <!-- DÉCISIONNEL -->
+  <div id="vw-aid" style="display:none">
+    <div class="flt" style="margin-bottom:14px">
+      <div class="fg"><label>Année</label>
+        <select id="aid-ann" onchange="renderAid()">
+          <option value="2025">2025</option>
+          <option value="2026" selected>2026</option>
+        </select>
+      </div>
+      <div class="fg"><label>Programme</label>
+        <select id="aid-prg" onchange="renderAid()"><option value="">Tous</option></select>
+      </div>
+    </div>
+    <div class="tw" style="margin-bottom:20px">
+      <table><thead id="aid-th"></thead><tbody id="aid-tb"></tbody></table>
+    </div>
+    <div id="aid-fiches" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px"></div>
+  </div>
+
+
 
   <!-- DOCUMENTATION -->
   <div id="vw-doc" style="display:none">
@@ -1659,7 +1680,7 @@ function fillFilters(){
 
 function switchTab(t){
   _currentTab=t;
-  ['db','s','h','e','x','f','d','r','om','nacres','pluri','open','cc','tl','liq','eotp','analyse','doc'].forEach(function(k){
+  ['db','s','h','e','x','f','d','r','om','nacres','pluri','open','cc','tl','liq','eotp','analyse','aid','doc'].forEach(function(k){
     var tab=document.getElementById('tab-'+k);
     var vw=document.getElementById('vw-'+k);
     if(tab) tab.classList.toggle('on',k===t);
@@ -1681,6 +1702,7 @@ function switchTab(t){
   if(t==='open') renderOpenOrders();
   if(t==='tl') renderTimeline();
   if(t==='liq') renderLiquidationTab();
+  if(t==='aid') setTimeout(renderAid, 30);
   if(t==='eotp'){
     // Double rendu : initEotp au premier tick, renderEotp au second
     setTimeout(function(){
@@ -6670,6 +6692,226 @@ function drillEotp(params){
   document.getElementById('eotp-drv').scrollIntoView({behavior:'smooth', block:'start'});
 }
 window.drillEotp = drillEotp;
+
+// ════════════════════════════════════════════════════════════════════
+// ONGLET DÉCISIONNEL — Tableau de bord + Fiches indicateurs
+// ════════════════════════════════════════════════════════════════════
+
+function renderAid(){
+  var ann = document.getElementById('aid-ann').value;
+  var prg = document.getElementById('aid-prg').value;
+
+  // ── Peupler sélecteur Programme ──────────────────────────────────
+  var prgs = [...new Set(BUDGET.filter(function(b){
+    return !ann || String(b.annee)===String(ann);
+  }).map(function(b){return b.prog;}))].filter(Boolean).sort();
+  var prgEl = document.getElementById('aid-prg');
+  var curPrg = prgEl.value;
+  prgEl.innerHTML = '<option value="">Tous</option>';
+  prgs.forEach(function(p){ prgEl.innerHTML += '<option value="'+esc(p)+'">'+esc(p)+'</option>'; });
+  if(curPrg) prgEl.value = curPrg;
+
+  // ── Données ──────────────────────────────────────────────────────
+  var budRows = BUDGET.filter(function(b){
+    return (!ann||String(b.annee)===String(ann)) && (!prg||b.prog===prg);
+  });
+
+  // Agréger par programme
+  var byProg = {};
+  budRows.forEach(function(b){
+    var k = b.prog;
+    if(!byProg[k]) byProg[k] = {prog:k, bud:0, conso:0, nconso:0, cda:0, rar:0, paye:0, fonds:[]};
+    byProg[k].bud    += b.bud;
+    byProg[k].conso  += b.conso;
+    byProg[k].nconso += b.nconso;
+    byProg[k].cda    += b.cda;
+    byProg[k].rar    += b.rar;
+    byProg[k].paye   += b.paye;
+    if(b.fonds && byProg[k].fonds.indexOf(b.fonds)<0) byProg[k].fonds.push(b.fonds);
+  });
+
+  // Enrichir avec indicateurs predictifs depuis window._PROG_INFO
+  var pi = window._PROG_INFO || {};
+
+  var rows = Object.values(byProg).sort(function(a,b){return b.bud-a.bud;});
+  if(!rows.length){
+    document.getElementById('aid-th').innerHTML = '';
+    document.getElementById('aid-tb').innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--mu)">Aucune donnée</td></tr>';
+    document.getElementById('aid-fiches').innerHTML = '';
+    return;
+  }
+
+  // ── Tableau synthétique ───────────────────────────────────────────
+  document.getElementById('aid-th').innerHTML =
+    '<tr>'+
+    '<th>Programme</th>'+
+    '<th style="text-align:right">Budget AE</th>'+
+    '<th style="text-align:right">Conso AE</th>'+
+    '<th style="text-align:right">Taux AE</th>'+
+    '<th style="text-align:right">Non engagé</th>'+
+    '<th style="text-align:right">RAR</th>'+
+    '<th style="text-align:right">Payé CP</th>'+
+    '<th style="text-align:right">Score risque</th>'+
+    '<th style="text-align:right">Projection</th>'+
+    '</tr>';
+
+  document.getElementById('aid-tb').innerHTML = rows.map(function(r){
+    var txAE  = r.bud>0 ? r.conso/r.bud*100 : 0;
+    var txAEcl = txAE>=80?'c-ok':txAE>=50?'c-wn':'c-er';
+    var pInfo = pi[r.prog] || {};
+    var score = pInfo.score !== undefined ? pInfo.score : null;
+    var scoreCl = score===null?'':score>=7?'c-er':score>=4?'c-wn':'c-ok';
+    var proj  = pInfo.proj !== undefined ? pInfo.proj : null;
+    var projCl = proj===null?'':proj>=80?'c-ok':proj>=60?'c-wn':'c-er';
+    return '<tr style="cursor:pointer" onclick="showAidDetail(\''+esc(r.prog)+'\',\''+esc(ann)+'\')">'+
+      '<td style="font-weight:600">'+esc(r.prog)+'</td>'+
+      '<td style="text-align:right">'+fmt(r.bud)+' €</td>'+
+      '<td style="text-align:right">'+fmt(r.conso)+' €</td>'+
+      '<td style="text-align:right"><span class="rb '+txAEcl+'">'+pct(txAE)+'</span></td>'+
+      '<td style="text-align:right;color:'+(r.nconso>0?'#d97706':'inherit')+'">'+fmt(r.nconso)+' €</td>'+
+      '<td style="text-align:right">'+fmt(r.rar)+' €</td>'+
+      '<td style="text-align:right">'+fmt(r.paye)+' €</td>'+
+      '<td style="text-align:right">'+(score!==null?'<span class="rb '+scoreCl+'">'+score+'/10</span>':'—')+'</td>'+
+      '<td style="text-align:right">'+(proj!==null?'<span class="rb '+projCl+'">'+pct(proj)+'</span>':'—')+'</td>'+
+      '</tr>';
+  }).join('');
+
+  // ── Fiches indicateurs ────────────────────────────────────────────
+  var fiches = [
+    {
+      id:'f-score', icon:'🎯', titre:'Score de risque (0-10)',
+      couleur:'#dc2626', fond:'#fee2e2',
+      formule:'Composite : sous-conso (0-3pts) + sur-engagement (0-2pts) + RAR élevé (0-2pts) + proximité échéance (0-2pts) + projection <80% (1pt)',
+      seuils:[
+        {lbl:'0 - 3', cl:'c-ok', txt:'Situation saine — aucune action requise'},
+        {lbl:'4 - 6', cl:'c-wn', txt:'Surveillance renforcée — identifier le(s) critère(s) en cause'},
+        {lbl:'7 - 10',cl:'c-er', txt:'Action immédiate — passer les commandes en attente, alerter la direction'},
+      ],
+      action:'Trier le tableau par Score pour prioriser vos actions. Cliquer sur un programme pour voir le détail.'
+    },
+    {
+      id:'f-proj', icon:'📈', titre:'Projection fin d\'année',
+      couleur:'#d97706', fond:'#fef3c7',
+      formule:'Conso actuelle + (Rythme 3 derniers mois × jours restants / 30)',
+      seuils:[
+        {lbl:'>95%',   cl:'c-ok', txt:'Idéal — maintenir le rythme'},
+        {lbl:'80-95%', cl:'c-ok', txt:'Satisfaisant — vérifier qu\'il ne reste pas de commandes à passer'},
+        {lbl:'60-80%', cl:'c-wn', txt:'À surveiller — passer les commandes bloquées avant octobre'},
+        {lbl:'<60%',   cl:'c-er', txt:'Urgence — action immédiate, envisager un transfert de crédits'},
+      ],
+      action:'Recalculée à chaque import. Agir en octobre-novembre laisse encore le temps de faire livrer avant le 31/12.'
+    },
+    {
+      id:'f-velo', icon:'⚡', titre:'Vélocité d\'engagement',
+      couleur:'#7c3aed', fond:'#ede9fe',
+      formule:'Variation du rythme mensuel T0 vs T-1 (trimestres glissants)',
+      seuils:[
+        {lbl:'>+10%',  cl:'c-ok', txt:'Accélération — bonne dynamique'},
+        {lbl:'-10/+10%',cl:'c-wn',txt:'Stable — surveiller si la projection est satisfaisante'},
+        {lbl:'<-10%',  cl:'c-er', txt:'Ralentissement — rechercher les blocages (fournisseurs, circuits d\'achat)'},
+      ],
+      action:'Un ralentissement net avant octobre est un signal fort de risque de sous-consommation.'
+    },
+    {
+      id:'f-delai', icon:'⏱', titre:'Délai 1ère commande',
+      couleur:'#0891b2', fond:'#cffafe',
+      formule:'Jours entre le 01/01 et la 1ère commande SAP de l\'exercice',
+      seuils:[
+        {lbl:'≤30 jours', cl:'c-ok', txt:'Démarrage rapide — calendrier d\'achat bien anticipé'},
+        {lbl:'31-90 jours',cl:'c-wn',txt:'Démarrage tardif — vérifier qu\'aucun blocage administratif ne retarde les achats'},
+        {lbl:'>90 jours', cl:'c-er', txt:'Démarrage très tardif — l\'exercice est comprimé, risque de concentration en fin d\'année'},
+      ],
+      action:'Visible dans l\'onglet Synthèse par programme. Un démarrage tardif réduit la marge de manœuvre sur toute l\'année.'
+    },
+    {
+      id:'f-taux', icon:'📊', titre:'Taux AE / Taux CP',
+      couleur:'#1d4ed8', fond:'#dbeafe',
+      formule:'Taux AE = Conso AE / Budget AE × 100  |  Taux CP = Payé CP / Budget AE × 100',
+      seuils:[
+        {lbl:'AE > CP',   cl:'c-ok', txt:'Normal — les engagements précèdent toujours les paiements'},
+        {lbl:'CP > 100%', cl:'c-wn', txt:'Normal pour les programmes pluriannuels — solde des engagements N-1'},
+        {lbl:'AE faible + CP élevé', cl:'c-er', txt:'Anomalie — vérifier si des paiements sans commande existent'},
+      ],
+      action:'Un écart AE/CP important en fin d\'année signale des commandes passées mais pas encore payées (RAR élevé).'
+    },
+    {
+      id:'f-rar', icon:'📦', titre:'RAR — Reste à Réaliser',
+      couleur:'#16a34a', fond:'#dcfce7',
+      formule:'Commandes engagées non livrées / non facturées',
+      seuils:[
+        {lbl:'RAR faible', cl:'c-ok', txt:'Les livraisons suivent les commandes — bonne exécution'},
+        {lbl:'RAR élevé (>40% budget)', cl:'c-wn', txt:'Beaucoup de commandes en attente — surveiller les délais fournisseurs'},
+        {lbl:'RAR élevé + Non engagé = 0', cl:'c-er', txt:'Tout est engagé mais rien n\'est livré — risque si les livraisons tardent après le 31/12'},
+      ],
+      action:'Visible dans l\'onglet Cdes non soldées. Un RAR élevé n\'est pas une sous-consommation — c\'est de l\'argent engagé en cours de livraison.'
+    },
+    {
+      id:'f-cofin', icon:'🔀', titre:'Co-financement / Effet de levier',
+      couleur:'#c2410c', fond:'#ffedd5',
+      formule:'Détection des programmes financés sur plusieurs fonds (RPC_120, RPC_121, etc.)',
+      seuils:[
+        {lbl:'Fonds équilibrés', cl:'c-ok', txt:'Taux de consommation similaires sur tous les fonds'},
+        {lbl:'Déséquilibre modéré', cl:'c-wn', txt:'Un fonds consomme significativement moins que les autres'},
+        {lbl:'Déséquilibre fort (>20pts)', cl:'c-er', txt:'Risque de sous-consommation sur un fonds — action corrective nécessaire'},
+      ],
+      action:'Visible dans l\'onglet Centres de coûts (filtre par fonds) et dans l\'onglet éOTP (vue par éOTP/Fonds).'
+    },
+    {
+      id:'f-eotp', icon:'🔬', titre:'Indicateurs éOTP',
+      couleur:'#7c3aed', fond:'#ede9fe',
+      formule:'Taux CDa/Budget par éOTP × Fonds | Déséquilibre entre fonds pour un même éOTP',
+      seuils:[
+        {lbl:'Taux >80%', cl:'c-ok', txt:'L\'éOTP est bien engagé — jalons contractuels respectés'},
+        {lbl:'Taux 50-80%', cl:'c-wn', txt:'Engagement partiel — vérifier les jalons ANR/H2020 attendus'},
+        {lbl:'Taux <50%', cl:'c-er', txt:'Retard significatif — risque de rejet de dépenses si les jalons ne sont pas atteints'},
+      ],
+      action:'Spécifique aux programmes ANR, européens et co-financés. Visible dans l\'onglet éOTP.'
+    },
+  ];
+
+  document.getElementById('aid-fiches').innerHTML = fiches.map(function(f){
+    return '<div class="pnl" id="'+f.id+'" style="border-left:4px solid '+f.couleur+';cursor:pointer" onclick="toggleFiche(\''+f.id+'\')" title="Cliquer pour développer">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center">'+
+        '<div style="font-weight:700;font-size:.95rem;color:'+f.couleur+'">'+f.icon+' '+f.titre+'</div>'+
+        '<span id="'+f.id+'-arr" style="color:var(--mu);font-size:.8rem">▼</span>'+
+      '</div>'+
+      '<div id="'+f.id+'-body" style="display:none;margin-top:10px">'+
+        '<div style="font-size:.78rem;color:var(--mu);margin-bottom:8px"><strong>Formule :</strong> '+esc(f.formule)+'</div>'+
+        '<table style="width:100%;border-collapse:collapse;font-size:.78rem;margin-bottom:8px">'+
+          f.seuils.map(function(s){
+            return '<tr>'+
+              '<td style="padding:3px 8px;width:110px"><span class="rb '+s.cl+'">'+esc(s.lbl)+'</span></td>'+
+              '<td style="padding:3px 6px;color:var(--t)">'+esc(s.txt)+'</td>'+
+            '</tr>';
+          }).join('')+
+        '</table>'+
+        '<div style="font-size:.78rem;background:'+f.fond+';border-radius:6px;padding:7px 10px;color:'+f.couleur+'">'+
+          '💡 '+esc(f.action)+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+window.renderAid = renderAid;
+
+function toggleFiche(id){
+  var body = document.getElementById(id+'-body');
+  var arr  = document.getElementById(id+'-arr');
+  if(!body) return;
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if(arr) arr.textContent = open ? '▼' : '▲';
+}
+window.toggleFiche = toggleFiche;
+
+function showAidDetail(prog, ann){
+  // Naviguer vers l'onglet Synthèse filtré sur ce programme
+  var sel = document.getElementById('s-prg');
+  if(sel){ sel.value = prog; }
+  switchTab('s');
+}
+window.showAidDetail = showAidDetail;
+
 </script>
 </body>
 </html>
