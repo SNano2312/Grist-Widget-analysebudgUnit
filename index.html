@@ -6396,25 +6396,27 @@ function _buildEotpRows(){
     map[key].rar += r.resteFact;
   });
 
-  // Passage Factures : pour les fonds sans aucune Conso AE (ex: masse salariale RPC_141)
-  // On inclut les Factures en les rattachant à l'éOTP du filtre ou à '(sans éOTP)'
-  var TV_FACT = ['factures','piecespreenregistrees','piecespreenvregistrees'];
-  CONSO.forEach(function(r){
-    if(ann && String(r.annee) !== String(ann)) return;
-    if(prg && r.p !== prg) return;
-    if(fnd && r.fo !== fnd) return;
-    var tvN = (r.tv||'').toLowerCase().replace(/[^a-z]/g,'');
-    if(TV_FACT.indexOf(tvN) < 0) return;
-    // Déterminer l'éOTP à utiliser
-    var eotpF = r.eotp || (code && codeFnd && r.fo === codeFnd ? code : '(sans éOTP)');
-    if(code && eotpF !== code) return; // filtre éOTP actif
-    var key = (r.p||'')+'|'+eotpF+'|'+(r.fo||'');
-    // N'ajouter que si pas de conso AE (isFact autorisé à s'accumuler)
-    if(map[key] && !map[key].isFact && map[key].conso > 0) return;
-    if(!map[key]) map[key] = {prog:r.p, eotp:eotpF, fonds:r.fo, conso:0, cda:0, rar:0, nb:0, isFact:true};
-    map[key].conso += Math.abs(r.m);
-    map[key].isFact = true;
-  });
+  // Passage Factures : UNIQUEMENT si un fonds précis est sélectionné
+  // et que ce fonds n'a aucune Conso AE (ex: RPC_141 masse salariale)
+  if(fnd){
+    var _hasFndAE = Object.values(map).some(function(r){ return r.fonds===fnd && r.conso>0; });
+    if(!_hasFndAE){
+      var TV_FACT = ['factures','piecespreenregistrees','piecespreenvregistrees'];
+      CONSO.forEach(function(r){
+        if(ann && String(r.annee) !== String(ann)) return;
+        if(prg && r.p !== prg) return;
+        if(r.fo !== fnd) return;
+        var tvN = (r.tv||'').toLowerCase().replace(/[^a-z]/g,'');
+        if(TV_FACT.indexOf(tvN) < 0) return;
+        var eotpF = r.eotp || (code || '(sans éOTP)');
+        if(code && eotpF !== code) return;
+        var key = (r.p||'')+'|'+eotpF+'|'+(r.fo||'');
+        if(!map[key]) map[key] = {prog:r.p, eotp:eotpF, fonds:r.fo, conso:0, cda:0, rar:0, nb:0, isFact:true};
+        map[key].conso += Math.abs(r.m);
+        map[key].isFact = true;
+      });
+    }
+  }
 
   // Budget depuis VENTILATION_CC (ventilé par éOTP si disponible)
   // Sinon fallback sur BUDGET global
