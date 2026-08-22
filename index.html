@@ -6426,12 +6426,15 @@ function _buildEotpRows(){
   });
 
   // ── Passage 3 : Factures ─────────────────────────────────────────────────
-  // Toujours actif — addToMap ignore les Factures si une Conso AE existe déjà
   CONSO.forEach(function(r){
-    if(!matchAnn(r) || !matchPrg(r.p) || !matchFnd(r.fo)) return;
+    if(ann && String(r.annee) !== String(ann)) return;
+    if(prg && r.p !== prg) return;
+    if(fnd && r.fo !== fnd) return;
     if(TV_FA.indexOf(tvNorm(r.tv)) < 0) return;
-    // Déterminer l'éOTP : utiliser celui de la ligne, ou celui du filtre si le fonds correspond
-    var eotp = r.eotp || (code && (!r.fo || r.fo === (fnd||codeFnd)) ? code : '(sans éOTP)');
+    // éOTP : utiliser celui de la ligne SIFAC, sinon le code du filtre, sinon sans éOTP
+    var eotp = r.eotp || code || '(sans éOTP)';
+    // Si un code est sélectionné et que l'éOTP ne correspond pas, on skip
+    // SAUF si la ligne n'a pas d'éOTP et appartient au fonds sélectionné (rattachement)
     if(code && eotp !== code) return;
     addToMap(r.p, eotp, r.fo, Math.abs(r.m), 0, 0, true);
   });
@@ -6511,6 +6514,7 @@ function renderEotp(){
   document.getElementById('eotp-chart-wrap').style.display = '';
   // Barres HTML pures — sans Chart.js
   document.getElementById('eotp-chart-wrap').style.display = '';
+  try {
   var maxVal = top15.reduce(function(m,r){ return Math.max(m, r.cda, r.conso); }, 1);
   var barsHtml = '<div style="font-size:.72rem;color:var(--mu);margin-bottom:8px">'
     + '<span style="display:inline-block;width:12px;height:10px;background:#3b82f6;margin-right:4px"></span>CDa '
@@ -6541,6 +6545,8 @@ function renderEotp(){
     '<tr><th>éOTP</th><th>Fonds</th><th>Programme(s)</th><th style="text-align:right">Budget AE</th><th style="text-align:right">Conso AE</th><th style="text-align:right">CDa</th><th style="text-align:right">RAR</th><th style="text-align:right">Taux CDa/Budget</th></tr>' :
     '<tr><th>Programme</th><th style="text-align:right">Budget AE</th><th style="text-align:right">Conso AE</th><th style="text-align:right">CDa</th><th style="text-align:right">RAR</th><th style="text-align:right">Taux Conso</th></tr>';
   document.getElementById('eotp-th').innerHTML = colsHeader;
+
+  } catch(e){ console.warn('[éOTP chart]', e); document.getElementById('eotp-chart-wrap').style.display='none'; }
 
   document.getElementById('eotp-tb').innerHTML = items.map(function(r){
     var tx   = r.bud>0 ? r.cda/r.bud*100 : (r.conso>0?100:0);
