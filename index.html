@@ -6794,10 +6794,6 @@ function showAidDetail(prog, ann){
 }
 window.showAidDetail = showAidDetail;
 
-</script>
-</body>
-</html  _renderAidFiches();
-}
 
 function _renderAidFiches(){
   var container = document.getElementById('aid-fiches');
@@ -6809,34 +6805,34 @@ function _renderAidFiches(){
      formule:'Composite : sous-conso (0-3pts) + sur-engagement (0-2pts) + RAR élevé (0-2pts) + proximité échéance (0-2pts) + projection <80% (1pt)',
      seuils:[['0-3','c-ok','Situation saine — aucune action requise'],['4-6','c-wn','Surveillance renforcée — identifier le ou les critères en cause'],['7-10','c-er','Action immédiate — passer les commandes en attente, alerter la direction']],
      action:'Trier le tableau par Score pour prioriser vos actions. Cliquer sur un programme ouvre la Synthèse.'},
-    {id:'f-proj', icon:'📈', titre:'Projection fin d'année', couleur:'#d97706', fond:'#fef3c7',
+    {id:'f-proj', icon:'📈', titre:'Projection fin d\'année', couleur:'#d97706', fond:'#fef3c7',
      formule:'Conso actuelle + (Rythme 3 derniers mois x jours restants / 30)',
      seuils:[['>95%','c-ok','Idéal — maintenir le rythme'],['80-95%','c-ok','Satisfaisant — vérifier les commandes restantes'],['60-80%','c-wn','A surveiller — passer les commandes bloquées avant octobre'],['<60%','c-er','Urgence — action immédiate, envisager un transfert de crédits']],
      action:'Recalculée à chaque import. Agir en octobre-novembre laisse encore le temps de faire livrer avant le 31/12.'},
-    {id:'f-velo', icon:'⚡', titre:'Vélocité d'engagement', couleur:'#7c3aed', fond:'#ede9fe',
+    {id:'f-velo', icon:'⚡', titre:'Vélocité d\'engagement', couleur:'#7c3aed', fond:'#ede9fe',
      formule:'Variation du rythme mensuel T0 vs T-1 (trimestres glissants)',
      seuils:[['>+10%','c-ok','Accélération — bonne dynamique'],['-10/+10%','c-wn','Stable — surveiller si la projection est satisfaisante'],['<-10%','c-er','Ralentissement — rechercher les blocages fournisseurs ou circuits achat']],
      action:'Un ralentissement net avant octobre est un signal fort de risque de sous-consommation.'},
     {id:'f-delai', icon:'⏱', titre:'Délai 1ère commande', couleur:'#0891b2', fond:'#cffafe',
-     formule:'Jours entre le 01/01 et la 1ère commande SAP de l'exercice',
-     seuils:[['<=30j','c-ok','Démarrage rapide — calendrier anticipé'],['31-90j','c-wn','Démarrage tardif — vérifier les blocages administratifs'],['>90j','c-er','Démarrage très tardif — exercice comprimé, risque de concentration en fin d'année']],
-     action:'Un démarrage tardif réduit la marge de manoeuvre sur toute l'année.'},
+     formule:'Jours entre le 01/01 et la 1ère commande SAP de l\'exercice',
+     seuils:[['<=30j','c-ok','Démarrage rapide — calendrier anticipé'],['31-90j','c-wn','Démarrage tardif — vérifier les blocages administratifs'],['>90j','c-er','Démarrage très tardif — exercice comprimé, risque de concentration en fin d\'année']],
+     action:'Un démarrage tardif réduit la marge de manoeuvre sur toute l\'année.'},
     {id:'f-taux', icon:'📊', titre:'Taux AE / Taux CP', couleur:'#1d4ed8', fond:'#dbeafe',
      formule:'Taux AE = Conso AE / Budget AE x 100  |  Taux CP = Payé CP / Budget AE x 100',
      seuils:[['AE > CP','c-ok','Normal — les engagements précèdent toujours les paiements'],['CP > 100%','c-wn','Normal pour les programmes pluriannuels — solde des engagements N-1'],['AE faible + CP élevé','c-er','Anomalie — vérifier si des paiements sans commande existent']],
-     action:'Un écart AE/CP important en fin d'année signale des commandes passées mais pas encore payées.'},
+     action:'Un écart AE/CP important en fin d\'année signale des commandes passées mais pas encore payées.'},
     {id:'f-rar', icon:'📦', titre:'RAR — Reste à Réaliser', couleur:'#16a34a', fond:'#dcfce7',
      formule:'Commandes engagées non livrées / non facturées',
      seuils:[['RAR faible','c-ok','Les livraisons suivent les commandes — bonne exécution'],['RAR >40% budget','c-wn','Beaucoup de commandes en attente — surveiller les délais fournisseurs'],['RAR élevé + Non engagé=0','c-er','Tout est engagé mais rien livré — risque si les livraisons tardent après le 31/12']],
-     action:'Un RAR élevé n'est pas une sous-consommation — c'est de l'argent engagé en cours de livraison.'},
+     action:'Un RAR élevé n\'est pas une sous-consommation — c\'est de l\'argent engagé en cours de livraison.'},
     {id:'f-cofin', icon:'🔀', titre:'Co-financement / Effet de levier', couleur:'#c2410c', fond:'#ffedd5',
      formule:'Détection des programmes financés sur plusieurs fonds (RPC_120, RPC_121...)',
      seuils:[['Fonds équilibrés','c-ok','Taux de consommation similaires sur tous les fonds'],['Déséquilibre modéré','c-wn','Un fonds consomme significativement moins que les autres'],['Déséquilibre fort >20pts','c-er','Risque de sous-consommation sur un fonds — action corrective nécessaire']],
-     action:'Visible dans l'onglet Centres de coûts (filtre par fonds) et dans l'onglet éOTP.'},
+     action:'Visible dans l\'onglet Centres de coûts (filtre par fonds) et dans l\'onglet éOTP.'},
     {id:'f-eotp', icon:'🔬', titre:'Indicateurs éOTP', couleur:'#7c3aed', fond:'#ede9fe',
      formule:'Taux CDa/Budget par éOTP x Fonds | Déséquilibre entre fonds pour un même éOTP',
-     seuils:[['Taux >80%','c-ok','L'éOTP est bien engagé — jalons contractuels respectés'],['Taux 50-80%','c-wn','Engagement partiel — vérifier les jalons ANR/H2020 attendus'],['Taux <50%','c-er','Retard significatif — risque de rejet si les jalons ne sont pas atteints']],
-     action:'Spécifique aux programmes ANR, européens et co-financés. Visible dans l'onglet éOTP.'},
+     seuils:[['Taux >80%','c-ok','L\'éOTP est bien engagé — jalons contractuels respectés'],['Taux 50-80%','c-wn','Engagement partiel — vérifier les jalons ANR/H2020 attendus'],['Taux <50%','c-er','Retard significatif — risque de rejet si les jalons ne sont pas atteints']],
+     action:'Spécifique aux programmes ANR, européens et co-financés. Visible dans l\'onglet éOTP.'},
   ];
 
   fiches.forEach(function(f){
@@ -6905,3 +6901,6 @@ function _renderAidFiches(){
     container.appendChild(div);
   });
 }
+</script>
+</body>
+</html>
