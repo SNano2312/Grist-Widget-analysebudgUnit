@@ -6336,109 +6336,98 @@ window.renderEotp = renderEotp;
 
 // Construire les lignes agrégées éOTP depuis CONSO + CDA_CC
 function _buildEotpRows(){
-  var ann   = document.getElementById('eotp-ann').value;
-  var prg   = document.getElementById('eotp-prg').value;
-  var codeRaw = document.getElementById('eotp-code').value; // format "éOTP|fonds" ou ""
+  var ann     = document.getElementById('eotp-ann').value;
+  var prg     = document.getElementById('eotp-prg').value;
+  var codeRaw = document.getElementById('eotp-code').value;
   var codeParts = codeRaw ? codeRaw.split('|') : [];
-  var code  = codeParts[0] || ''; // code éOTP seul
-  var codeFnd = codeParts[1] || ''; // fonds du sélecteur éOTP
-  var fnd   = document.getElementById('eotp-fnd').value || codeFnd; // fonds filtre général ou issu du sélecteur éOTP
-
-  // Source 1 : CONSO (Conso AE = mouvements TV=AE hors CP)
-  // Source 2 : CDA_CC (Engagements = val)
-  // Clé d'agrégation : prog|eotp|fonds
+  var code    = codeParts[0] || '';   // code éOTP seul ex: C13W37319
+  var codeFnd = codeParts[1] || '';   // fonds du sélecteur éOTP ex: RPC_141
+  var fndSel  = document.getElementById('eotp-fnd').value; // sélecteur fonds
+  var fnd     = fndSel || codeFnd;    // fonds actif
 
   var map = {};
+  var TV_AE = ['commandesdachat','reservationdefonds','blocagedefonds'];
+  var TV_FA = ['factures','piecespreenregistrees','piecespreenvregistrees'];
 
-  // CONSO → Conso AE par éOTP
-  // TV_CATS contient les types de valeur AE (Commandes d'achat, Réservation, Blocage)
-  // Types de valeur AE — comparaison normalisée pour éviter les problèmes d'encodage
-  var TV_AE_NORM = ["commandesdachat","reservationdefonds","blocagedefonds"];
-  function isTV_AE(tv){ return TV_AE_NORM.indexOf((tv||'').toLowerCase().replace(/[^a-z]/g,'')) >= 0; }
-  CONSO.forEach(function(r){
-    if(ann && String(r.annee) !== String(ann)) return;
-    if(prg && r.p !== prg) return;
-    if(code && r.eotp !== code) return;
-    if(fnd && r.fo !== fnd) return;
-    if(!isTV_AE(r.tv)) return;
-    var eotpVal = r.eotp || '(sans éOTP)';
-    // Si éOTP sélectionné : inclure aussi les lignes sans éOTP du même fonds
-    if(code) {
-      if(eotpVal !== code) {
-        if(eotpVal === '(sans éOTP)' && codeFnd && r.fo === codeFnd) {
-          eotpVal = code; // rattacher la masse salariale à l'éOTP du filtre
-        } else { return; }
-      }
+  function tvNorm(tv){ return (tv||'').toLowerCase().replace(/[^a-z]/g,''); }
+  function matchAnn(r){ return !ann || String(r.annee||r.annee)===String(ann); }
+  function matchPrg(p){ return !prg || p===prg; }
+  function matchFnd(f){ return !fnd || f===fnd; }
+  function matchCode(eotp){ return !code || eotp===code; }
+
+  function addToMap(prog, eotp, fo, conso, cda, rar, isFact){
+    var key = (prog||'')+'|'+(eotp||'(sans éOTP)')+'|'+(fo||'');
+    if(!map[key]) map[key]={prog:prog, eotp:eotp||'(sans éOTP)', fonds:fo, conso:0, cda:0, rar:0, nb:0, isFact:false};
+    if(isFact && !map[key].isFact){
+      // N'ajouter les Factures que si pas encore de conso AE réelle
+      if(map[key].conso>0 && !map[key].isFact) return;
     }
-    var key = (r.p||'')+'|'+eotpVal+'|'+(r.fo||'');
-    if(!map[key]) map[key] = {prog:r.p, eotp:eotpVal, fonds:r.fo, conso:0, cda:0, rar:0, nb:0};
-    map[key].conso += Math.abs(r.m);
+    map[key].conso += conso;
+    map[key].cda   += cda;
+    map[key].rar   += rar;
     map[key].nb++;
-  });
+    if(isFact) map[key].isFact = true;
+  }
 
-  // CDA_CC → CDa engagée + RAR par éOTP
-  (window.CDA_CC||[]).forEach(function(r){
-    if(ann && String(r.annee) !== String(ann)) return;
-    if(prg && r.prog !== prg) return;
-    if(code && r.eotp !== code) return;
-    if(fnd && r.fonds !== fnd) return;
-    var eotpCda = r.eotp || '(sans éOTP)';
-    if(code) {
-      if(eotpCda !== code) {
-        if(eotpCda === '(sans éOTP)' && codeFnd && r.fonds === codeFnd) {
-          eotpCda = code;
-        } else { return; }
+  // ── Passage 1 : Conso AE ────────────────────────────────────────────────
+  CONSO.forEach(function(r){
+    if(!matchAnn(r) || !matchPrg(r.p) || !matchFnd(r.fo)) return;
+    if(TV_AE.indexOf(tvNorm(r.tv)) < 0) return;
+    var eotp = r.eotp || '(sans éOTP)';
+    // Si un code éOTP est sélectionné, rattacher aussi les lignes sans éOTP
+    // du même fonds (ex: masse salariale qui n'a pas de tag éOTP dans SIFAC)
+    if(code){
+      if(eotp !== code){
+        if(eotp === '(sans éOTP)' && codeFnd && r.fo === codeFnd) eotp = code;
+        else return;
       }
     }
-    var key = (r.prog||'')+'|'+eotpCda+'|'+(r.fonds||'');
-    if(!map[key]) map[key] = {prog:r.prog, eotp:eotpCda, fonds:r.fonds, conso:0, cda:0, rar:0, nb:0};
-    map[key].cda += r.val;
-    map[key].rar += r.resteFact;
+    addToMap(r.p, eotp, r.fo, Math.abs(r.m), 0, 0, false);
   });
 
-  // Passage Factures : UNIQUEMENT si un fonds précis est sélectionné
-  // et que ce fonds n'a aucune Conso AE (ex: RPC_141 masse salariale)
-  var _fndForFact = fnd || codeFnd; // Utiliser aussi le fonds issu du sélecteur éOTP
-  if(_fndForFact){
-    var _hasFndAE = Object.values(map).some(function(r){ return r.fonds===_fndForFact && r.conso>0; });
-    if(!_hasFndAE){
-      var TV_FACT = ['factures','piecespreenregistrees','piecespreenvregistrees'];
+  // ── Passage 2 : CDa engagées ─────────────────────────────────────────────
+  (window.CDA_CC||[]).forEach(function(r){
+    if(!matchAnn(r) || !matchPrg(r.prog) || !matchFnd(r.fonds)) return;
+    var eotp = r.eotp || '(sans éOTP)';
+    if(code){
+      if(eotp !== code){
+        if(eotp === '(sans éOTP)' && codeFnd && r.fonds === codeFnd) eotp = code;
+        else return;
+      }
+    }
+    addToMap(r.prog, eotp, r.fonds, 0, r.val, r.resteFact, false);
+  });
+
+  // ── Passage 3 : Factures (fonds sans Conso AE, ex: masse salariale) ─────
+  // S'active uniquement si un fonds précis est ciblé ET sans Conso AE
+  if(fnd){
+    var hasFndAE = Object.values(map).some(function(r){ return r.fonds===fnd && r.conso>0 && !r.isFact; });
+    if(!hasFndAE){
       CONSO.forEach(function(r){
-        if(ann && String(r.annee) !== String(ann)) return;
-        if(prg && r.p !== prg) return;
-        if(r.fo !== _fndForFact) return;
-        var tvN = (r.tv||'').toLowerCase().replace(/[^a-z]/g,'');
-        if(TV_FACT.indexOf(tvN) < 0) return;
-        var eotpF = r.eotp || (code || '(sans éOTP)');
-        if(code && eotpF !== code) return;
-        var key = (r.p||'')+'|'+eotpF+'|'+(r.fo||'');
-        if(!map[key]) map[key] = {prog:r.p, eotp:eotpF, fonds:_fndForFact, conso:0, cda:0, rar:0, nb:0, isFact:true};
-        map[key].conso += Math.abs(r.m);
-        map[key].isFact = true;
+        if(!matchAnn(r) || !matchPrg(r.p)) return;
+        if(r.fo !== fnd) return;
+        if(TV_FA.indexOf(tvNorm(r.tv)) < 0) return;
+        var eotp = r.eotp || code || '(sans éOTP)';
+        if(code && eotp !== code) return;
+        addToMap(r.p, eotp, r.fo, Math.abs(r.m), 0, 0, true);
       });
     }
   }
 
-  // Budget depuis VENTILATION_CC (ventilé par éOTP si disponible)
-  // Sinon fallback sur BUDGET global
+  // ── Budget depuis VCC ou BUDGET global ───────────────────────────────────
   Object.values(map).forEach(function(row){
-    // Chercher dans VENTILATION_CC les lignes avec cet éOTP
-    var vccRows = (window.VENTILATION_CC||[]).filter(function(v){
+    var vcc = (window.VENTILATION_CC||[]).filter(function(v){
       return (!ann||String(v.annee)===String(ann)) &&
-             v.prog===row.prog && v.fonds===row.fonds &&
-             v.eotp === row.eotp;
+             v.prog===row.prog && v.fonds===row.fonds && v.eotp===row.eotp;
     });
-    if(vccRows.length > 0){
-      // Budget ventilé par éOTP disponible : somme des budgets CC pour cet éOTP
-      row.bud = vccRows.reduce(function(s,v){return s+v.budget;},0);
+    if(vcc.length){
+      row.bud = vcc.reduce(function(s,v){return s+v.budget;},0);
       row.hasVccEotp = true;
     } else {
-      // Fallback : budget global du programme/fonds (non ventilé par éOTP)
-      var budRows = BUDGET.filter(function(b){
-        return String(b.annee)===(ann||String(b.annee)) &&
-               b.prog===row.prog && b.fonds===row.fonds;
+      var bud = BUDGET.filter(function(b){
+        return (!ann||String(b.annee)===String(ann)) && b.prog===row.prog && b.fonds===row.fonds;
       });
-      row.bud = budRows.reduce(function(s,b){return s+b.bud;},0);
+      row.bud = bud.reduce(function(s,b){return s+b.bud;},0);
       row.hasVccEotp = false;
     }
   });
