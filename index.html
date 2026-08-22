@@ -6723,7 +6723,7 @@ function renderAid(){
   var rows=Object.values(byProg).sort(function(a,b){return b.bud-a.bud;});
   if(!rows.length){
     document.getElementById('aid-th').innerHTML='';
-    document.getElementById('aid-tb').innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--mu)">Aucune donnée</td></tr>';
+    document.getElementById('aid-tb').innerHTML='<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--mu)">Aucune donnée</td></tr>';
     document.getElementById('aid-fiches').innerHTML='';
     return;
   }
@@ -6744,7 +6744,7 @@ function renderAid(){
     '<tr><th>Programme</th><th style="text-align:right">Budget AE</th><th style="text-align:right">Conso AE</th>'+
     '<th style="text-align:right">Taux AE</th><th style="text-align:right">Non engagé</th>'+
     '<th style="text-align:right">RAR</th><th style="text-align:right">Score risque</th>'+
-    '<th style="text-align:right">Projection</th><th style="text-align:center">Co-fin.</th>'+
+    '<th style="text-align:right">Projection</th>'+'<th style="text-align:right">Vélocité</th>'+'<th style="text-align:right">Délai 1ère Cde</th>'+'<th style="text-align:center">Co-fin.</th>'+
     '<th style="text-align:center">éOTP</th></tr>';
 
   // Tableau
@@ -6763,8 +6763,10 @@ function renderAid(){
       '<td style="text-align:right;'+rarCl+'">'+fmt(r.rar)+' €</td>'+
       '<td style="text-align:right">'+(r.score!==null?'<span class="rb '+scCl+'">'+r.score+'/10</span>':'—')+'</td>'+
       '<td style="text-align:right">'+(r.proj!==null?'<span class="rb '+prCl+'">'+pct(r.proj)+'</span>':'—')+'</td>'+
+      '<td style="text-align:right">'+(r.velo!==null?'<span class="rb '+(r.veloCl==="hausse"?'c-ok':r.veloCl==="baisse"?'c-er':'c-wn')+'">'+( r.velo>0?'+':'')+r.velo.toFixed(0)+'%</span>':'—')+'</td>'+
+      '<td style="text-align:right">'+(r.delai!==null?'<span class="rb '+(r.delai<=30?'c-ok':r.delai<=90?'c-wn':'c-er')+'">'+r.delai+'j</span>':'—')+'</td>'+
       '<td style="text-align:center">'+(r.coFin?'<span class="rb c-wn">'+r.fonds.length+' fonds</span>':'—')+'</td>'+
-      '<td style="text-align:center">'+(r.hasEotp?'<span class="rb c-ok">✓</span>':'—')+'</td>'+
+      '<td style="text-align:right">'+(r.eotpTaux!==null?'<span class="rb '+(r.eotpTaux>=80?'c-ok':r.eotpTaux>=50?'c-wn':'c-er')+'">'+pct(r.eotpTaux)+'</span>':(r.hasEotp?'<span style="color:#7c3aed">✓</span>':'—'))+'</td>'+
       '</tr>';
   }).join('');
 
