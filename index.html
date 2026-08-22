@@ -6358,10 +6358,8 @@ function _buildEotpRows(){
   function addToMap(prog, eotp, fo, conso, cda, rar, isFact){
     var key = (prog||'')+'|'+(eotp||'(sans éOTP)')+'|'+(fo||'');
     if(!map[key]) map[key]={prog:prog, eotp:eotp||'(sans éOTP)', fonds:fo, conso:0, cda:0, rar:0, nb:0, isFact:false};
-    if(isFact && !map[key].isFact){
-      // N'ajouter les Factures que si pas encore de conso AE réelle
-      if(map[key].conso>0 && !map[key].isFact) return;
-    }
+    // Factures : ne pas écraser une conso AE réelle existante
+    if(isFact && map[key].conso>0 && !map[key].isFact) return;
     map[key].conso += conso;
     map[key].cda   += cda;
     map[key].rar   += rar;
