@@ -6622,6 +6622,18 @@ function renderEotp(paramsOverride){
     '<td></td></tr>';
 }
 
+// Cellule <td> avec lien SIFAC+ vers la commande (même format que les autres onglets).
+// Manquait totalement : drillEotp plantait (ReferenceError) dès qu'une ligne CDA ou
+// CONSO existait, ce qui empêchait le panneau de détail éOTP de s'afficher.
+function lienSifacEotp(cmd){
+  if(!cmd) return '<td>-</td>';
+  var sapBase="https://inrae.sifacplus.amue.fr/sap/bc/ui2/flp#PurchaseOrder-manage&/C_PurchaseOrderTP(PurchaseOrder='";
+  var sapSuf="',DraftUUID=guid'00000000-0000-0000-0000-000000000000',IsActiveEntity=true)";
+  var url = sapBase+encodeURIComponent(cmd)+sapSuf;
+  return '<td><a href="'+url+'" target="_blank" style="color:var(--pr);text-decoration:none;font-weight:500">'+esc(cmd)+'</a></td>';
+}
+window.lienSifacEotp = lienSifacEotp;
+
 function drillEotp(params){
   var p;
   if(params && params.tagName) {
