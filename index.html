@@ -1704,10 +1704,11 @@ function switchTab(t){
   if(t==='liq') renderLiquidationTab();
   if(t==='aid') setTimeout(renderAid, 30);
   if(t==='eotp'){
-    // Double rendu : initEotp au premier tick, renderEotp au second
     setTimeout(function(){
-      initEotp(true);
-      setTimeout(renderEotp, 80);
+      // Capturer les params AVANT initEotp(true) qui remet tout à Tous
+      var savedParams = _getEotpParams();
+      initEotp(false);
+      setTimeout(function(){ renderEotp(savedParams.code ? savedParams : null); }, 80);
     }, 20);
   }
   if(t==='analyse') initAnalyse();
@@ -6467,9 +6468,9 @@ function _getEotpParams(){
   };
 }
 
-function renderEotp(){
+function renderEotp(paramsOverride){
   var vue    = document.getElementById('eotp-vue').value;
-  var params = _getEotpParams();
+  var params = paramsOverride || _getEotpParams();
   var rows   = _buildEotpRows(params);
 
   if(!rows.length){
