@@ -6403,6 +6403,7 @@ function _buildEotpRows(){
     console.log('[Factures] fnd='+fnd+' hasFndAE='+_hasFndAE+' mapSize='+Object.keys(map).length);
     if(!_hasFndAE){
       var TV_FACT = ['factures','piecespreenregistrees','piecespreenvregistrees'];
+      var _factCount=0;
       CONSO.forEach(function(r){
         if(ann && String(r.annee) !== String(ann)) return;
         if(prg && r.p !== prg) return;
@@ -6410,12 +6411,15 @@ function _buildEotpRows(){
         var tvN = (r.tv||'').toLowerCase().replace(/[^a-z]/g,'');
         if(TV_FACT.indexOf(tvN) < 0) return;
         var eotpF = r.eotp || (code || '(sans éOTP)');
+        if(_factCount===0) console.log('[Factures 1ère ligne] tv='+r.tv+' tvN='+tvN+' eotpF='+eotpF+' code='+code+' r.fo='+r.fo+' r.p='+r.p+' ann='+r.annee);
+        _factCount++;
         if(code && eotpF !== code) return;
         var key = (r.p||'')+'|'+eotpF+'|'+(r.fo||'');
         if(!map[key]) map[key] = {prog:r.p, eotp:eotpF, fonds:r.fo, conso:0, cda:0, rar:0, nb:0, isFact:true};
         map[key].conso += Math.abs(r.m);
         map[key].isFact = true;
       });
+      console.log('[Factures] lignes traitées='+_factCount+' mapAprès='+Object.keys(map).length);
     }
   }
 
